@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bank Charge Auditor — CBN Compliance Check for Nigerian Bank Statements</title>
+<meta name="description" content="Audit any Nigerian bank statement against the official CBN Guide to Bank Charges. Finds illegal and excess charges, computes your refund, and drafts the demand letter. 100% private — runs on your device.">
+<link rel="stylesheet" href="css/app.css?v=19">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Cpath fill='%232ee59d' d='M24 2 6 10v12c0 11 7.6 21.4 18 24 10.4-2.6 18-13 18-24V10L24 2z'/%3E%3Ctext x='24' y='32' font-size='22' font-weight='bold' text-anchor='middle' fill='%230b1210'%3E₦%3C/text%3E%3C/svg%3E">
+</head>
+<body>
+<div class="wrap">
+
+  <header class="app-head">
+    <svg class="logo" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <path fill="#2ee59d" d="M24 2 6 10v12c0 11 7.6 21.4 18 24 10.4-2.6 18-13 18-24V10L24 2z"/>
+      <text x="24" y="32" font-size="22" font-weight="bold" text-anchor="middle" fill="#0b1210">₦</text>
+    </svg>
+    <div class="head-txt">
+      <h1>Bank Charge <em>Auditor</em></h1>
+      <p>Audits any Nigerian bank statement against the official CBN Guide to Bank Charges — and never guesses.</p>
+    </div>
+    <span class="privacy-pill">🔒 100% on your device — nothing is uploaded</span>
+    <span class="build-badge" id="build-badge">build …</span>
+  </header>
+
+  <nav class="stepper" aria-label="Progress">
+    <span class="step-dot" data-step="step-context"><span class="n">1</span> Your account</span>
+    <span class="step-dot" data-step="step-upload"><span class="n">2</span> Statement</span>
+    <span class="step-dot" data-step="step-mapping"><span class="n">3</span> Verify the read</span>
+    <span class="step-dot" data-step="step-results"><span class="n">4</span> Audit report</span>
+  </nav>
+
+  <!-- ================= STEP 1: CONTEXT ================= -->
+  <section class="step-section" id="step-context">
+    <div class="panel">
+      <h2>Tell the auditor about the account</h2>
+      <p class="lead">CBN rules differ by account type — for example, maintenance fees are only lawful on <strong>current</strong> accounts, while card maintenance fees are only lawful on <strong>savings</strong> accounts. Getting this right is what lets the audit be exact.</p>
+
+      <div class="choice-group">
+        <div class="lbl">Account type</div>
+        <div class="chips">
+          <label><input type="radio" name="acctType" value="savings"> Savings<small>No maintenance fee allowed at all</small></label>
+          <label><input type="radio" name="acctType" value="current" checked> Current<small>CAMF allowed: max ₦1 per ₦1,000</small></label>
+          <label><input type="radio" name="acctType" value="domiciliary"> Domiciliary<small>Foreign currency account</small></label>
+        </div>
+      </div>
+
+      <div class="choice-group">
+        <div class="lbl">Account holder</div>
+        <div class="chips">
+          <label><input type="radio" name="holderType" value="individual" checked> Individual<small>Personal account</small></label>
+          <label><input type="radio" name="holderType" value="business"> Business / Corporate<small>Higher cash-handling thresholds</small></label>
+          <label><input type="radio" name="holderType" value="government"> Government / MDA<small>Treated as corporate by CBN</small></label>
+        </div>
+      </div>
+
+      <div class="toggle-row">
+        <input type="checkbox" id="salaryAccount">
+        <div class="t-txt">
+          <strong>This is a salary account</strong>
+          <p>Salary accounts are exempt from the ₦50 electronic transfer levy/stamp duty — any levy charged becomes refundable.</p>
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-primary" id="btn-context-next">Continue →</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= STEP 2: UPLOAD ================= -->
+  <section class="step-section" id="step-upload">
+    <div class="panel">
+      <h2>Add the bank statement</h2>
+      <p class="lead">Works with statements from any Nigerian bank — GTBank, Access, Zenith, UBA, First Bank, Stanbic, Fidelity, FCMB, Kuda, OPay and more. CSV or Excel exports from internet banking give the most reliable read; text-based PDF statements also work.</p>
+
+      <div class="dropzone" id="dropzone" role="button" tabindex="0" aria-label="Upload statement file">
+        <div class="dz-icon">📄</div>
+        <h3>Drop your statement here, or click to browse</h3>
+        <p>The file is read entirely inside your browser. It is never uploaded, stored or sent anywhere — you can even use this app offline.</p>
+        <div class="fmt-tags"><span>CSV</span><span>XLSX</span><span>XLS</span><span>PDF</span></div>
+      </div>
+      <input type="file" id="file-input" accept=".csv,.txt,.xlsx,.xls,.pdf" hidden>
+
+      <div class="err-box" id="upload-error"></div>
+
+      <div class="btn-row">
+        <button class="btn btn-ghost" id="btn-upload-back">← Back</button>
+        <button class="btn btn-ghost" id="btn-demo">▶ Try the demo statement</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= STEP 3: MAPPING ================= -->
+  <section class="step-section" id="step-mapping">
+    <div class="panel">
+      <h2>Confirm the statement was read correctly</h2>
+      <p class="lead" id="map-note"></p>
+
+      <div class="hint-box" id="acct-hint" style="display:none"></div>
+      <div class="meta-card" id="statement-meta" style="display:none"></div>
+
+      <div class="hdr-pick" id="header-pick"></div>
+      <div class="role-grid" id="mapping-roles"></div>
+      <div class="map-scroll" id="mapping-table"></div>
+      <div class="map-stat" id="mapping-stats"></div>
+      <div class="meta-card" id="reconcile-box" style="display:none"></div>
+      <div id="mapping-problems"></div>
+
+      <div class="btn-row">
+        <button class="btn btn-ghost" id="btn-mapping-back">← Back</button>
+        <button class="btn btn-primary" id="btn-run-audit">Run the CBN audit →</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= STEP 4: RESULTS ================= -->
+  <section class="step-section" id="step-results">
+    <div class="panel" id="report-root">
+      <h2>Audit report</h2>
+      <p class="lead">Every verdict below carries its arithmetic and the exact CBN provision it rests on. Where the statement alone cannot prove a charge right or wrong, the auditor says so instead of guessing.</p>
+
+      <div id="integrity-banner" class="integrity"></div>
+      <div class="sum-grid" id="summary-cards"></div>
+      <div id="report-meta"></div>
+
+      <h3 class="sec">Smart cross-checks</h3>
+      <p class="sec-sub">Rules that cannot be judged one charge at a time — recomputed across the whole statement: the ₦1/mille maintenance cap from your actual turnover, levy counts against qualifying transfers, monthly ATM allowances and quarterly card fees.</p>
+      <div id="aggregates"></div>
+
+      <div class="tabs">
+        <button class="tab-btn on" data-tab="findings">Charge findings</button>
+        <button class="tab-btn" data-tab="all">All transactions</button>
+      </div>
+
+      <div id="pane-findings">
+        <div class="filter-chips">
+          <button class="filter-chip on" data-filter="all">All <span class="chip-count">0</span></button>
+          <button class="filter-chip" data-filter="violation">⛔ Violations <span class="chip-count">0</span></button>
+          <button class="filter-chip" data-filter="review">❓ Needs review <span class="chip-count">0</span></button>
+          <button class="filter-chip" data-filter="advisory">ℹ Advisory <span class="chip-count">0</span></button>
+          <button class="filter-chip" data-filter="compliant">✓ Compliant <span class="chip-count">0</span></button>
+        </div>
+        <div id="findings-list"></div>
+      </div>
+
+      <div id="pane-all" style="display:none">
+        <p class="muted" style="font-size:13px">Every transaction the auditor read. If a charge was missed (banks invent creative narrations), reclassify it here and the audit recomputes instantly.</p>
+        <div class="map-scroll" id="all-txns"></div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-primary" id="btn-letter">📨 Generate refund demand letter</button>
+        <button class="btn btn-ghost" id="btn-export-csv">⬇ Export findings (CSV)</button>
+        <button class="btn btn-ghost" id="btn-print">🖨 Print / save report as PDF</button>
+        <button class="btn btn-ghost" id="btn-restart">Audit another statement</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- scanning overlay -->
+  <div class="scan-overlay" id="scan-overlay" aria-live="polite" aria-hidden="true">
+    <div class="scan-box">
+      <div class="scan-doc">
+        <svg viewBox="0 0 120 150" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <rect class="doc-page" x="14" y="8" width="92" height="134" rx="7"/>
+          <line class="doc-line" x1="28" y1="34" x2="92" y2="34"/>
+          <line class="doc-line" x1="28" y1="50" x2="92" y2="50"/>
+          <line class="doc-line" x1="28" y1="66" x2="78" y2="66"/>
+          <line class="doc-line" x1="28" y1="82" x2="92" y2="82"/>
+          <line class="doc-line" x1="28" y1="98" x2="70" y2="98"/>
+          <line class="doc-line" x1="28" y1="114" x2="88" y2="114"/>
+          <rect class="scan-beam" x="14" y="8" width="92" height="6"/>
+        </svg>
+        <div class="scan-shield">₦</div>
+      </div>
+      <div class="scan-title" id="scan-title">Scanning your statement</div>
+      <div class="scan-sub" id="scan-sub">Reading every transaction<span class="scan-dots"><i>.</i><i>.</i><i>.</i></span></div>
+      <div class="scan-bar"><div class="scan-bar-fill" id="scan-bar-fill"></div></div>
+      <div class="scan-note">🔒 Everything happens on your device — nothing is uploaded.</div>
+    </div>
+  </div>
+
+  <!-- letter modal -->
+  <div class="modal" id="letter-modal" role="dialog" aria-modal="true" aria-label="Refund demand letter">
+    <div class="modal-box">
+      <h3>Refund demand letter</h3>
+      <p class="muted">Pre-filled from your audit findings with the exact CBN citations. Fill in the bracketed details, print it on paper or send by email to your branch. If the bank does not resolve it within 14 days, escalate to the CBN Consumer Protection Department — <strong>cpd@cbn.gov.ng</strong>.</p>
+      <textarea id="letter-text" spellcheck="false"></textarea>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="btn-letter-copy">Copy to clipboard</button>
+        <button class="btn btn-ghost" id="btn-letter-download">Download .txt</button>
+        <button class="btn btn-ghost" id="btn-letter-close">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <p><strong>How accuracy is protected:</strong> every rule in this auditor is encoded from the CBN <em>Guide to Charges by Banks, Other Financial and Non-Bank Financial Institutions</em> (effective 1 January 2020), the CBN ATM Fee Circular of 10 February 2025, the Finance Act 2020 (EMTL) and the Nigeria Tax Act 2025, and is applied <em>by date</em> — each transaction is judged by the rule in force on its day. A violation is only declared when the charge exceeds the cap under the most generous lawful reading; anything uncertain is marked “needs review”, never guessed.</p>
+    <p class="no-print">⚖ This tool produces a documented audit, not legal advice. Rules current as of June 2026. Your bank's written response and the CBN Consumer Protection Department (cpd@cbn.gov.ng) are the final authorities on any dispute. Privacy: this page makes no network requests with your data — your statement never leaves your device.</p>
+  </footer>
+</div>
+
+<script src="vendor/xlsx.full.min.js"></script>
+<script src="vendor/pdf.min.js"></script>
+<script src="vendor/pdf.worker.min.js"></script>
+<script src="js/rules.js?v=19"></script>
+<script src="js/patterns.js?v=19"></script>
+<script src="js/engine.js?v=19"></script>
+<script src="js/parser.js?v=19"></script>
+<script src="js/report.js?v=19"></script>
+<script src="js/app.js?v=19"></script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+# ── PRIVACY: never publish real bank statements or data derived from them ──
+# These are the user's actual statements and the test fixtures built from
+# them (account numbers, names, balances, full transaction history).
+reference/user_statement*.pdf
+reference/fixtures/
+
+# OS / editor cruft
+Thumbs.db
+.DS_Store
+*~
+
+# Local-only Claude Code settings (machine-specific)
+.claude/settings.local.json
