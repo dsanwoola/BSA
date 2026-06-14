@@ -49,7 +49,11 @@
 
   /* ------------------------- value parsing ------------------------- */
 
-  var MONTHS = { JAN: 0, FEB: 1, MAR: 2, APR: 3, MAY: 4, JUN: 5, JUL: 6, AUG: 7, SEP: 8, SEPT: 8, OCT: 9, NOV: 10, DEC: 11 };
+  var MONTHS = {
+    JAN: 0, JANUARY: 0, FEB: 1, FEBRUARY: 1, MAR: 2, MARCH: 2, APR: 3, APRIL: 3,
+    MAY: 4, JUN: 5, JUNE: 5, JUL: 6, JULY: 6, AUG: 7, AUGUST: 7,
+    SEP: 8, SEPT: 8, SEPTEMBER: 8, OCT: 9, OCTOBER: 9, NOV: 10, NOVEMBER: 10, DEC: 11, DECEMBER: 11
+  };
 
   function parseDate(v) {
     if (v instanceof Date && !isNaN(v)) return new Date(v.getFullYear(), v.getMonth(), v.getDate());
@@ -74,10 +78,18 @@
       return mk(y, +m[2] - 1, +m[1]);
     }
     // dd-MMM-yyyy / dd MMM yyyy / dd-MMM-yy
-    m = s.match(/^(\d{1,2})[-\s]([A-Za-z]{3,4})[-,\s]+(\d{2,4})$/);
+    m = s.match(/^(\d{1,2})[-\s]([A-Za-z]{3,9})[-,\s]+(\d{2,4})$/);
     if (m && MONTHS[m[2].toUpperCase()] !== undefined) {
       var y2 = +m[3]; if (y2 < 100) y2 += y2 < 70 ? 2000 : 1900;
       return mk(y2, MONTHS[m[2].toUpperCase()], +m[1]);
+    }
+    // PremiumTrust PDFs may append a short transaction-reference fragment to
+    // the date cell: "01-Apr-26 89". Use the leading dd-MMM-yy as the date;
+    // never reinterpret the trailing reference as the year.
+    m = s.match(/^(\d{1,2}[-\s][A-Za-z]{3,9}[-\s]\d{2,4})\s+[A-Za-z0-9]{1,8}$/);
+    if (m) {
+      var leadingDate = parseDate(m[1]);
+      if (leadingDate) return leadingDate;
     }
     // Wema/ALAT PDFs sometimes wrap date + reference + year into one cell:
     // "05-Jan- M122871 2026" becomes "05-Jan-M122871 2026" after cleanup.
@@ -90,13 +102,13 @@
     }
     // ddMMM yyyy / ddMMMyyyy — PDFs whose fonts drop the hyphen glyphs
     // turn "02-Jan-2026" into "02Jan 2026" or "02Jan2026"
-    m = s.match(/^(\d{1,2})\s*([A-Za-z]{3,4})[\s,]*(\d{2,4})$/);
+    m = s.match(/^(\d{1,2})\s*([A-Za-z]{3,9})[\s,]*(\d{2,4})$/);
     if (m && MONTHS[m[2].toUpperCase()] !== undefined) {
       var y3 = +m[3]; if (y3 < 100) y3 += y3 < 70 ? 2000 : 1900;
       return mk(y3, MONTHS[m[2].toUpperCase()], +m[1]);
     }
     // MMM dd, yyyy
-    m = s.match(/^([A-Za-z]{3,4})[\s.]+(\d{1,2}),?\s+(\d{4})$/);
+    m = s.match(/^([A-Za-z]{3,9})[\s.]+(\d{1,2}),?\s+(\d{4})$/);
     if (m && MONTHS[m[1].toUpperCase()] !== undefined) return mk(+m[3], MONTHS[m[1].toUpperCase()], +m[2]);
     return null;
 
@@ -253,14 +265,14 @@
     { key: "creditCount", kind: "amount", re: /CREDIT\s*COUNT|COUNT\s*OF\s*CREDITS?|NO\.?\s*OF\s*CREDITS?/ },
     { key: "totalDebit", kind: "amount", re: /TOTAL\s*(DEBITS?|WITHDRAWALS?|MONEY\s*OUT|OUTFLOW|DR)\b|(DEBITS?|WITHDRAWALS?)\s*TOTAL/ },
     { key: "totalCredit", kind: "amount", re: /TOTAL\s*(CREDITS?|LODGEMENTS?|DEPOSITS?|MONEY\s*IN|INFLOW|CR)\b|(CREDITS?|LODGEMENTS?)\s*TOTAL/ },
-    { key: "accountNumber", kind: "acctno", re: /ACCOUNT\s*(NO|NUMBER)|\bNUBAN\b|\bACCT?\s*(NO|NUM)\b/ },
+    { key: "accountNumber", kind: "acctno", re: /AC+OUNT\s*(NO|NUMBER)|\bNUBAN\b|\bACCT?\s*(NO|NUM)\b/ },
     { key: "accountName", kind: "text", re: /ACCOUNT\s*NAME|CUSTOMER\s*NAME|ACCOUNT\s*HOLDER/ },
     { key: "accountTypeRaw", kind: "text", re: /ACCOUNT\s*TYPE|PRODUCT\s*NAME|\bPRODUCT\b|ACCOUNT\s*CLASS|SCHEME\s*(TYPE|NAME)|ACCOUNT\s*CATEGORY/ },
     { key: "period", kind: "period", re: /STATEMENT\s*PERIOD|FOR\s*THE\s*PERIOD|DATE\s*RANGE|\bPERIOD\b|\bFROM\b.*\bTO\b/ },
     { key: "currency", kind: "text", re: /\bCURRENCY\b|\bCCY\b/ }
   ];
 
-  var DATE_TOKEN = /(\d{1,2}[\/\-.]\d{1,2}[\/\-.]\d{2,4})|(\d{4}-\d{2}-\d{2})|(\d{1,2}[-\s]?[A-Za-z]{3,4}[-\s,]*\d{2,4})/g;
+  var DATE_TOKEN = /(\d{1,2}[\/\-.]\d{1,2}[\/\-.]\d{2,4})|(\d{4}-\d{2}-\d{2})|(\d{1,2}[-\s]?[A-Za-z]{3,9}[-\s,]*\d{2,4})|([A-Za-z]{3,9}\s+\d{1,2},?\s+\d{4})/g;
 
   /** Pull a clean, unambiguous date token out of a noisy cell (e.g. a date
    *  with merged reference fragments around it). Deterministic — only a
@@ -317,6 +329,7 @@
           // A cell that itself carries ANOTHER label is never a value
           // candidate (it would steal its neighbour's figure).
           var candidates = [s.slice((m.index || 0) + m[0].length)];
+          if (def.kind === "period") candidates.push(s);
           function pushCandidate(cell) {
             if (cell == null || cell === "") return;
             var str = cell instanceof Date ? cell.toLocaleDateString("en-GB") : String(cell);
