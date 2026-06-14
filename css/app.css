@@ -343,6 +343,11 @@ h3.sec + p.sec-sub { color: var(--txt-dim); font-size: 13.5px; margin: 0 0 14px;
 .modal-box { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); width: min(760px, 100%); max-height: 88vh; display: flex; flex-direction: column; padding: 24px; box-shadow: var(--shadow); }
 .modal-box h3 { margin: 0 0 4px; }
 .modal-box p.muted { font-size: 13px; margin: 0 0 14px; }
+.password-box { width: min(460px, 100%); }
+.password-label { display: block; margin: 8px 0 6px; color: var(--txt-dim); font-size: 11.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .6px; }
+.password-input { width: 100%; background: var(--bg); color: var(--txt); border: 1px solid var(--line); border-radius: 10px; padding: 13px 14px; font: 600 16px var(--font); }
+.password-input:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px rgba(46, 229, 157, .12); }
+.password-note { margin-top: 10px !important; }
 #letter-text { flex: 1; min-height: 320px; background: var(--bg); color: var(--txt); border: 1px solid var(--line); border-radius: 10px; padding: 16px; font: 13px/1.6 Consolas, monospace; resize: vertical; }
 
 /* ---------- footer ---------- */

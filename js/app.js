@@ -6,7 +6,7 @@
 (function () {
   "use strict";
 
-  var APP_BUILD = 27; // shown in the header so stale cached code is obvious
+  var APP_BUILD = 28; // shown in the header so stale cached code is obvious
 
   var PARSER = window.CBN_PARSER, ENGINE = window.CBN_ENGINE,
       REPORT = window.CBN_REPORT, RULES = window.CBN_RULES;
@@ -141,18 +141,19 @@
     $("#btn-upload-back").addEventListener("click", function () { gotoStep("step-context"); });
   }
 
-  function handleFile(file) {
+  function handleFile(file, opts) {
+    opts = opts || {};
     showError("");
     $("#dropzone").classList.add("busy");
     var isPdf = /\.pdf$/i.test(file.name || "");
-    scan.show("Scanning your statement", isPdf ? "Opening the PDF" : "Reading the file");
+    scan.show("Scanning your statement", isPdf && opts.pdfPassword ? "Unlocking the protected PDF" : (isPdf ? "Opening the PDF" : "Reading the file"));
 
     var onProgress = function (page, total) {
       scan.sub("Scanning page " + page + " of " + total);
       scan.progress(page, total);
     };
 
-    PARSER.readFile(file, onProgress).then(function (res) {
+    PARSER.readFile(file, onProgress, opts).then(function (res) {
       scan.sub("Reconstructing the transaction table");
       scan.progress(1, 1);
       return nextFrame().then(function () { return res; });
@@ -172,7 +173,52 @@
     }).catch(function (err) {
       $("#dropzone").classList.remove("busy");
       scan.hide();
+      if (isPdf && err && err.pdfPasswordRequired) {
+        return askPdfPassword(err.pdfPasswordIncorrect).then(function (password) {
+          if (!password) {
+            showError("PDF unlock cancelled. This statement is password-protected, so the app needs the password before it can read the transactions.");
+            return;
+          }
+          handleFile(file, { pdfPassword: password });
+        });
+      }
       showError(err.message || String(err));
+    });
+  }
+
+  function askPdfPassword(wasIncorrect) {
+    var modal = $("#pdf-password-modal"), input = $("#pdf-password-input"), msg = $("#pdf-password-msg");
+    return new Promise(function (resolve) {
+      if (!modal || !input) {
+        resolve(window.prompt(wasIncorrect ? "That password did not work. Enter the PDF password again:" : "This PDF is password-protected. Enter the statement password:"));
+        return;
+      }
+      msg.textContent = wasIncorrect ? "That password did not work. Please check it and try again." : "This PDF is password-protected. Enter the statement password to unlock it locally on this device.";
+      input.value = "";
+      modal.classList.add("open");
+      modal.setAttribute("aria-hidden", "false");
+      setTimeout(function () { input.focus(); }, 30);
+
+      var done = false;
+      function cleanup(value) {
+        if (done) return;
+        done = true;
+        modal.classList.remove("open");
+        modal.setAttribute("aria-hidden", "true");
+        $("#btn-pdf-password-unlock").removeEventListener("click", unlock);
+        $("#btn-pdf-password-cancel").removeEventListener("click", cancel);
+        input.removeEventListener("keydown", keydown);
+        resolve(value);
+      }
+      function unlock() { cleanup(input.value); }
+      function cancel() { cleanup(""); }
+      function keydown(e) {
+        if (e.key === "Enter") { e.preventDefault(); unlock(); }
+        if (e.key === "Escape") { e.preventDefault(); cancel(); }
+      }
+      $("#btn-pdf-password-unlock").addEventListener("click", unlock);
+      $("#btn-pdf-password-cancel").addEventListener("click", cancel);
+      input.addEventListener("keydown", keydown);
     });
   }
 

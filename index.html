@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bank Charge Auditor — CBN Compliance Check for Nigerian Bank Statements</title>
 <meta name="description" content="Audit major Nigerian bank statements against the official CBN Guide to Bank Charges, with guided import for other layouts. Finds illegal and excess charges, computes your refund, and drafts the demand letter. 100% private — runs on your device.">
-<link rel="stylesheet" href="css/app.css?v=27">
+<link rel="stylesheet" href="css/app.css?v=28">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Cpath fill='%232ee59d' d='M24 2 6 10v12c0 11 7.6 21.4 18 24 10.4-2.6 18-13 18-24V10L24 2z'/%3E%3Ctext x='24' y='32' font-size='22' font-weight='bold' text-anchor='middle' fill='%230b1210'%3E₦%3C/text%3E%3C/svg%3E">
 </head>
 <body>
@@ -200,6 +200,21 @@
     </div>
   </div>
 
+  <!-- PDF password modal -->
+  <div class="modal" id="pdf-password-modal" role="dialog" aria-modal="true" aria-hidden="true" aria-label="Unlock password-protected PDF">
+    <div class="modal-box password-box">
+      <h3>Unlock protected PDF</h3>
+      <p class="muted" id="pdf-password-msg">This PDF is password-protected. Enter the statement password to unlock it locally on this device.</p>
+      <label class="password-label" for="pdf-password-input">PDF password</label>
+      <input id="pdf-password-input" class="password-input" type="password" autocomplete="off" inputmode="text" placeholder="Enter statement password">
+      <p class="muted password-note">The password is used only in your browser to open this statement. It is not uploaded, stored, logged, or sent anywhere.</p>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="btn-pdf-password-unlock" type="button">Unlock PDF</button>
+        <button class="btn btn-ghost" id="btn-pdf-password-cancel" type="button">Cancel</button>
+      </div>
+    </div>
+  </div>
+
   <!-- letter modal -->
   <div class="modal" id="letter-modal" role="dialog" aria-modal="true" aria-label="Refund demand letter">
     <div class="modal-box">
@@ -224,11 +239,11 @@
 <script src="vendor/xlsx.full.min.js"></script>
 <script src="vendor/pdf.min.js"></script>
 <script src="vendor/pdf.worker.min.js"></script>
-<script src="js/rules.js?v=27"></script>
-<script src="js/patterns.js?v=27"></script>
-<script src="js/engine.js?v=27"></script>
-<script src="js/parser.js?v=27"></script>
-<script src="js/report.js?v=27"></script>
-<script src="js/app.js?v=27"></script>
+<script src="js/rules.js?v=28"></script>
+<script src="js/patterns.js?v=28"></script>
+<script src="js/engine.js?v=28"></script>
+<script src="js/parser.js?v=28"></script>
+<script src="js/report.js?v=28"></script>
+<script src="js/app.js?v=28"></script>
 </body>
 </html>

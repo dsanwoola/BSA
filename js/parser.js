@@ -781,10 +781,10 @@
 
   /* ------------------------- browser file readers ------------------------- */
 
-  function readFile(file, onProgress) {
+  function readFile(file, onProgress, opts) {
     var name = (file.name || "").toLowerCase();
     if (/\.(xlsx|xls)$/.test(name)) return readExcel(file);
-    if (/\.pdf$/.test(name)) return readPdf(file, onProgress);
+    if (/\.pdf$/.test(name)) return readPdf(file, onProgress, opts || {});
     return readCsv(file); // .csv, .txt and anything else text-like
   }
 
@@ -818,12 +818,15 @@
     });
   }
 
-  function readPdf(file, onProgress) {
+  function readPdf(file, onProgress, opts) {
     return new Promise(function (resolve, reject) {
       if (typeof pdfjsLib === "undefined") return reject(new Error("PDF library not loaded."));
+      opts = opts || {};
       var fr = new FileReader();
       fr.onload = function () {
-        pdfjsLib.getDocument({ data: new Uint8Array(fr.result) }).promise.then(function (doc) {
+        var docOptions = { data: new Uint8Array(fr.result) };
+        if (opts.pdfPassword) docOptions.password = opts.pdfPassword;
+        pdfjsLib.getDocument(docOptions).promise.then(function (doc) {
           if (doc.numPages === 0) return reject(new Error("Empty PDF."));
           var pages = [];
           var chain = Promise.resolve();
@@ -850,12 +853,25 @@
             resolve({ rows: rows, source: "pdf", pageCount: doc.numPages });
           }).catch(reject);
         }).catch(function (e) {
-          reject(new Error("Could not open the PDF" + (/password/i.test(e.message || "") ? " — it appears to be password-protected. Remove the password or export CSV/Excel instead." : ": " + e.message)));
+          reject(pdfOpenError(e, !!opts.pdfPassword));
         });
       };
       fr.onerror = function () { reject(new Error("Could not read the file.")); };
       fr.readAsArrayBuffer(file);
     });
+  }
+
+  function pdfOpenError(e, hadPassword) {
+    var msg = (e && e.message) || "";
+    var code = e && e.code;
+    var name = (e && e.name) || "";
+    var isPassword = /password/i.test(msg) || /PasswordException/i.test(name) || code === 1 || code === 2;
+    if (!isPassword) return new Error("Could not open the PDF: " + msg);
+    var err = new Error(hadPassword ? "That PDF password did not work. Please check it and try again." : "This PDF is password-protected. Enter the statement password to unlock it on this device.");
+    err.code = code === 2 || hadPassword ? "PDF_PASSWORD_INCORRECT" : "PDF_PASSWORD_REQUIRED";
+    err.pdfPasswordRequired = true;
+    err.pdfPasswordIncorrect = err.code === "PDF_PASSWORD_INCORRECT";
+    return err;
   }
 
   /* --------------- PDF: header-anchored column extraction ---------------

@@ -836,7 +836,10 @@ var appJs = fs.readFileSync(__dirname + "/../js/app.js", "utf8");
 var betaGuide = fs.readFileSync(__dirname + "/../BETA_TESTING.md", "utf8");
 check("static: beta guide appears in app", indexHtml.indexOf("Beta tester checklist") !== -1 && indexHtml.indexOf("anonymized parser diagnostic") !== -1);
 check("static: BETA_TESTING documents privacy-safe diagnostics", betaGuide.indexOf("anonymized parser diagnostic") !== -1 && betaGuide.indexOf("must not contain names") !== -1);
-check("static: APP_BUILD and cache bust agree on 27", appJs.indexOf("APP_BUILD = 27") !== -1 && (indexHtml.match(/v=27/g) || []).length >= 6);
+check("static: APP_BUILD and cache bust agree on 28", appJs.indexOf("APP_BUILD = 28") !== -1 && (indexHtml.match(/v=28/g) || []).length >= 6);
+check("static: encrypted PDF password modal is present", indexHtml.indexOf('id="pdf-password-modal"') !== -1 && indexHtml.indexOf('id="pdf-password-input"') !== -1 && indexHtml.indexOf('id="btn-pdf-password-unlock"') !== -1);
+check("static: encrypted PDF retry path is wired", appJs.indexOf("err.pdfPasswordRequired") !== -1 && appJs.indexOf("askPdfPassword") !== -1 && appJs.indexOf("pdfPassword: password") !== -1);
+check("static: PDF passwords stay local", indexHtml.indexOf("not uploaded, stored, logged, or sent anywhere") !== -1);
 
 /* ============== REAL-STATEMENT FIXTURES (the training set) ==============
  * Every real bank statement we have debugged is captured as a fixture
