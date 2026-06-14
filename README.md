@@ -1,6 +1,6 @@
 # Bank Charge Auditor 🇳🇬
 
-Audits any Nigerian bank statement against the **official CBN Guide to Bank Charges** — finds illegal and excess charges, proves every finding with arithmetic and a legal citation, computes the refund you can claim, and drafts the demand letter for you.
+Audits major Nigerian bank statements against the **official CBN Guide to Bank Charges** — finds illegal and excess charges, proves every finding with arithmetic and a legal citation, computes the refund you can claim, and drafts the demand letter for you.
 
 Built for individuals, businesses, corporates and government organisations.
 
@@ -15,7 +15,7 @@ Everything runs on your own device: **your statement is never uploaded, stored o
 ## Using it
 
 1. **Your account** — tell it the account type (savings / current / domiciliary), holder type, and whether it's a salary account. CBN rules differ by account type, so this is what makes the audit exact.
-2. **Statement** — drop in a CSV, Excel or text-based PDF statement from any Nigerian bank. CSV/Excel exports from internet banking are the most reliable. (Try the built-in **demo statement** first.)
+2. **Statement** — drop in a CSV, Excel or text-based PDF statement from supported major banks, with guided import for other layouts. CSV/Excel exports from internet banking are the most reliable. (Try the built-in **demo statement** first.)
 3. **Verify the read** — the app shows you how it understood your file's columns, and runs a **balance integrity check**: it re-adds every debit/credit against the running balance. Only a statement that reconciles is audited at full confidence.
 4. **Audit report** — violations with refund amounts, cross-checks, items needing review, the demand letter, CSV export and a printable report.
 
@@ -72,7 +72,7 @@ All rules live in **`js/rules.js`** as data with citations — when the CBN issu
 node tests/run_tests.js
 ```
 
-76 tests cover the parser (amounts, day-first dates, CSV quoting, column detection), the classifier (including merchant names that *look* like fees), every charge family, the cross-checks, VAT pairing, the 2026 stamp-duty regime switch, manual overrides and the integrity check.
+179+ committed tests cover the parser (amounts, day-first dates, CSV quoting, column detection), the classifier (including merchant names that *look* like fees), every charge family, the cross-checks, VAT pairing, the 2026 stamp-duty regime switch, manual overrides and the integrity check.
 
 ## Files
 
@@ -97,3 +97,7 @@ reference/          source documents used to build the rules
 - "Cost recovery" and "negotiable" charges are reported as advisory with the governing rule, because the statement alone cannot prove them right or wrong.
 
 ⚖ This tool produces a documented audit, not legal advice. Unresolved complaints escalate to the CBN Consumer Protection Department: **cpd@cbn.gov.ng**.
+
+## Private beta
+
+Use `BETA_TESTING.md` to guide closed beta testers, collect parser failures safely, and preserve the no-upload privacy promise.

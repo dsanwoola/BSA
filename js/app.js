@@ -6,7 +6,7 @@
 (function () {
   "use strict";
 
-  var APP_BUILD = 19; // shown in the header so stale cached code is obvious
+  var APP_BUILD = 22; // shown in the header so stale cached code is obvious
 
   var PARSER = window.CBN_PARSER, ENGINE = window.CBN_ENGINE,
       REPORT = window.CBN_REPORT, RULES = window.CBN_RULES;
@@ -121,6 +121,9 @@
   function wireUpload() {
     var dz = $("#dropzone"), fi = $("#file-input");
     dz.addEventListener("click", function () { fi.click(); });
+    dz.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fi.click(); }
+    });
     dz.addEventListener("dragover", function (e) { e.preventDefault(); dz.classList.add("over"); });
     dz.addEventListener("dragleave", function () { dz.classList.remove("over"); });
     dz.addEventListener("drop", function (e) {
@@ -365,6 +368,8 @@
   }
 
   function refreshMappingStats() {
+    var diagBox = $("#diagnostic-box");
+    if (diagBox) diagBox.style.display = state.rows ? "" : "none";
     var mr = currentMap();
     refreshRoleTags(mr.map);
     var stat = $("#mapping-stats"), btn = $("#btn-run-audit");
@@ -382,7 +387,7 @@
 
     var headerRow = +$("#mapping-table").dataset.headerRow;
     var built = PARSER.buildTransactions(state.rows, headerRow, m);
-    state.txns = built.txns; state.problems = built.problems;
+    state.txns = built.txns; state.problems = built.problems; state.lastBuilt = built;
 
     if (!built.txns.length) {
       // show what the date column actually contains, so the problem is visible
@@ -478,6 +483,10 @@
       }
     });
     $("#btn-mapping-back").addEventListener("click", function () { gotoStep("step-upload"); });
+
+    $("#btn-download-diagnostic").addEventListener("click", function () {
+      downloadParserDiagnostic();
+    });
   }
 
   /* ---------------- step 4: results ---------------- */
@@ -586,9 +595,10 @@
       var letter = REPORT.demandLetter(state.audit, state.ctx);
       if (!letter) return;
       $("#letter-text").value = letter;
-      $("#letter-modal").classList.add("open");
+      openLetterModal();
     });
-    $("#btn-letter-close").addEventListener("click", function () { $("#letter-modal").classList.remove("open"); });
+    $("#btn-letter-close").addEventListener("click", closeLetterModal);
+    $("#letter-modal").addEventListener("keydown", trapLetterModalFocus);
     $("#btn-letter-copy").addEventListener("click", function () {
       var ta = $("#letter-text");
       ta.select();
@@ -604,6 +614,52 @@
       state.rows = null; state.txns = null; state.audit = null; state.ctx.overrides = {};
       gotoStep("step-upload");
     });
+  }
+
+
+
+  function downloadParserDiagnostic() {
+    if (!state.rows) return;
+    var headerRow = +$("#mapping-table").dataset.headerRow || 0;
+    var mr = currentMap();
+    var built = state.lastBuilt || { txns: [], problems: [] };
+    var diagnostic = PARSER.anonymizedLayoutDiagnostic(state.rows, headerRow, mr.map, built, state.integrity, state.reconcile, {
+      source: state.source,
+      fileName: state.fileName,
+      pageCount: state.pageCount,
+      sheetCount: state.sheetCount
+    });
+    diagnostic.appBuild = APP_BUILD;
+    diagnostic.generatedAt = new Date().toISOString();
+    download("bank_charge_auditor_parser_diagnostic.json", JSON.stringify(diagnostic, null, 2), "application/json");
+  }
+
+  function openLetterModal() {
+    var modal = $("#letter-modal");
+    modal.classList.add("open");
+    modal.setAttribute("aria-hidden", "false");
+    setTimeout(function () { $("#letter-text").focus(); }, 0);
+  }
+
+  function closeLetterModal() {
+    var modal = $("#letter-modal");
+    modal.classList.remove("open");
+    modal.setAttribute("aria-hidden", "true");
+    var btn = $("#btn-letter");
+    if (btn && btn.style.display !== "none") btn.focus();
+  }
+
+  function trapLetterModalFocus(e) {
+    if (e.key === "Escape") { closeLetterModal(); return; }
+    if (e.key !== "Tab") return;
+    var modal = $("#letter-modal");
+    if (!modal.classList.contains("open")) return;
+    var focusables = Array.prototype.slice.call(modal.querySelectorAll("textarea, button, [href], input, select, [tabindex]:not([tabindex='-1'])"))
+      .filter(function (el) { return !el.disabled && el.offsetParent !== null; });
+    if (!focusables.length) return;
+    var first = focusables[0], last = focusables[focusables.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
   }
 
   function download(name, content, mime) {

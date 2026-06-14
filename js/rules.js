@@ -37,6 +37,19 @@
 
   var RULES = {
 
+    metadata: {
+      version: "2026.06",
+      lastReviewed: "June 2026",
+      reviewCadence: "Quarterly, or immediately after any CBN/Nigerian tax circular affecting bank charges",
+      sources: [
+        "CBN Guide to Charges by Banks, Other Financial and Non-Bank Financial Institutions (effective 1 Jan 2020)",
+        "CBN Circular on Review of ATM Transaction Fees (10 Feb 2025; effective 1 Mar 2025)",
+        "Finance Act 2020 and EMTL Regulations",
+        "Nigeria Tax Act 2025 stamp duty provisions effective 1 Jan 2026",
+        "CBN Cashless Policy circulars"
+      ]
+    },
+
     /** Earliest date the knowledge base covers. Transactions before this
      *  are sent to human review rather than judged with the wrong rules. */
     coverageStart: d("2020-01-01"),
