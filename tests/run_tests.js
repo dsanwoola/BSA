@@ -67,6 +67,17 @@ var monieDet = PARSER.detectColumns(monieRows);
 var monieBuilt = PARSER.buildTransactions(monieRows, monieDet.headerRow, monieDet.map);
 check("parser: Moniepoint split ISO datetime rejoins time-only amount row", monieBuilt.problems.length === 0 && monieBuilt.txns.length === 2 && monieBuilt.txns[0].date.getFullYear() === 2025 && monieBuilt.txns[0].date.getMonth() === 1 && monieBuilt.txns[0].date.getDate() === 18 && monieBuilt.txns[0].debit === 15020, JSON.stringify(monieBuilt.problems));
 
+var providusRows = [
+  ["TXN DATE", "VAL DATE", "REMARKS", "DEBIT", "CREDIT", "BALANCE"],
+  ["01/01/2026", "01/01/2026", "Balance B/F", "", "", "1,000.00"],
+  ["02/01/2026", "02/01/2026", "PDF-anchored debit value under credit column", "", "100.00", "900.00"],
+  ["03/01/2026", "03/01/2026", "Normal debit column", "50.00", "", "850.00"],
+  ["04/01/2026", "04/01/2026", "PDF-anchored credit value under debit column", "25.00", "", "875.00"]
+];
+var providusDet = PARSER.detectColumns(providusRows);
+var providusBuilt = PARSER.buildTransactions(providusRows, providusDet.headerRow, providusDet.map);
+check("parser: balance-proven money side repair handles misanchored PDF amounts", providusBuilt.moneySideRepairs === 2 && providusBuilt.txns[0].debit === 100 && providusBuilt.txns[0].credit === 0 && providusBuilt.txns[2].debit === 0 && providusBuilt.txns[2].credit === 25 && PARSER.integrityCheck(providusBuilt.txns).ratio === 1, JSON.stringify({repairs: providusBuilt.moneySideRepairs, txns: providusBuilt.txns, ic: PARSER.integrityCheck(providusBuilt.txns)}));
+
 /* ---------------- classifier ---------------- */
 function cls(s) { var c = PATTERNS.classify(s); return c ? c.type : null; }
 check("classify: COT", cls("COT CHARGE FOR APRIL") === "cot");
@@ -909,7 +920,7 @@ var appCss = fs.readFileSync(__dirname + "/../css/app.css", "utf8");
 var betaGuide = fs.readFileSync(__dirname + "/../BETA_TESTING.md", "utf8");
 check("static: beta guide appears in app", indexHtml.indexOf("Beta tester checklist") !== -1 && indexHtml.indexOf("anonymized parser diagnostic") !== -1);
 check("static: BETA_TESTING documents privacy-safe diagnostics", betaGuide.indexOf("anonymized parser diagnostic") !== -1 && betaGuide.indexOf("must not contain names") !== -1);
-check("static: APP_BUILD and cache bust agree on 40", appJs.indexOf("APP_BUILD = 40") !== -1 && (indexHtml.match(/v=40/g) || []).length >= 6);
+check("static: APP_BUILD and cache bust agree on 41", appJs.indexOf("APP_BUILD = 41") !== -1 && (indexHtml.match(/v=41/g) || []).length >= 6);
 check("static: global back button is wired across later steps", indexHtml.indexOf('id="btn-global-back"') !== -1 && indexHtml.indexOf('id="btn-results-back"') !== -1 && appJs.indexOf("function goBack()") !== -1 && appJs.indexOf("PREV_STEP") !== -1);
 check("static: light/dark theme toggle is wired and persisted", indexHtml.indexOf('id="theme-toggle"') !== -1 && indexHtml.indexOf('bsa-theme') !== -1 && appCss.indexOf(':root[data-theme="light"]') !== -1 && appJs.indexOf("function wireTheme()") !== -1 && appJs.indexOf('localStorage.setItem("bsa-theme"') !== -1);
 check("static: Access-style preview columns have explicit role widths", appCss.indexOf("table-layout: fixed") !== -1 && appJs.indexOf("previewColWidth") !== -1 && appJs.indexOf("previewTableWidth") !== -1 && appJs.indexOf("<colgroup>") !== -1);
