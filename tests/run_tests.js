@@ -847,7 +847,7 @@ var appCss = fs.readFileSync(__dirname + "/../css/app.css", "utf8");
 var betaGuide = fs.readFileSync(__dirname + "/../BETA_TESTING.md", "utf8");
 check("static: beta guide appears in app", indexHtml.indexOf("Beta tester checklist") !== -1 && indexHtml.indexOf("anonymized parser diagnostic") !== -1);
 check("static: BETA_TESTING documents privacy-safe diagnostics", betaGuide.indexOf("anonymized parser diagnostic") !== -1 && betaGuide.indexOf("must not contain names") !== -1);
-check("static: APP_BUILD and cache bust agree on 32", appJs.indexOf("APP_BUILD = 32") !== -1 && (indexHtml.match(/v=32/g) || []).length >= 6);
+check("static: APP_BUILD and cache bust agree on 33", appJs.indexOf("APP_BUILD = 33") !== -1 && (indexHtml.match(/v=33/g) || []).length >= 6);
 check("static: Access-style preview columns have explicit role widths", appCss.indexOf("table-layout: fixed") !== -1 && appJs.indexOf("previewColWidth") !== -1 && appJs.indexOf("previewTableWidth") !== -1 && appJs.indexOf("<colgroup>") !== -1);
 check("static: Access preview date/narration spacing is compact", appCss.indexOf("col.w-date { width: 96px") !== -1 && appCss.indexOf("col.w-value-date { width: 96px") !== -1 && appCss.indexOf("col.w-narration { width: 320px") !== -1);
 check("static: encrypted PDF password modal is present", indexHtml.indexOf('id="pdf-password-modal"') !== -1 && indexHtml.indexOf('id="pdf-password-input"') !== -1 && indexHtml.indexOf('id="btn-pdf-password-unlock"') !== -1);
@@ -863,6 +863,13 @@ var accessMetaRows = [
 ];
 var accessMeta = PARSER.extractStatementMeta(accessMetaRows, 5);
 check("meta: Access currency stays NGN, not neighboring balance label", accessMeta && accessMeta.currency === "NGN" && accessMeta.openingBalance === 131073.05 && accessMeta.closingBalance === 130990.8, JSON.stringify(accessMeta));
+var fcmbMetaRows = [
+  ["Date", "Reference", "Description", "ValueDate", "Deposit", "Withdrawal", "Balance"],
+  ["Opening Balance:", "", "", "", "", "", "33.01 Cr"],
+  ["02-Mar-2025", "1731204979/S9 7721782", "Sample narration", "01-Mar-2025", "4,600.00", "", "4,633.01 Cr"]
+];
+var fcmbMeta = PARSER.extractStatementMeta(fcmbMetaRows, 0);
+check("meta: FCMB opening balance can be in far-right balance column", fcmbMeta && fcmbMeta.openingBalance === 33.01, JSON.stringify(fcmbMeta));
 
 /* ============== REAL-STATEMENT FIXTURES (the training set) ==============
  * Every real bank statement we have debugged is captured as a fixture
