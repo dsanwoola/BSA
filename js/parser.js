@@ -293,6 +293,7 @@
     for (var r = 0; r < rows.length; r++) {
       var row = rows[r];
       var inHero = headerRow === null || headerRow === undefined || r < headerRow;
+      if (inHero) assignStackedSummaryRow(meta, row, rows[r + 1]);
       for (var c = 0; c < row.length; c++) {
         var cell = row[c];
         if (cell == null || cell === "") continue;
@@ -341,6 +342,52 @@
 
     var any = Object.keys(meta).some(function (k) { return meta[k] !== null; });
     return any ? meta : null;
+  }
+
+  /** Some Nigerian/wallet PDFs render summary labels in one row and values
+   *  directly underneath, but the value row may start with another label
+   *  (e.g. Account Number) before the numeric figures. Pair the amount/count
+   *  labels to the numeric values left-to-right after removing label cells so
+   *  Total Credit / Total Debit and Credit Count / Debit Count do not steal
+   *  each other's values. */
+  function assignStackedSummaryRow(meta, labelRow, valueRow) {
+    if (!labelRow || !valueRow) return;
+    var labelDefs = [], sawInlineValue = false, sawUnmatchedText = false;
+    labelRow.forEach(function (cell) {
+      var raw = String(cell == null ? "" : cell).trim();
+      if (!raw) return;
+      var u = raw.toUpperCase();
+      var matched = false;
+      META_LABELS.forEach(function (def) {
+        if (def.kind !== "amount" || meta[def.key] !== null || matched) return;
+        var m = u.match(def.re);
+        if (!m) return;
+        matched = true;
+        labelDefs.push(def);
+        var tail = raw.slice((m.index || 0) + m[0].length).replace(/^[\s:=\-–]+/, "").trim();
+        if (tail && /\d/.test(tail)) sawInlineValue = true;
+      });
+      if (!matched) sawUnmatchedText = true;
+    });
+    if (labelDefs.length < 2 || sawInlineValue || sawUnmatchedText) return;
+
+    var numericValues = [];
+    valueRow.forEach(function (cell) {
+      var raw = String(cell == null ? "" : cell).trim();
+      if (!raw || parseDate(raw)) return;
+      var up = raw.toUpperCase();
+      for (var i = 0; i < META_LABELS.length; i++) {
+        if (META_LABELS[i].re.test(up)) return;
+      }
+      var m = raw.match(/-?[\d,]+(\.\d{1,2})?/);
+      if (!m) return;
+      var v = parseAmount(m[0]);
+      if (typeof v === "number") numericValues.push(Math.abs(v));
+    });
+    if (numericValues.length < labelDefs.length) return;
+    labelDefs.forEach(function (def, idx) {
+      if (meta[def.key] === null) meta[def.key] = numericValues[idx];
+    });
   }
 
   function assignMeta(meta, def, candidates) {
@@ -482,10 +529,19 @@
       }
     }
     if (!checks.length) return null;
+    var allOk = checks.every(function (ch) { return ch.ok; });
+    var anyFail = checks.some(function (ch) { return !ch.ok; });
+    var failedLabels = checks.filter(function (ch) { return !ch.ok; }).map(function (ch) { return ch.label; });
+    var summaryBoundaryOnly = anyFail && failedLabels.every(function (label) {
+      return label === "Opening + credits − debits = closing" || label === "First running balance vs opening balance";
+    }) && checks.some(function (ch) { return ch.label === "Total debits" && ch.ok; })
+      && checks.some(function (ch) { return ch.label === "Total credits" && ch.ok; })
+      && checks.some(function (ch) { return ch.label === "Last running balance vs closing balance" && ch.ok; });
     return {
       checks: checks,
-      allOk: checks.every(function (ch) { return ch.ok; }),
-      anyFail: checks.some(function (ch) { return !ch.ok; })
+      allOk: allOk,
+      anyFail: anyFail,
+      summaryBoundaryOnly: summaryBoundaryOnly
     };
   }
 
