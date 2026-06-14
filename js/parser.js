@@ -126,7 +126,7 @@
    * nor "OPENING BALANCE" for "BALANCE". */
   var ROLE_SYNONYMS = {
     date: ["TRANSACTION DATE", "TRANSACTION TIME", "TRANS DATE", "TRANS TIME", "TXN DATE", "TXN TIME", "TRAN DATE", "POSTING DATE", "POSTED DATE", "POST DATE", "DATE POSTED", "ENTRY DATE", "DATE TIME", "DATETIME", "DATE"],
-    valueDate: ["VALUE DATE", "VAL DATE", "VAL. DATE", "VALUE. DATE"],
+    valueDate: ["VALUE DATE", "VALUEDATE", "VAL DATE", "VAL. DATE", "VALUE. DATE"],
     narration: ["TRANSACTION DESCRIPTION", "TRANSACTION NARRATION", "TRANSACTION REMARKS", "TRANSACTION DETAILS", "NARRATION", "NARRATIVE", "DESCRIPTION", "PARTICULARS", "REMARKS", "REMARK", "DETAILS", "DESC"],
     debit: ["WITHDRAWAL (DR)", "DEBIT AMOUNT", "DEBIT (DR)", "DEBIT(DR)", "DEBIT AMT", "WITHDRAWALS", "WITHDRAWAL", "MONEY OUT", "OUTFLOW", "DR AMOUNT", "DEBITS", "DEBIT", "DR"],
     credit: ["DEPOSIT (CR)", "CREDIT AMOUNT", "CREDIT (CR)", "CREDIT(CR)", "CREDIT AMT", "LODGEMENTS", "LODGEMENT", "DEPOSITS", "DEPOSIT", "MONEY IN", "INFLOW", "CR AMOUNT", "CREDITS", "CREDIT", "CR"],
@@ -898,15 +898,41 @@
     var items = lineB ? lineA.items.concat(lineB.items) : lineA.items;
     if (!items.length) return null;
     var cells = pdfClusterCells(items, 9);
-    var map = {}, labels = 0;
-    cells.forEach(function (c, idx) {
+    var candidate = pdfHeaderFromCells(cells);
+
+    // FCMB-style statements can place non-table text ("PRIVATE AND
+    // CONFIDENTIAL") on the same visual line as the table header. Clustering
+    // then swallows Date/Reference/Description into one wide cell and the
+    // header is missed. Fallback: inspect the individual PDF text items and
+    // keep only the words that are known header labels; their x-extents make
+    // the column anchors. This still requires a label quorum, so it cannot
+    // mistake ordinary transaction text for a header.
+    var itemCells = items.map(function (it) {
+      return { lo: it.x, hi: it.x + it.w, items: [it], text: it.str };
+    }).sort(function (a, b) { return a.lo - b.lo; });
+    var itemCandidate = pdfHeaderFromCells(itemCells);
+    if (pdfHeaderQualifies(itemCandidate) && (!pdfHeaderQualifies(candidate) || itemCandidate.labels > candidate.labels)) {
+      return itemCandidate;
+    }
+    return candidate;
+  }
+
+  function pdfHeaderFromCells(cells) {
+    var map = {}, labels = 0, headerCells = [];
+    cells.forEach(function (c) {
       var m = roleForHeaderCell(normHeader(c.text));
       if (!m) return;
       if (m.role === "_aux") { labels++; return; }
-      if (map[m.role] === undefined) { map[m.role] = idx; labels++; }
+      if (map[m.role] !== undefined) return;
+      map[m.role] = headerCells.length;
+      headerCells.push(c);
+      labels++;
     });
-    if (map.date === undefined && map.valueDate !== undefined) map.date = map.valueDate;
-    return { cells: cells, labels: labels, map: map, hasDate: map.date !== undefined };
+    if (map.date === undefined && map.valueDate !== undefined) {
+      map.date = map.valueDate;
+      delete map.valueDate;
+    }
+    return { cells: headerCells.length ? headerCells : cells, labels: labels, map: map, hasDate: map.date !== undefined };
   }
 
   function pdfHeaderQualifies(h) { return !!h && h.labels >= 4 && (h.hasDate || h.labels >= 5); }
@@ -998,7 +1024,10 @@
       }
       for (var i = 0; i < lines.length; i++) {
         var one = pdfTryHeader(lines[i], null);
-        var two = (i + 1 < lines.length) ? pdfTryHeader(lines[i], lines[i + 1]) : null;
+        // Only try a stacked two-line header when the upper line already
+        // contains several header labels. Otherwise an "Opening Balance" hero
+        // row plus the next header line can be falsely merged as a header.
+        var two = (i + 1 < lines.length && one && one.labels >= 2) ? pdfTryHeader(lines[i], lines[i + 1]) : null;
         var pick = null, usedTwo = false;
         if (pdfHeaderQualifies(one)) pick = one;
         if (pdfHeaderQualifies(two) && (!pick || two.labels > one.labels)) { pick = two; usedTwo = true; }
