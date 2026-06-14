@@ -1,5 +1,6 @@
 /* ============ Bank Charge Auditor — design system ============ */
 :root {
+  color-scheme: dark;
   --bg: #0b1210;
   --bg-soft: #101a17;
   --card: #15211d;
@@ -22,6 +23,28 @@
   --font: "Segoe UI", Inter, system-ui, -apple-system, Roboto, sans-serif;
 }
 
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f6faf8;
+  --bg-soft: #ffffff;
+  --card: #ffffff;
+  --card-2: #eef7f2;
+  --line: #cfe0d7;
+  --txt: #10201a;
+  --txt-dim: #536b60;
+  --accent: #087a50;
+  --accent-dim: #0c9b68;
+  --gold: #946500;
+  --red: #c33737;
+  --red-soft: #fdecec;
+  --amber: #9b5f00;
+  --amber-soft: #fff4db;
+  --green-soft: #e3f6ec;
+  --blue: #1269b0;
+  --blue-soft: #e5f1fa;
+  --shadow: 0 10px 30px rgba(17, 45, 34, .12);
+}
+
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
 body {
@@ -34,6 +57,12 @@ body {
   font-size: 16px;
   line-height: 1.55;
   min-height: 100vh;
+}
+:root[data-theme="light"] body {
+  background:
+    radial-gradient(1200px 500px at 80% -10%, rgba(8, 122, 80, .10), transparent 60%),
+    radial-gradient(900px 400px at -10% 30%, rgba(18, 105, 176, .08), transparent 60%),
+    var(--bg);
 }
 
 .wrap { max-width: 1080px; margin: 0 auto; padding: 0 22px 80px; }
@@ -62,6 +91,15 @@ header.app-head {
   border: 1px solid var(--line); border-radius: 6px; padding: 3px 8px;
   letter-spacing: .5px;
 }
+.theme-toggle {
+  flex: none; display: inline-flex; align-items: center; gap: 7px;
+  border: 1px solid var(--line); border-radius: 999px;
+  background: var(--card-2); color: var(--txt);
+  padding: 7px 12px; cursor: pointer;
+  font: 700 12.5px var(--font); transition: .15s;
+}
+.theme-toggle:hover { border-color: var(--accent-dim); color: var(--accent); transform: translateY(-1px); }
+.theme-icon { line-height: 1; }
 
 /* ---------- stepper ---------- */
 .stepper { display: flex; gap: 8px; margin: 18px 0 26px; flex-wrap: wrap; }
@@ -126,7 +164,7 @@ header.app-head {
 .btn-row { display: flex; gap: 12px; margin-top: 24px; flex-wrap: wrap; }
 .top-back { margin-left: auto; flex: none; }
 .top-back[hidden] { display: none !important; }
-.top-back + .privacy-pill { margin-left: 0; }
+.top-back + .theme-toggle, .theme-toggle + .privacy-pill { margin-left: 0; }
 
 /* ---------- dropzone ---------- */
 .dropzone {
@@ -391,6 +429,8 @@ footer strong { color: var(--txt); }
   .f-type { display: none; }
   .head-txt h1 { font-size: 18px; }
   .privacy-pill { display: none; }
+  .theme-toggle { padding: 7px 10px; }
+  .theme-label { display: none; }
 }
 
 

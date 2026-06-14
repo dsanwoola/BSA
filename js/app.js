@@ -6,7 +6,7 @@
 (function () {
   "use strict";
 
-  var APP_BUILD = 34; // shown in the header so stale cached code is obvious
+  var APP_BUILD = 35; // shown in the header so stale cached code is obvious
 
   var PARSER = window.CBN_PARSER, ENGINE = window.CBN_ENGINE,
       REPORT = window.CBN_REPORT, RULES = window.CBN_RULES;
@@ -127,6 +127,39 @@
   function wireNavigation() {
     var btn = $("#btn-global-back");
     if (btn) btn.addEventListener("click", goBack);
+  }
+
+  /* ---------------- theme toggle ---------------- */
+  function getTheme() {
+    return document.documentElement.getAttribute("data-theme") === "light" ? "light" : "dark";
+  }
+
+  function setTheme(theme) {
+    theme = theme === "light" ? "light" : "dark";
+    document.documentElement.setAttribute("data-theme", theme);
+    try { localStorage.setItem("bsa-theme", theme); } catch (e) { /* private mode */ }
+    updateThemeToggle(theme);
+  }
+
+  function updateThemeToggle(theme) {
+    var btn = $("#theme-toggle");
+    if (!btn) return;
+    var isLight = theme === "light";
+    btn.setAttribute("aria-pressed", isLight ? "true" : "false");
+    btn.setAttribute("title", isLight ? "Switch to dark mode" : "Switch to light mode");
+    var icon = btn.querySelector(".theme-icon");
+    var label = btn.querySelector(".theme-label");
+    if (icon) icon.textContent = isLight ? "☀️" : "🌙";
+    if (label) label.textContent = isLight ? "Light" : "Dark";
+  }
+
+  function wireTheme() {
+    updateThemeToggle(getTheme());
+    var btn = $("#theme-toggle");
+    if (!btn) return;
+    btn.addEventListener("click", function () {
+      setTheme(getTheme() === "light" ? "dark" : "light");
+    });
   }
 
   /* ---------------- step 1: context ---------------- */
@@ -794,7 +827,7 @@
     if (badge) badge.textContent = "build " + APP_BUILD;
     console.log("Bank Charge Auditor — build " + APP_BUILD);
 
-    wireNavigation(); wireContext(); wireUpload(); wireMapping(); wireResults();
+    wireNavigation(); wireTheme(); wireContext(); wireUpload(); wireMapping(); wireResults();
     gotoStep("step-context");
     // open every finding before printing so the full evidence appears on paper
     window.addEventListener("beforeprint", function () {
