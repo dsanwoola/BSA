@@ -1027,11 +1027,91 @@
     return rows.filter(function (r) { return r.some(function (c) { return String(c).trim() !== ""; }); });
   }
 
+  /* ---------------- anonymized parser diagnostics ---------------- */
+
+  function cellShape(v) {
+    if (v instanceof Date) return "date";
+    var raw = String(v == null ? "" : v).trim();
+    if (!raw) return "empty";
+    if (parseDate(raw)) return "date-like";
+    if (parseAmount(raw) !== null && /\d/.test(raw)) return "amount-like";
+    if (/^[A-Za-z0-9 _./:()\-#]{1,40}$/.test(raw) && /DATE|NARR|DESC|DEBIT|CREDIT|BAL|AMOUNT|REF|REMARK|WITHDRAW|DEPOSIT/i.test(raw)) return "header-like";
+    if (/\d/.test(raw) && /[A-Za-z]/.test(raw)) return "mixed-text";
+    if (/\d/.test(raw)) return "numeric-text";
+    return raw.length > 40 ? "long-text" : "text";
+  }
+
+
+  function safeHeaderLabel(v) {
+    var raw = String(v == null ? "" : v).trim();
+    if (!raw) return "";
+    var normalized = normHeader(raw);
+    var role = roleForHeaderCell(normalized);
+    if (role) return raw.slice(0, 80);
+    return "unrecognized-" + cellShape(raw) + "-len" + raw.length;
+  }
+
+  /** Create a privacy-preserving layout diagnostic for parser debugging.
+   *  It intentionally excludes names, narrations, account numbers, balances,
+   *  transaction amounts, and raw row values. It keeps only structural facts:
+   *  row/column counts, chosen header labels, role mapping, cell-shape samples,
+   *  parse problem categories, and checksum ratios. */
+  function anonymizedLayoutDiagnostic(rows, headerRow, map, built, integrity, reconcile, src) {
+    rows = rows || [];
+    map = map || {};
+    built = built || { txns: [], problems: [] };
+    src = src || {};
+    var nCols = 0;
+    rows.forEach(function (r) { nCols = Math.max(nCols, (r || []).length); });
+    var header = rows[headerRow] || [];
+    var problemCounts = {};
+    (built.problems || []).forEach(function (p) { problemCounts[p.issue] = (problemCounts[p.issue] || 0) + 1; });
+    var samples = [];
+    for (var r = Math.max(0, headerRow + 1); r < rows.length && samples.length < 8; r++) {
+      var row = rows[r] || [];
+      if (!row.some(function (c) { return String(c == null ? "" : c).trim(); })) continue;
+      samples.push({
+        rowOffsetFromHeader: r - headerRow,
+        cellShapes: row.slice(0, nCols).map(cellShape),
+        nonEmptyCells: row.filter(function (c) { return String(c == null ? "" : c).trim(); }).length
+      });
+    }
+    return {
+      diagnosticVersion: 1,
+      privacy: "No names, account numbers, narrations, balances, transaction amounts, or raw transaction values are included.",
+      source: {
+        kind: src.source || null,
+        fileExtension: src.fileName && /\.([^.]+)$/.test(src.fileName) ? src.fileName.replace(/^.*\.([^.]+)$/, "$1").toLowerCase() : null,
+        pageCount: src.pageCount || null,
+        sheetCount: src.sheetCount || null
+      },
+      table: {
+        totalRows: rows.length,
+        columnCount: nCols,
+        headerRow: headerRow,
+        headerLabels: header.slice(0, nCols).map(safeHeaderLabel),
+        roleMap: Object.keys(map).sort().reduce(function (o, k) { o[k] = map[k]; return o; }, {}),
+        detectedColumns: detectColumns(rows)
+      },
+      parse: {
+        transactionCount: built.txns ? built.txns.length : 0,
+        excludedRowCount: built.problems ? built.problems.length : 0,
+        excludedRowIssueCounts: problemCounts,
+        duplicateRowsMerged: built.duplicates || 0,
+        resequencedRows: built.resequenced || 0,
+        balanceIntegrity: integrity ? { hasBalance: !!integrity.hasBalance, checked: integrity.checked, matched: integrity.matched, ratio: integrity.ratio } : null,
+        statementChecksum: reconcile ? { allOk: !!reconcile.allOk, anyFail: !!reconcile.anyFail, checks: reconcile.checks.map(function (c) { return { label: c.label, ok: !!c.ok }; }) } : null
+      },
+      rowShapeSamples: samples
+    };
+  }
+
   var API = {
     parseCSVText: parseCSVText, parseDate: parseDate, parseAmount: parseAmount,
     detectColumns: detectColumns, detectColumnsAt: detectColumnsAt, buildTransactions: buildTransactions,
     extractStatementMeta: extractStatementMeta, reconcileWithMeta: reconcileWithMeta,
-    integrityCheck: integrityCheck, readFile: readFile, ROLE_SYNONYMS: ROLE_SYNONYMS,
+    integrityCheck: integrityCheck, anonymizedLayoutDiagnostic: anonymizedLayoutDiagnostic,
+    readFile: readFile, ROLE_SYNONYMS: ROLE_SYNONYMS,
     pdfInternals: {
       cluster: pdfClusterCells, tryHeader: pdfTryHeader, qualifies: pdfHeaderQualifies,
       boundaries: pdfBoundaries, assign: pdfAssign, assemble: assemblePdfRows, lines: pdfLines

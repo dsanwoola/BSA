@@ -6,7 +6,7 @@
 (function () {
   "use strict";
 
-  var APP_BUILD = 20; // shown in the header so stale cached code is obvious
+  var APP_BUILD = 21; // shown in the header so stale cached code is obvious
 
   var PARSER = window.CBN_PARSER, ENGINE = window.CBN_ENGINE,
       REPORT = window.CBN_REPORT, RULES = window.CBN_RULES;
@@ -368,6 +368,8 @@
   }
 
   function refreshMappingStats() {
+    var diagBox = $("#diagnostic-box");
+    if (diagBox) diagBox.style.display = state.rows ? "" : "none";
     var mr = currentMap();
     refreshRoleTags(mr.map);
     var stat = $("#mapping-stats"), btn = $("#btn-run-audit");
@@ -385,7 +387,7 @@
 
     var headerRow = +$("#mapping-table").dataset.headerRow;
     var built = PARSER.buildTransactions(state.rows, headerRow, m);
-    state.txns = built.txns; state.problems = built.problems;
+    state.txns = built.txns; state.problems = built.problems; state.lastBuilt = built;
 
     if (!built.txns.length) {
       // show what the date column actually contains, so the problem is visible
@@ -481,6 +483,10 @@
       }
     });
     $("#btn-mapping-back").addEventListener("click", function () { gotoStep("step-upload"); });
+
+    $("#btn-download-diagnostic").addEventListener("click", function () {
+      downloadParserDiagnostic();
+    });
   }
 
   /* ---------------- step 4: results ---------------- */
@@ -610,6 +616,23 @@
     });
   }
 
+
+
+  function downloadParserDiagnostic() {
+    if (!state.rows) return;
+    var headerRow = +$("#mapping-table").dataset.headerRow || 0;
+    var mr = currentMap();
+    var built = state.lastBuilt || { txns: [], problems: [] };
+    var diagnostic = PARSER.anonymizedLayoutDiagnostic(state.rows, headerRow, mr.map, built, state.integrity, state.reconcile, {
+      source: state.source,
+      fileName: state.fileName,
+      pageCount: state.pageCount,
+      sheetCount: state.sheetCount
+    });
+    diagnostic.appBuild = APP_BUILD;
+    diagnostic.generatedAt = new Date().toISOString();
+    download("bank_charge_auditor_parser_diagnostic.json", JSON.stringify(diagnostic, null, 2), "application/json");
+  }
 
   function openLetterModal() {
     var modal = $("#letter-modal");

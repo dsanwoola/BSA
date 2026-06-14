@@ -765,6 +765,25 @@ check("ragged: shifted amounts land back in the right columns",
   rbuilt.txns[0].debit === 100 && rbuilt.txns[0].balance === 900);
 check("ragged: normal rows untouched", rbuilt.txns[1].debit === 6);
 
+
+/* ---------------- anonymized parser diagnostics ---------------- */
+var sensitiveRows = [
+  ["Date", "Narration", "Debit", "Credit", "Balance"],
+  ["01/05/2025", "TRANSFER TO DEEN SANWOOLA 0123456789", "10,000.00", "", "90,000.00"],
+  ["02/05/2025", "SMS ALERT CHARGE", "6.00", "", "89,994.00"]
+];
+var sd = PARSER.detectColumns(sensitiveRows);
+var sb = PARSER.buildTransactions(sensitiveRows, sd.headerRow, sd.map);
+var sic = PARSER.integrityCheck(sb.txns);
+var sdiag = PARSER.anonymizedLayoutDiagnostic(sensitiveRows, sd.headerRow, sd.map, sb, sic, null, { source: "csv", fileName: "customer_statement.csv" });
+var sjson = JSON.stringify(sdiag);
+check("diagnostic: exported", !!sdiag && sdiag.parse.transactionCount === 2);
+check("diagnostic: keeps header labels", sdiag.table.headerLabels.indexOf("Narration") !== -1);
+check("diagnostic: excludes raw narration/name", sjson.indexOf("DEEN SANWOOLA") === -1 && sjson.indexOf("TRANSFER TO") === -1);
+check("diagnostic: sanitizes unrecognized header labels", PARSER.anonymizedLayoutDiagnostic([["DEEN SANWOOLA", "Narration"], ["abc", "x"]], 0, {}, {}, null, null, {}).table.headerLabels[0].indexOf("DEEN") === -1);
+check("diagnostic: excludes account number", sjson.indexOf("0123456789") === -1);
+check("diagnostic: excludes transaction amounts and balances", sjson.indexOf("10,000") === -1 && sjson.indexOf("90000") === -1 && sjson.indexOf("89,994") === -1);
+
 /* ============== REAL-STATEMENT FIXTURES (the training set) ==============
  * Every real bank statement we have debugged is captured as a fixture
  * (text items + coordinates, extracted once via pdf.js in the browser).

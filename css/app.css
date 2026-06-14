@@ -378,3 +378,19 @@ footer strong { color: var(--txt); }
   .head-txt h1 { font-size: 18px; }
   .privacy-pill { display: none; }
 }
+
+
+.privacy-diagnostic {
+  margin: 18px 0;
+  padding: 16px;
+  border: 1px solid rgba(46, 229, 157, 0.28);
+  border-radius: 16px;
+  background: rgba(46, 229, 157, 0.07);
+  color: var(--txt);
+}
+.privacy-diagnostic p {
+  margin: 6px 0 12px;
+  color: var(--txt-dim);
+  font-size: 13px;
+  line-height: 1.5;
+}
