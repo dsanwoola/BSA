@@ -372,6 +372,11 @@
         continue;
       } else { // text
         if (/^[\d,.\s]+$/.test(raw) && def.key !== "accountNumber") continue;
+        if (def.key === "currency") {
+          var cm = raw.toUpperCase().match(/\b(NGN|USD|GBP|EUR|JPY|CAD|AUD|CHF|CNY|ZAR|GHS|XOF|XAF|[A-Z]{3})\b/);
+          if (!cm || /BALANCE|OPENING|CLOSING|DEBIT|CREDIT|TOTAL/.test(raw.toUpperCase())) continue;
+          meta[def.key] = cm[1]; return;
+        }
         meta[def.key] = raw.slice(0, 60);
         return;
       }

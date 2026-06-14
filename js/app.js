@@ -6,7 +6,7 @@
 (function () {
   "use strict";
 
-  var APP_BUILD = 28; // shown in the header so stale cached code is obvious
+  var APP_BUILD = 29; // shown in the header so stale cached code is obvious
 
   var PARSER = window.CBN_PARSER, ENGINE = window.CBN_ENGINE,
       REPORT = window.CBN_REPORT, RULES = window.CBN_RULES;
@@ -279,7 +279,9 @@
 
     // preview: the bank's header labels on top; the row immediately after
     // the header IS the first transaction row
-    var html = '<table class="map-table"><thead><tr>';
+    var html = '<table class="map-table"><colgroup>';
+    for (c = 0; c < nCols; c++) html += '<col class="' + previewColWidthClass(roleAtColumn(roleMap, c)) + '">';
+    html += '</colgroup><thead><tr>';
     for (c = 0; c < nCols; c++) {
       html += '<th><div class="col-label">' + REPORT.esc(labels[c]) + '</div><div class="role-tag" data-col="' + c + '"></div></th>';
     }
@@ -304,6 +306,20 @@
 
     $all(".role-pick").forEach(function (s) { s.addEventListener("change", refreshMappingStats); });
     refreshMappingStats();
+  }
+
+  function roleAtColumn(map, col) {
+    for (var k in map) if (Object.prototype.hasOwnProperty.call(map, k) && map[k] === col) return k;
+    return "";
+  }
+
+  function previewColWidthClass(role) {
+    if (role === "date" || role === "drcr") return "w-date";
+    if (role === "valueDate") return "w-value-date";
+    if (role === "narration") return "w-narration";
+    if (role === "reference") return "w-reference";
+    if (role === "debit" || role === "credit" || role === "balance" || role === "amount") return "w-money";
+    return "w-generic";
   }
 
   /** Lets the user move the start of the transaction table if the automatic
@@ -397,6 +413,9 @@
 
     var table = document.querySelector("#mapping-table table");
     if (!table) return;
+    Array.prototype.forEach.call(table.querySelectorAll("col"), function (col, ci) {
+      col.className = previewColWidthClass(rev[ci]);
+    });
     function colCls(role) {
       if (role === "debit" || role === "credit" || role === "balance" || role === "amount") return "c-num";
       if (role === "date" || role === "drcr") return "c-date";
