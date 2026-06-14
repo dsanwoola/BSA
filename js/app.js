@@ -6,7 +6,7 @@
 (function () {
   "use strict";
 
-  var APP_BUILD = 33; // shown in the header so stale cached code is obvious
+  var APP_BUILD = 34; // shown in the header so stale cached code is obvious
 
   var PARSER = window.CBN_PARSER, ENGINE = window.CBN_ENGINE,
       REPORT = window.CBN_REPORT, RULES = window.CBN_RULES;
@@ -15,7 +15,8 @@
     ctx: { accountType: "current", holderType: "individual", salaryAccount: false, overrides: {} },
     rows: null, source: null, fileName: null,
     txns: null, problems: null, integrity: null,
-    audit: null, filter: "all"
+    audit: null, filter: "all",
+    currentStep: "step-context"
   };
 
   function $(sel) { return document.querySelector(sel); }
@@ -95,12 +96,37 @@
   ].join("\n");
 
   /* ---------------- step navigation ---------------- */
+  var PREV_STEP = {
+    "step-upload": "step-context",
+    "step-mapping": "step-upload",
+    "step-results": "step-mapping"
+  };
+
   function gotoStep(id) {
+    state.currentStep = id;
     $all(".step-section").forEach(function (s) { s.classList.toggle("active", s.id === id); });
     $all(".step-dot").forEach(function (d) {
       d.classList.toggle("on", d.getAttribute("data-step") === id);
     });
+    updateGlobalBackButton(id);
     window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function goBack() {
+    gotoStep(PREV_STEP[state.currentStep] || "step-context");
+  }
+
+  function updateGlobalBackButton(id) {
+    var btn = $("#btn-global-back");
+    if (!btn) return;
+    var canGoBack = !!PREV_STEP[id];
+    btn.hidden = !canGoBack;
+    btn.setAttribute("aria-hidden", canGoBack ? "false" : "true");
+  }
+
+  function wireNavigation() {
+    var btn = $("#btn-global-back");
+    if (btn) btn.addEventListener("click", goBack);
   }
 
   /* ---------------- step 1: context ---------------- */
@@ -138,7 +164,7 @@
       buildMappingUI();
       gotoStep("step-mapping");
     });
-    $("#btn-upload-back").addEventListener("click", function () { gotoStep("step-context"); });
+    $("#btn-upload-back").addEventListener("click", goBack);
   }
 
   function handleFile(file, opts) {
@@ -567,7 +593,7 @@
         gotoStep("step-results");
       }
     });
-    $("#btn-mapping-back").addEventListener("click", function () { gotoStep("step-upload"); });
+    $("#btn-mapping-back").addEventListener("click", goBack);
 
     $("#btn-download-diagnostic").addEventListener("click", function () {
       downloadParserDiagnostic();
@@ -699,6 +725,7 @@
       state.rows = null; state.txns = null; state.audit = null; state.ctx.overrides = {};
       gotoStep("step-upload");
     });
+    $("#btn-results-back").addEventListener("click", goBack);
   }
 
 
@@ -767,7 +794,7 @@
     if (badge) badge.textContent = "build " + APP_BUILD;
     console.log("Bank Charge Auditor — build " + APP_BUILD);
 
-    wireContext(); wireUpload(); wireMapping(); wireResults();
+    wireNavigation(); wireContext(); wireUpload(); wireMapping(); wireResults();
     gotoStep("step-context");
     // open every finding before printing so the full evidence appears on paper
     window.addEventListener("beforeprint", function () {

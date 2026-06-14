@@ -124,6 +124,9 @@ header.app-head {
 .btn-ghost { background: transparent; color: var(--txt); border-color: var(--line); }
 .btn-ghost:hover { border-color: var(--accent-dim); color: var(--accent); }
 .btn-row { display: flex; gap: 12px; margin-top: 24px; flex-wrap: wrap; }
+.top-back { margin-left: auto; flex: none; }
+.top-back[hidden] { display: none !important; }
+.top-back + .privacy-pill { margin-left: 0; }
 
 /* ---------- dropzone ---------- */
 .dropzone {
