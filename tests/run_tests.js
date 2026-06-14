@@ -53,6 +53,16 @@ check("csv: columns detected", det && det.map.date === 0 && det.map.narration ==
 var built = PARSER.buildTransactions(rows, det.headerRow, det.map);
 check("csv: txn built", built.txns.length === 1 && built.txns[0].debit === 10000);
 
+var monieRows = [
+  ["Date", "Narration", "Reference", "Debit", "Credit", "Balance"],
+  ["2025-02-18T15:", "TRANSFER TO SAMPLE PERSON", "", "", "", ""],
+  ["24:02", "Sample bank transfer", "REF_DEBIT_0", "15,020.00", "0.00", "16,922.50"],
+  ["2025-02-18T17: 09:51", "Sample credit", "REF_CREDIT_0", "0.00", "16,000.00", "32,922.50"]
+];
+var monieDet = PARSER.detectColumns(monieRows);
+var monieBuilt = PARSER.buildTransactions(monieRows, monieDet.headerRow, monieDet.map);
+check("parser: Moniepoint split ISO datetime rejoins time-only amount row", monieBuilt.problems.length === 0 && monieBuilt.txns.length === 2 && monieBuilt.txns[0].date.getFullYear() === 2025 && monieBuilt.txns[0].date.getMonth() === 1 && monieBuilt.txns[0].date.getDate() === 18 && monieBuilt.txns[0].debit === 15020, JSON.stringify(monieBuilt.problems));
+
 /* ---------------- classifier ---------------- */
 function cls(s) { var c = PATTERNS.classify(s); return c ? c.type : null; }
 check("classify: COT", cls("COT CHARGE FOR APRIL") === "cot");
@@ -837,7 +847,7 @@ var appCss = fs.readFileSync(__dirname + "/../css/app.css", "utf8");
 var betaGuide = fs.readFileSync(__dirname + "/../BETA_TESTING.md", "utf8");
 check("static: beta guide appears in app", indexHtml.indexOf("Beta tester checklist") !== -1 && indexHtml.indexOf("anonymized parser diagnostic") !== -1);
 check("static: BETA_TESTING documents privacy-safe diagnostics", betaGuide.indexOf("anonymized parser diagnostic") !== -1 && betaGuide.indexOf("must not contain names") !== -1);
-check("static: APP_BUILD and cache bust agree on 31", appJs.indexOf("APP_BUILD = 31") !== -1 && (indexHtml.match(/v=31/g) || []).length >= 6);
+check("static: APP_BUILD and cache bust agree on 32", appJs.indexOf("APP_BUILD = 32") !== -1 && (indexHtml.match(/v=32/g) || []).length >= 6);
 check("static: Access-style preview columns have explicit role widths", appCss.indexOf("table-layout: fixed") !== -1 && appJs.indexOf("previewColWidth") !== -1 && appJs.indexOf("previewTableWidth") !== -1 && appJs.indexOf("<colgroup>") !== -1);
 check("static: Access preview date/narration spacing is compact", appCss.indexOf("col.w-date { width: 96px") !== -1 && appCss.indexOf("col.w-value-date { width: 96px") !== -1 && appCss.indexOf("col.w-narration { width: 320px") !== -1);
 check("static: encrypted PDF password modal is present", indexHtml.indexOf('id="pdf-password-modal"') !== -1 && indexHtml.indexOf('id="pdf-password-input"') !== -1 && indexHtml.indexOf('id="btn-pdf-password-unlock"') !== -1);
