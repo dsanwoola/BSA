@@ -767,6 +767,26 @@ check("ragged: shifted amounts land back in the right columns",
 check("ragged: normal rows untouched", rbuilt.txns[1].debit === 6);
 
 
+
+/* ---------------- PDF header detection: FCMB-style mixed header line ---------------- */
+function pdfItem(x, text) { return { x: x, w: Math.max(10, text.length * 5), y: 550, str: text }; }
+var fcmbHeader = PARSER.pdfInternals.tryHeader({ y: 550, items: [
+  pdfItem(10, "PRIVATE"), pdfItem(50, "AND"), pdfItem(78, "CONFIDENTIAL"),
+  pdfItem(130, "Date"), pdfItem(185, "Reference"), pdfItem(245, "Descrip"),
+  pdfItem(420, "ValueDate"), pdfItem(475, "Deposit"), pdfItem(535, "Withdrawal"), pdfItem(610, "Balance")
+] }, null);
+check("pdf header: FCMB line with non-table text still qualifies", PARSER.pdfInternals.qualifies(fcmbHeader));
+check("pdf header: FCMB labels produce required role map", fcmbHeader.map.date === 0 && fcmbHeader.map.narration === 2 && fcmbHeader.map.credit === 4 && fcmbHeader.map.debit === 5 && fcmbHeader.map.balance === 6);
+var fcmbRows = [
+  ["6/12/26, 4:48 PM"],
+  ["ACCOUNT STATEMENT", "SUMMARY DETAILS"],
+  ["Date", "Reference", "Descrip", "ValueDate", "Deposit", "Withdrawal", "Balance"],
+  ["02-Mar-2025", "1731204979/S9", "TRANSFER FROM CUSTOMER", "01-Mar-2025", "4,600.00", "", "4,633.01 Cr"],
+  ["02-Mar-2025", "QR/Q22991972320", "AIRTIME PURCHASE", "01-Mar-2025", "", "750.00", "3,883.01 Cr"]
+];
+var fcmbDet = PARSER.detectColumns(fcmbRows);
+check("detectColumns: FCMB Descrip/ValueDate header row detected", fcmbDet && fcmbDet.headerRow === 2 && fcmbDet.complete);
+
 /* ---------------- anonymized parser diagnostics ---------------- */
 var sensitiveRows = [
   ["Date", "Narration", "Debit", "Credit", "Balance"],
@@ -793,7 +813,7 @@ var appJs = fs.readFileSync(__dirname + "/../js/app.js", "utf8");
 var betaGuide = fs.readFileSync(__dirname + "/../BETA_TESTING.md", "utf8");
 check("static: beta guide appears in app", indexHtml.indexOf("Beta tester checklist") !== -1 && indexHtml.indexOf("anonymized parser diagnostic") !== -1);
 check("static: BETA_TESTING documents privacy-safe diagnostics", betaGuide.indexOf("anonymized parser diagnostic") !== -1 && betaGuide.indexOf("must not contain names") !== -1);
-check("static: APP_BUILD and cache bust agree on 22", appJs.indexOf("APP_BUILD = 22") !== -1 && (indexHtml.match(/v=22/g) || []).length >= 6);
+check("static: APP_BUILD and cache bust agree on 23", appJs.indexOf("APP_BUILD = 23") !== -1 && (indexHtml.match(/v=23/g) || []).length >= 6);
 
 /* ============== REAL-STATEMENT FIXTURES (the training set) ==============
  * Every real bank statement we have debugged is captured as a fixture
