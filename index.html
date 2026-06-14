@@ -5,8 +5,19 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bank Charge Auditor — CBN Compliance Check for Nigerian Bank Statements</title>
 <meta name="description" content="Audit major Nigerian bank statements against the official CBN Guide to Bank Charges, with guided import for other layouts. Finds illegal and excess charges, computes your refund, and drafts the demand letter. 100% private — runs on your device.">
-<link rel="stylesheet" href="css/app.css?v=34">
+<link rel="stylesheet" href="css/app.css?v=35">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Cpath fill='%232ee59d' d='M24 2 6 10v12c0 11 7.6 21.4 18 24 10.4-2.6 18-13 18-24V10L24 2z'/%3E%3Ctext x='24' y='32' font-size='22' font-weight='bold' text-anchor='middle' fill='%230b1210'%3E₦%3C/text%3E%3C/svg%3E">
+<script>
+  (function () {
+    try {
+      var saved = localStorage.getItem("bsa-theme");
+      var theme = saved || (window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
+      document.documentElement.setAttribute("data-theme", theme === "light" ? "light" : "dark");
+    } catch (e) {
+      document.documentElement.setAttribute("data-theme", "dark");
+    }
+  })();
+</script>
 </head>
 <body>
 <div class="wrap">
@@ -21,6 +32,10 @@
       <p>Audits major Nigerian bank statements against the official CBN Guide to Bank Charges — with guided import for other layouts, and never guesses.</p>
     </div>
     <button class="btn btn-ghost btn-small top-back no-print" id="btn-global-back" type="button" hidden>← Back</button>
+    <button class="theme-toggle no-print" id="theme-toggle" type="button" aria-label="Switch colour theme" aria-pressed="false">
+      <span class="theme-icon" aria-hidden="true">🌙</span>
+      <span class="theme-label">Dark</span>
+    </button>
     <span class="privacy-pill">🔒 100% on your device — nothing is uploaded</span>
     <span class="build-badge" id="build-badge">build …</span>
   </header>
@@ -241,11 +256,11 @@
 <script src="vendor/xlsx.full.min.js"></script>
 <script src="vendor/pdf.min.js"></script>
 <script src="vendor/pdf.worker.min.js"></script>
-<script src="js/rules.js?v=34"></script>
-<script src="js/patterns.js?v=34"></script>
-<script src="js/engine.js?v=34"></script>
-<script src="js/parser.js?v=34"></script>
-<script src="js/report.js?v=34"></script>
-<script src="js/app.js?v=34"></script>
+<script src="js/rules.js?v=35"></script>
+<script src="js/patterns.js?v=35"></script>
+<script src="js/engine.js?v=35"></script>
+<script src="js/parser.js?v=35"></script>
+<script src="js/report.js?v=35"></script>
+<script src="js/app.js?v=35"></script>
 </body>
 </html>
