@@ -42,6 +42,10 @@ dt = PARSER.parseDate("2025-02-01");
 check("date: ISO", dt && dt.getDate() === 1 && dt.getMonth() === 1);
 dt = PARSER.parseDate("15-Mar-24");
 check("date: dd-MMM-yy", dt && dt.getDate() === 15 && dt.getMonth() === 2 && dt.getFullYear() === 2024);
+dt = PARSER.parseDate("01-Apr-26 89");
+check("date: PremiumTrust date with trailing reference fragment", dt && dt.getDate() === 1 && dt.getMonth() === 3 && dt.getFullYear() === 2026);
+dt = PARSER.parseDate("April 30, 2026");
+check("date: full month name", dt && dt.getDate() === 30 && dt.getMonth() === 3 && dt.getFullYear() === 2026);
 check("date: invalid is null", PARSER.parseDate("99/99/2024") === null);
 check("date: 31/02 rejected", PARSER.parseDate("31/02/2024") === null);
 
@@ -405,6 +409,23 @@ check("meta: stacked PalmPay-style totals ignore leading value-row labels", stac
 var stackedBuilt = PARSER.buildTransactions(stackedSummaryRows, stackedDet.headerRow, stackedDet.map);
 var stackedRec = PARSER.reconcileWithMeta(stackedBuilt.txns, stackedMeta);
 check("meta: stacked PalmPay-style boundary mismatch is classified separately", stackedRec && stackedRec.summaryBoundaryOnly === true, JSON.stringify(stackedRec));
+
+var premiumRows = [
+  ["Transaction Details", "Account Details"],
+  ["Total Credit : 10,000.00", "Customer Name : SAMPLE CUSTOMER"],
+  ["Total Debit :", "87,000.00", "Acccount Number : 0111603118"],
+  ["Closing Balance : 4.70", "Acccount Type : I"],
+  ["Account Statement Generated from Wednesday, April 1, 2026 to Thursday, April 30, 2026"],
+  ["TRANSACTION REFERENCE"],
+  ["DATE", "TRANSACTION DETAILS", "VALUE DATE", "DEBIT ()", "CREDIT ()", "BALANCE ()"],
+  ["01-Apr-26 89", "Transfer out", "01-Apr-26", "10,000.00", "", "67,004.70"],
+  ["10-Apr-26 20", "Transfer in", "11-Apr-26", "", "10,000.00", "77,004.70"]
+];
+var premiumDet = PARSER.detectColumns(premiumRows);
+var premiumBuilt = PARSER.buildTransactions(premiumRows, premiumDet.headerRow, premiumDet.map);
+var premiumMeta = PARSER.extractStatementMeta(premiumRows, premiumDet.headerRow);
+check("premium: trailing reference date fragment stays in 2026", premiumBuilt.txns.length === 2 && premiumBuilt.txns[0].date.getFullYear() === 2026 && premiumBuilt.txns[0].date.getMonth() === 3, JSON.stringify(premiumBuilt.txns));
+check("premium: misspelled Acccount Number and long-form period mined", premiumMeta && premiumMeta.accountNumber === "0111603118" && premiumMeta.periodFrom && premiumMeta.periodFrom.getDate() === 1 && premiumMeta.periodTo && premiumMeta.periodTo.getDate() === 30, JSON.stringify(premiumMeta));
 
 var hres = ENGINE.audit(hbuilt.txns.map(function (t, i) {
   return { index: i, date: t.date, narration: t.narration, debit: t.debit, credit: t.credit };
@@ -868,7 +889,7 @@ var appCss = fs.readFileSync(__dirname + "/../css/app.css", "utf8");
 var betaGuide = fs.readFileSync(__dirname + "/../BETA_TESTING.md", "utf8");
 check("static: beta guide appears in app", indexHtml.indexOf("Beta tester checklist") !== -1 && indexHtml.indexOf("anonymized parser diagnostic") !== -1);
 check("static: BETA_TESTING documents privacy-safe diagnostics", betaGuide.indexOf("anonymized parser diagnostic") !== -1 && betaGuide.indexOf("must not contain names") !== -1);
-check("static: APP_BUILD and cache bust agree on 36", appJs.indexOf("APP_BUILD = 36") !== -1 && (indexHtml.match(/v=36/g) || []).length >= 6);
+check("static: APP_BUILD and cache bust agree on 37", appJs.indexOf("APP_BUILD = 37") !== -1 && (indexHtml.match(/v=37/g) || []).length >= 6);
 check("static: global back button is wired across later steps", indexHtml.indexOf('id="btn-global-back"') !== -1 && indexHtml.indexOf('id="btn-results-back"') !== -1 && appJs.indexOf("function goBack()") !== -1 && appJs.indexOf("PREV_STEP") !== -1);
 check("static: light/dark theme toggle is wired and persisted", indexHtml.indexOf('id="theme-toggle"') !== -1 && indexHtml.indexOf('bsa-theme') !== -1 && appCss.indexOf(':root[data-theme="light"]') !== -1 && appJs.indexOf("function wireTheme()") !== -1 && appJs.indexOf('localStorage.setItem("bsa-theme"') !== -1);
 check("static: Access-style preview columns have explicit role widths", appCss.indexOf("table-layout: fixed") !== -1 && appJs.indexOf("previewColWidth") !== -1 && appJs.indexOf("previewTableWidth") !== -1 && appJs.indexOf("<colgroup>") !== -1);
