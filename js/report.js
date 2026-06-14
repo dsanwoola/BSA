@@ -93,8 +93,10 @@
   function renderAllTxns(txns, audit, typeNames) {
     var byIndex = {};
     audit.findings.forEach(function (f) { byIndex[f.txnIndex] = f; });
-    return '<table class="txn-table"><thead><tr>' +
-      "<th>Date</th><th>Narration</th><th class='num'>Debit</th><th class='num'>Credit</th><th>Audit status</th><th>Reclassify</th>" +
+    return '<div class="txn-table-wrap"><table class="txn-table"><colgroup>' +
+      '<col class="txn-col-date"><col class="txn-col-desc"><col class="txn-col-money"><col class="txn-col-money"><col class="txn-col-status"><col class="txn-col-action">' +
+      '</colgroup><thead><tr>' +
+      "<th>Date</th><th>Description</th><th class='num'>Money out</th><th class='num'>Money in</th><th>Audit status</th><th>Reclassify</th>" +
       "</tr></thead><tbody>" +
       txns.map(function (t) {
         var f = byIndex[t.index];
@@ -109,7 +111,7 @@
           '<td class="num">' + (t.debit ? fmtN(t.debit) : "") + "</td>" +
           '<td class="num">' + (t.credit ? fmtN(t.credit) : "") + "</td>" +
           "<td>" + status + "</td><td>" + sel + "</td></tr>";
-      }).join("") + "</tbody></table>";
+      }).join("") + "</tbody></table></div>";
   }
 
   /* ---------------- CSV export ---------------- */
