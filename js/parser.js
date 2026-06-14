@@ -717,9 +717,11 @@
       pendingDatePrefix = null;
       txns.push(lastTxn);
     }
+    var sideRepairs = repairMoneySides(txns, openingBalance);
     var repaired = repairChain(txns);
     return {
       txns: txns, problems: problems, openingBalance: openingBalance,
+      moneySideRepairs: sideRepairs,
       duplicates: repaired.dups, resequenced: repaired.swaps
     };
 
@@ -732,6 +734,38 @@
       });
     }
     function rowIsOnlyText(row, map) { return !rowHasMoney(row, map); }
+  }
+
+  /* ------------------- balance-proven money-side repair ------------------- */
+
+  /** Some PDF extractors place a money value under the neighbouring Debit/Credit
+   *  anchor even though the running balance proves the opposite side. Repair
+   *  only single-sided rows, and only when the printed running balance makes
+   *  the correction mathematically certain. */
+  function repairMoneySides(txns, openingBalance) {
+    var fixed = 0;
+    function rr(n) { return Math.round(n * 100) / 100; }
+    function fits(prev, t) { return Math.abs(rr(prev - t.debit + t.credit) - t.balance) <= 0.011; }
+    var prevBal = openingBalance !== null && openingBalance !== undefined ? openingBalance : null;
+    for (var i = 0; i < txns.length; i++) {
+      var t = txns[i];
+      if (t.balance === null) continue;
+      if (prevBal !== null && !fits(prevBal, t)) {
+        var singleDebit = t.debit > 0 && t.credit === 0;
+        var singleCredit = t.credit > 0 && t.debit === 0;
+        if (singleDebit && Math.abs(rr(prevBal + t.debit) - t.balance) <= 0.011) {
+          t.credit = t.debit;
+          t.debit = 0;
+          fixed++;
+        } else if (singleCredit && Math.abs(rr(prevBal - t.credit) - t.balance) <= 0.011) {
+          t.debit = t.credit;
+          t.credit = 0;
+          fixed++;
+        }
+      }
+      prevBal = t.balance;
+    }
+    return fixed;
   }
 
   /* ------------------- balance-chain repair (page breaks) ------------------- */
