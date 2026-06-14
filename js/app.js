@@ -6,7 +6,7 @@
 (function () {
   "use strict";
 
-  var APP_BUILD = 39; // shown in the header so stale cached code is obvious
+  var APP_BUILD = 40; // shown in the header so stale cached code is obvious
 
   var PARSER = window.CBN_PARSER, ENGINE = window.CBN_ENGINE,
       REPORT = window.CBN_REPORT, RULES = window.CBN_RULES;
@@ -387,7 +387,7 @@
     if (role === "valueDate") return 96;
     if (role === "narration") return 320;
     if (role === "reference") return 155;
-    if (role === "debit" || role === "credit" || role === "balance" || role === "amount") return 112;
+    if (role === "debit" || role === "credit" || role === "balance" || role === "amount") return 160;
     return 125;
   }
 
