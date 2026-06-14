@@ -79,6 +79,15 @@
       var y2 = +m[3]; if (y2 < 100) y2 += y2 < 70 ? 2000 : 1900;
       return mk(y2, MONTHS[m[2].toUpperCase()], +m[1]);
     }
+    // Wema/ALAT PDFs sometimes wrap date + reference + year into one cell:
+    // "05-Jan- M122871 2026" becomes "05-Jan-M122871 2026" after cleanup.
+    // Treat only the date/year shell as the date; the reference remains visible
+    // in the preview but must not block the audit.
+    m = s.match(/^(\d{1,2})-([A-Za-z]{3,4})-[A-Za-z0-9\/._-]+\s+(\d{2,4})$/);
+    if (m && MONTHS[m[2].toUpperCase()] !== undefined) {
+      var yRef = +m[3]; if (yRef < 100) yRef += yRef < 70 ? 2000 : 1900;
+      return mk(yRef, MONTHS[m[2].toUpperCase()], +m[1]);
+    }
     // ddMMM yyyy / ddMMMyyyy — PDFs whose fonts drop the hyphen glyphs
     // turn "02-Jan-2026" into "02Jan 2026" or "02Jan2026"
     m = s.match(/^(\d{1,2})\s*([A-Za-z]{3,4})[\s,]*(\d{2,4})$/);

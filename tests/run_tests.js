@@ -768,6 +768,28 @@ check("ragged: normal rows untouched", rbuilt.txns[1].debit === 6);
 
 
 
+
+/* ---------------- Wema/ALAT PDF-style wrapped date/reference cells ---------------- */
+var wemaParsedDate = PARSER.parseDate("05-Jan- M122871 2026");
+check("date: Wema wrapped date+reference+year parses", wemaParsedDate && wemaParsedDate.getFullYear() === 2026 && wemaParsedDate.getMonth() === 0 && wemaParsedDate.getDate() === 5);
+var wemaRows = [
+  ["Account Statement"],
+  ["Opening Balance", "Closing Balance", "Start Date", "End Date"],
+  ["₦ 85.31", "₦ 16,859.53", "01-Jan-2026", "31-Jan-2026"],
+  ["R e f e r e n c e"],
+  ["Date", "Transaction Details", "Credit( ₦ )", "Debit( ₦ )", "Balance( ₦ )"],
+  ["Number", "", "", "", ""],
+  ["05-Jan- M122871 2026", "SMS Alert Charges for NOV 25 to DEC 24, 2025", "", "66.00", "85.31"],
+  ["09-Jan- S42709800 2026", "NIP TRANSFER FROM CUSTOMER", "140,000.00", "", "140,085.31"],
+  ["12-Jan- S44386772 2026", "COMM ALAT NIP TRANSFER TO CUSTOMER", "", "25.00", "140,060.31"]
+];
+var wemaDet = PARSER.detectColumns(wemaRows);
+check("detectColumns: Wema header row detected", wemaDet && wemaDet.headerRow === 4 && wemaDet.complete);
+var wemaBuilt = PARSER.buildTransactions(wemaRows, wemaDet.headerRow, wemaDet.map);
+check("wema: wrapped date/reference rows become transactions", wemaBuilt.txns.length === 3 && wemaBuilt.problems.length === 0, JSON.stringify(wemaBuilt.problems));
+check("wema: first debit and second credit parsed", wemaBuilt.txns[0].debit === 66 && wemaBuilt.txns[1].credit === 140000);
+check("wema: balance integrity passes", PARSER.integrityCheck(wemaBuilt.txns).ratio === 1);
+
 /* ---------------- PDF header detection: FCMB-style mixed header line ---------------- */
 function pdfItem(x, text) { return { x: x, w: Math.max(10, text.length * 5), y: 550, str: text }; }
 var fcmbHeader = PARSER.pdfInternals.tryHeader({ y: 550, items: [
@@ -813,7 +835,7 @@ var appJs = fs.readFileSync(__dirname + "/../js/app.js", "utf8");
 var betaGuide = fs.readFileSync(__dirname + "/../BETA_TESTING.md", "utf8");
 check("static: beta guide appears in app", indexHtml.indexOf("Beta tester checklist") !== -1 && indexHtml.indexOf("anonymized parser diagnostic") !== -1);
 check("static: BETA_TESTING documents privacy-safe diagnostics", betaGuide.indexOf("anonymized parser diagnostic") !== -1 && betaGuide.indexOf("must not contain names") !== -1);
-check("static: APP_BUILD and cache bust agree on 24", appJs.indexOf("APP_BUILD = 24") !== -1 && (indexHtml.match(/v=24/g) || []).length >= 6);
+check("static: APP_BUILD and cache bust agree on 25", appJs.indexOf("APP_BUILD = 25") !== -1 && (indexHtml.match(/v=25/g) || []).length >= 6);
 
 /* ============== REAL-STATEMENT FIXTURES (the training set) ==============
  * Every real bank statement we have debugged is captured as a fixture
