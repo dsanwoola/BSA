@@ -77,6 +77,12 @@
       var y = +m[3]; if (y < 100) y += y < 70 ? 2000 : 1900;
       return mk(y, +m[2] - 1, +m[1]);
     }
+    // dd/MMM/yyyy / dd/MMM/yy (Sterling-style slash month names)
+    m = s.match(/^(\d{1,2})\/([A-Za-z]{3,9})\/(\d{2,4})$/);
+    if (m && MONTHS[m[2].toUpperCase()] !== undefined) {
+      var ySlash = +m[3]; if (ySlash < 100) ySlash += ySlash < 70 ? 2000 : 1900;
+      return mk(ySlash, MONTHS[m[2].toUpperCase()], +m[1]);
+    }
     // dd-MMM-yyyy / dd MMM yyyy / dd-MMM-yy
     m = s.match(/^(\d{1,2})[-\s]([A-Za-z]{3,9})[-,\s]+(\d{2,4})$/);
     if (m && MONTHS[m[2].toUpperCase()] !== undefined) {
@@ -165,7 +171,7 @@
     balance: ["RUNNING BALANCE", "ACCOUNT BALANCE", "AVAILABLE BALANCE", "CURRENT BALANCE", "CLOSING BALANCE", "BALANCE", "BAL"],
     amount: ["TRANSACTION AMOUNT", "AMOUNT", "AMT"],
     drcr: ["TRANSACTION TYPE", "DR / CR", "DR/CR", "CR/DR", "INDICATOR", "TYPE", "D/C"],
-    reference: ["TRANSACTION REF", "REFERENCE NUMBER", "REFERENCE NO", "INSTRUMENT NO", "CHEQUE NO", "TRANS REF", "REFERENCE", "REF NO", "CHQ NO", "REF"]
+    reference: ["REFERENCE/SESSION ID", "REFERENCE / SESSION ID", "REFERENCE/SESSION", "REFERENCE / SESSION", "TRANSACTION REF", "REFERENCE NUMBER", "REFERENCE NO", "INSTRUMENT NO", "CHEQUE NO", "TRANS REF", "REFERENCE", "REF NO", "CHQ NO", "REF"]
   };
 
   /* Labels that often sit in a statement's table header but carry nothing
@@ -283,7 +289,7 @@
     { key: "currency", kind: "text", re: /\bCURRENCY\b|\bCCY\b/ }
   ];
 
-  var DATE_TOKEN = /(\d{1,2}[\/\-.]\d{1,2}[\/\-.]\d{2,4})|(\d{4}-\d{2}-\d{2})|(\d{1,2}[-\s]?[A-Za-z]{3,9}[-\s,]*\d{2,4})|([A-Za-z]{3,9}\s+\d{1,2},?\s+\d{4})/g;
+  var DATE_TOKEN = /(\d{1,2}\/[A-Za-z]{3,9}\/\d{2,4})|(\d{1,2}[\/\-.]\d{1,2}[\/\-.]\d{2,4})|(\d{4}-\d{2}-\d{2})|(\d{1,2}[-\s]?[A-Za-z]{3,9}[-\s,]*\d{2,4})|([A-Za-z]{3,9}\s+\d{1,2},?\s+\d{4})/g;
 
   /** Pull a clean, unambiguous date token out of a noisy cell (e.g. a date
    *  with merged reference fragments around it). Deterministic — only a
@@ -352,6 +358,10 @@
             candidates.push(str);
           }
           for (var k = c + 1; k < row.length; k++) pushCandidate(row[k]);
+          var above = rows[r - 1];
+          if (above && (def.key === "openingBalance" || def.key === "closingBalance")) {
+            for (var ak = c; ak <= c + 1 && ak < above.length; ak++) pushCandidate(above[ak]);
+          }
           var below = rows[r + 1];
           if (below) for (var k2 = c; k2 <= c + 1 && k2 < below.length; k2++) pushCandidate(below[k2]);
           assignMeta(meta, def, candidates);
@@ -443,9 +453,13 @@
       if (!raw) continue;
       if (def.kind === "amount") {
         if (parseDate(raw)) continue; // a date below/near the label is not a money value
-        var numMatch = raw.match(/-?[\d,]+(\.\d{1,2})?/);
-        if (!numMatch) continue;
-        var v = parseAmount(numMatch[0]);
+        var matches = raw.match(/-?[\d,]+(?:\.\d{1,2})?/g);
+        if (!matches || !matches.length) continue;
+        // Sterling-style totals can be printed as "Total Debit (100): 295,943.85 NGN".
+        // For total amount labels, the count in parentheses is not the money value;
+        // use the last numeric token. Count labels still use the first token.
+        var pick = (/^(totalDebit|totalCredit|openingBalance|closingBalance)$/.test(def.key)) ? matches[matches.length - 1] : matches[0];
+        var v = parseAmount(pick);
         if (typeof v === "number") { meta[def.key] = Math.abs(v); return; }
       } else if (def.kind === "acctno") {
         var am = raw.match(/\d{10}/);
@@ -635,8 +649,9 @@
       if (!date && map.valueDate !== undefined && map.valueDate !== map.date) {
         date = extractDateToken(row[map.valueDate]);
       }
-      var narration = map.narration !== undefined ? String(row[map.narration] == null ? "" : row[map.narration]).trim() : "";
-      if (map.reference !== undefined) {
+      var narrCol = map.narration !== undefined ? map.narration : map.reference;
+      var narration = narrCol !== undefined ? String(row[narrCol] == null ? "" : row[narrCol]).trim() : "";
+      if (map.reference !== undefined && map.reference !== narrCol) {
         var ref = String(row[map.reference] == null ? "" : row[map.reference]).trim();
         if (ref && ref !== narration) narration = narration ? narration + " | " + ref : ref;
       }
@@ -1084,7 +1099,14 @@
   /** Score a line (optionally merged with the next, for stacked headers
    *  like "Trans"/"Date") as a candidate transaction-table header. */
   function pdfTryHeader(lineA, lineB) {
-    var items = lineB ? lineA.items.concat(lineB.items) : lineA.items;
+    return pdfTryHeaderLines(lineB ? [lineA, lineB] : [lineA]);
+  }
+
+  function pdfTryHeaderLines(lines) {
+    var items = [];
+    (lines || []).forEach(function (line) {
+      if (line && line.items) items = items.concat(line.items);
+    });
     if (!items.length) return null;
     var cells = pdfClusterCells(items, 9);
     var candidate = pdfHeaderFromCells(cells);
@@ -1140,6 +1162,28 @@
     var rebuilt = pdfHeaderFromCells(cells);
     rebuilt.consumeBelow = true;
     return pdfHeaderQualifies(rebuilt) ? rebuilt : header;
+  }
+
+  function pdfMaybeAddSterlingMoneyColumns(header, topLine, bottomLine) {
+    if (!header || (header.map.debit !== undefined && header.map.credit !== undefined) || !topLine || !bottomLine) return header;
+    var topMoney = topLine.items.filter(function (it) { return /^money$/i.test(it.str); });
+    var tails = bottomLine.items.filter(function (it) { return /^(in|out)$/i.test(it.str); });
+    if (!topMoney.length || !tails.length) return header;
+    var extra = [];
+    topMoney.forEach(function (m) {
+      var best = null, bestDist = 9999;
+      tails.forEach(function (t) {
+        var d = Math.abs(t.x - m.x);
+        if (d < bestDist) { best = t; bestDist = d; }
+      });
+      if (best && bestDist <= 12) {
+        extra.push({ lo: Math.min(m.x, best.x), hi: Math.max(m.x + m.w, best.x + best.w), items: [m, best], text: "Money " + best.str });
+      }
+    });
+    if (!extra.length) return header;
+    var cells = header.cells.concat(extra).sort(function (a, b) { return a.lo - b.lo; });
+    var rebuilt = pdfHeaderFromCells(cells);
+    return (rebuilt.map.debit !== undefined && rebuilt.map.credit !== undefined) ? rebuilt : (pdfHeaderQualifies(rebuilt) ? rebuilt : header);
   }
 
   function pdfHeaderQualifies(h) { return !!h && h.labels >= 4 && (h.hasDate || h.labels >= 5); }
@@ -1235,9 +1279,19 @@
         // contains several header labels. Otherwise an "Opening Balance" hero
         // row plus the next header line can be falsely merged as a header.
         var two = (i + 1 < lines.length && one && one.labels >= 2) ? pdfTryHeader(lines[i], lines[i + 1]) : null;
-        var pick = null, usedTwo = false;
+        // Sterling-style headers can be three visual lines: top labels such as
+        // "Reference/Session" and "Money Money", middle labels such as
+        // "Trans Date / Value Date / Narration / Balance", and bottom tails
+        // such as "ID / In / Out". Merge only when the middle line already
+        // looks header-like so ordinary hero rows cannot be pulled in.
+        var mid = (i + 1 < lines.length) ? pdfTryHeader(lines[i + 1], null) : null;
+        var threeLikeSterling = i + 2 < lines.length && /REFERENCE\s*\/\s*SESSION|\bMONEY\b/i.test(lineText(lines[i])) && /\bID\b|\bIN\b|\bOUT\b/i.test(lineText(lines[i + 2]));
+        var three = (threeLikeSterling && mid && mid.labels >= 3) ? pdfTryHeaderLines([lines[i], lines[i + 1], lines[i + 2]]) : null;
+        var pick = null, usedTwo = false, usedThree = false;
         if (pdfHeaderQualifies(one)) pick = one;
         if (pdfHeaderQualifies(two) && (!pick || two.labels > one.labels)) { pick = two; usedTwo = true; }
+        if (pdfHeaderQualifies(three) && (!pick || three.labels > pick.labels)) { pick = three; usedTwo = false; usedThree = true; }
+        if (pick) pick = pdfMaybeAddSterlingMoneyColumns(pick, lines[i], lines[i + 2]);
         if (pick) pick = pdfMaybeAddStackedReferenceNumber(pick, lines[i - 1], lines[i + 1]);
         // a repeated page header refreshes the anchors, but an annex table
         // of a DIFFERENT shape (e.g. a wallet's interest section) must not —
@@ -1250,7 +1304,8 @@
             headerPushed = true;
             headerShape = pick.cells.length;
           }
-          if (usedTwo || pick.consumeBelow) i++; // consume the second header line
+          if (usedThree) i += 2;
+          else if (usedTwo || pick.consumeBelow) i++; // consume stacked header lines
           continue;
         }
         if (!anchors) { // hero section: gap-based cells for metadata mining

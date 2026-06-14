@@ -46,6 +46,8 @@ dt = PARSER.parseDate("01-Apr-26 89");
 check("date: PremiumTrust date with trailing reference fragment", dt && dt.getDate() === 1 && dt.getMonth() === 3 && dt.getFullYear() === 2026);
 dt = PARSER.parseDate("April 30, 2026");
 check("date: full month name", dt && dt.getDate() === 30 && dt.getMonth() === 3 && dt.getFullYear() === 2026);
+dt = PARSER.parseDate("01/May/2026");
+check("date: dd/MMM/yyyy slash month", dt && dt.getDate() === 1 && dt.getMonth() === 4 && dt.getFullYear() === 2026);
 check("date: invalid is null", PARSER.parseDate("99/99/2024") === null);
 check("date: 31/02 rejected", PARSER.parseDate("31/02/2024") === null);
 
@@ -533,6 +535,26 @@ check("hero: 'Balance B/F' table row captured as opening balance", bfBuilt.openi
 function pit(x, w, str, y) { return { x: x, w: w, y: y, str: str }; }
 var PDF = PARSER.pdfInternals;
 
+var sterlingPage = [
+  { y: 760, items: [pit(45, 90, "101,912.69", 760)] },
+  { y: 746, items: [pit(45, 100, "Opening balance:", 746), pit(310, 105, "Total Credit (0):", 746), pit(420, 45, "0.00", 746), pit(470, 25, "NGN", 746)] },
+  { y: 732, items: [pit(45, 90, "101,712.69", 732)] },
+  { y: 718, items: [pit(45, 100, "Closing balance:", 718)] },
+  { y: 704, items: [pit(310, 95, "Total Debit (1):", 704), pit(410, 55, "200.00", 704), pit(470, 25, "NGN", 704)] },
+  { y: 664, items: [pit(155, 105, "Reference/Session", 664), pit(401, 20, "Money", 664), pit(441, 20, "Money", 664)] },
+  { y: 658, items: [pit(45, 50, "Trans Date", 658), pit(100, 52, "Value Date", 658), pit(234, 40, "Channel", 658), pit(274, 52, "Narration", 658), pit(480, 46, "Balance", 658)] },
+  { y: 652, items: [pit(155, 14, "ID", 652), pit(401, 12, "In", 652), pit(441, 18, "Out", 652)] },
+  { y: 632, items: [pit(45, 60, "01/May/2026", 632), pit(100, 60, "04/May/2026", 632), pit(156, 70, "2886931494/0000012", 632), pit(235, 8, "-", 632), pit(274, 130, "Airtime purchase", 632), pit(432, 8, "-", 632), pit(444, 36, "200.00", 632), pit(500, 54, "101,712.69", 632)] }
+];
+var sterlingRows = PDF.assemble([sterlingPage]);
+var sterlingDet = PARSER.detectColumns(sterlingRows);
+var sterlingBuilt = sterlingDet && PARSER.buildTransactions(sterlingRows, sterlingDet.headerRow, sterlingDet.map);
+var sterlingMeta = sterlingDet && PARSER.extractStatementMeta(sterlingRows, sterlingDet.headerRow);
+var sterlingRec = sterlingBuilt && PARSER.reconcileWithMeta(sterlingBuilt.txns, sterlingMeta);
+check("pdf/sterling: three-line Reference/Session Money In/Out header detected", sterlingDet && sterlingDet.map.date === 0 && sterlingDet.map.valueDate === 1 && sterlingDet.map.reference === 2 && sterlingDet.map.credit === 4 && sterlingDet.map.debit === 5 && sterlingDet.map.balance === 6, JSON.stringify(sterlingRows[sterlingDet && sterlingDet.headerRow]));
+check("pdf/sterling: slash month dates and merged narration/reference parse", sterlingBuilt && sterlingBuilt.txns.length === 1 && sterlingBuilt.txns[0].date.getMonth() === 4 && sterlingBuilt.txns[0].debit === 200 && /Airtime purchase/.test(sterlingBuilt.txns[0].narration), JSON.stringify(sterlingBuilt && sterlingBuilt.problems));
+check("pdf/sterling: above-label opening and counted totals reconcile", sterlingRec && sterlingRec.allOk, sterlingRec && JSON.stringify(sterlingRec.checks));
+
 // page modeled on a real statement: two-line header ("Trans"/"Date",
 // "Value"/"Date"), an EMPTY Debit cell, and Remarks wrapping to a 2nd line
 var pdfPage = [
@@ -920,7 +942,7 @@ var appCss = fs.readFileSync(__dirname + "/../css/app.css", "utf8");
 var betaGuide = fs.readFileSync(__dirname + "/../BETA_TESTING.md", "utf8");
 check("static: beta guide appears in app", indexHtml.indexOf("Beta tester checklist") !== -1 && indexHtml.indexOf("anonymized parser diagnostic") !== -1);
 check("static: BETA_TESTING documents privacy-safe diagnostics", betaGuide.indexOf("anonymized parser diagnostic") !== -1 && betaGuide.indexOf("must not contain names") !== -1);
-check("static: APP_BUILD and cache bust agree on 41", appJs.indexOf("APP_BUILD = 41") !== -1 && (indexHtml.match(/v=41/g) || []).length >= 6);
+check("static: APP_BUILD and cache bust agree on 42", appJs.indexOf("APP_BUILD = 42") !== -1 && (indexHtml.match(/v=42/g) || []).length >= 6);
 check("static: global back button is wired across later steps", indexHtml.indexOf('id="btn-global-back"') !== -1 && indexHtml.indexOf('id="btn-results-back"') !== -1 && appJs.indexOf("function goBack()") !== -1 && appJs.indexOf("PREV_STEP") !== -1);
 check("static: light/dark theme toggle is wired and persisted", indexHtml.indexOf('id="theme-toggle"') !== -1 && indexHtml.indexOf('bsa-theme') !== -1 && appCss.indexOf(':root[data-theme="light"]') !== -1 && appJs.indexOf("function wireTheme()") !== -1 && appJs.indexOf('localStorage.setItem("bsa-theme"') !== -1);
 check("static: Access-style preview columns have explicit role widths", appCss.indexOf("table-layout: fixed") !== -1 && appJs.indexOf("previewColWidth") !== -1 && appJs.indexOf("previewTableWidth") !== -1 && appJs.indexOf("<colgroup>") !== -1);
