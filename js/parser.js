@@ -142,7 +142,7 @@
     balance: ["RUNNING BALANCE", "ACCOUNT BALANCE", "AVAILABLE BALANCE", "CURRENT BALANCE", "CLOSING BALANCE", "BALANCE", "BAL"],
     amount: ["TRANSACTION AMOUNT", "AMOUNT", "AMT"],
     drcr: ["TRANSACTION TYPE", "DR / CR", "DR/CR", "CR/DR", "INDICATOR", "TYPE", "D/C"],
-    reference: ["TRANSACTION REF", "REFERENCE NO", "INSTRUMENT NO", "CHEQUE NO", "TRANS REF", "REFERENCE", "REF NO", "CHQ NO", "REF"]
+    reference: ["TRANSACTION REF", "REFERENCE NUMBER", "REFERENCE NO", "INSTRUMENT NO", "CHEQUE NO", "TRANS REF", "REFERENCE", "REF NO", "CHQ NO", "REF"]
   };
 
   /* Labels that often sit in a statement's table header but carry nothing
@@ -950,6 +950,24 @@
     return { cells: headerCells.length ? headerCells : cells, labels: labels, map: map, hasDate: map.date !== undefined };
   }
 
+  function lineText(line) {
+    return line ? line.items.map(function (it) { return it.str; }).join(" ").replace(/\s+/g, " ").trim() : "";
+  }
+
+  function pdfMaybeAddStackedReferenceNumber(header, prevLine, nextLine) {
+    if (!header || header.map.reference !== undefined || !prevLine || !nextLine) return header;
+    var prevText = lineText(prevLine), nextText = lineText(nextLine);
+    if (!/^r\s*e\s*f\s*e\s*r\s*e\s*n\s*c\s*e$/i.test(prevText) || !/^number$/i.test(nextText)) return header;
+    var refItems = prevLine.items.concat(nextLine.items);
+    var lo = Math.min.apply(null, refItems.map(function (it) { return it.x; }));
+    var hi = Math.max.apply(null, refItems.map(function (it) { return it.x + it.w; }));
+    var cells = header.cells.concat([{ lo: lo, hi: hi, items: refItems, text: "Reference Number", consumeBelow: true }])
+      .sort(function (a, b) { return a.lo - b.lo; });
+    var rebuilt = pdfHeaderFromCells(cells);
+    rebuilt.consumeBelow = true;
+    return pdfHeaderQualifies(rebuilt) ? rebuilt : header;
+  }
+
   function pdfHeaderQualifies(h) { return !!h && h.labels >= 4 && (h.hasDate || h.labels >= 5); }
 
   /** Column boundaries = midpoints between the header labels' x-extents.
@@ -1046,6 +1064,7 @@
         var pick = null, usedTwo = false;
         if (pdfHeaderQualifies(one)) pick = one;
         if (pdfHeaderQualifies(two) && (!pick || two.labels > one.labels)) { pick = two; usedTwo = true; }
+        if (pick) pick = pdfMaybeAddStackedReferenceNumber(pick, lines[i - 1], lines[i + 1]);
         // a repeated page header refreshes the anchors, but an annex table
         // of a DIFFERENT shape (e.g. a wallet's interest section) must not —
         // its rows stay on the main table's columns
@@ -1057,7 +1076,7 @@
             headerPushed = true;
             headerShape = pick.cells.length;
           }
-          if (usedTwo) i++; // consume the second header line
+          if (usedTwo || pick.consumeBelow) i++; // consume the second header line
           continue;
         }
         if (!anchors) { // hero section: gap-based cells for metadata mining
