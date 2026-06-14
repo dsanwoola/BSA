@@ -6,7 +6,7 @@
 (function () {
   "use strict";
 
-  var APP_BUILD = 19; // shown in the header so stale cached code is obvious
+  var APP_BUILD = 20; // shown in the header so stale cached code is obvious
 
   var PARSER = window.CBN_PARSER, ENGINE = window.CBN_ENGINE,
       REPORT = window.CBN_REPORT, RULES = window.CBN_RULES;
@@ -121,6 +121,9 @@
   function wireUpload() {
     var dz = $("#dropzone"), fi = $("#file-input");
     dz.addEventListener("click", function () { fi.click(); });
+    dz.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fi.click(); }
+    });
     dz.addEventListener("dragover", function (e) { e.preventDefault(); dz.classList.add("over"); });
     dz.addEventListener("dragleave", function () { dz.classList.remove("over"); });
     dz.addEventListener("drop", function (e) {
@@ -586,9 +589,10 @@
       var letter = REPORT.demandLetter(state.audit, state.ctx);
       if (!letter) return;
       $("#letter-text").value = letter;
-      $("#letter-modal").classList.add("open");
+      openLetterModal();
     });
-    $("#btn-letter-close").addEventListener("click", function () { $("#letter-modal").classList.remove("open"); });
+    $("#btn-letter-close").addEventListener("click", closeLetterModal);
+    $("#letter-modal").addEventListener("keydown", trapLetterModalFocus);
     $("#btn-letter-copy").addEventListener("click", function () {
       var ta = $("#letter-text");
       ta.select();
@@ -604,6 +608,35 @@
       state.rows = null; state.txns = null; state.audit = null; state.ctx.overrides = {};
       gotoStep("step-upload");
     });
+  }
+
+
+  function openLetterModal() {
+    var modal = $("#letter-modal");
+    modal.classList.add("open");
+    modal.setAttribute("aria-hidden", "false");
+    setTimeout(function () { $("#letter-text").focus(); }, 0);
+  }
+
+  function closeLetterModal() {
+    var modal = $("#letter-modal");
+    modal.classList.remove("open");
+    modal.setAttribute("aria-hidden", "true");
+    var btn = $("#btn-letter");
+    if (btn && btn.style.display !== "none") btn.focus();
+  }
+
+  function trapLetterModalFocus(e) {
+    if (e.key === "Escape") { closeLetterModal(); return; }
+    if (e.key !== "Tab") return;
+    var modal = $("#letter-modal");
+    if (!modal.classList.contains("open")) return;
+    var focusables = Array.prototype.slice.call(modal.querySelectorAll("textarea, button, [href], input, select, [tabindex]:not([tabindex='-1'])"))
+      .filter(function (el) { return !el.disabled && el.offsetParent !== null; });
+    if (!focusables.length) return;
+    var first = focusables[0], last = focusables[focusables.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
   }
 
   function download(name, content, mime) {

@@ -188,6 +188,7 @@
   /* ---------------- printable report header ---------------- */
   function reportMeta(audit, ctx, src) {
     var s = audit.summary;
+    var rulesMeta = (typeof global !== "undefined" && global.CBN_RULES && global.CBN_RULES.metadata) ? global.CBN_RULES.metadata : null;
     src = src || {};
     var srcLine = "";
     if (src.fileName) {
@@ -200,6 +201,7 @@
       '<div><strong>Account type:</strong> ' + esc(ctx.accountType) + " (" + esc(ctx.holderType) + (ctx.salaryAccount ? ", salary account" : "") + ")</div>" +
       '<div><strong>Transactions:</strong> ' + s.txnCount + " &nbsp; <strong>Charge lines:</strong> " + s.chargeCount + "</div>" +
       '<div><strong>Audited against:</strong> CBN Guide to Charges (eff. 1 Jan 2020), ATM Fee Circular (eff. 1 Mar 2025), Finance Act 2020 (EMTL), Nigeria Tax Act 2025 (stamp duty, eff. 1 Jan 2026), CBN Cashless Policy circulars</div>' +
+      (rulesMeta ? '<div><strong>Rules version:</strong> ' + esc(rulesMeta.version) + ' &nbsp; <strong>Last reviewed:</strong> ' + esc(rulesMeta.lastReviewed) + '</div>' : '') +
       "</div>";
   }
 

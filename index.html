@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bank Charge Auditor — CBN Compliance Check for Nigerian Bank Statements</title>
-<meta name="description" content="Audit any Nigerian bank statement against the official CBN Guide to Bank Charges. Finds illegal and excess charges, computes your refund, and drafts the demand letter. 100% private — runs on your device.">
-<link rel="stylesheet" href="css/app.css?v=19">
+<meta name="description" content="Audit major Nigerian bank statements against the official CBN Guide to Bank Charges, with guided import for other layouts. Finds illegal and excess charges, computes your refund, and drafts the demand letter. 100% private — runs on your device.">
+<link rel="stylesheet" href="css/app.css?v=20">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Cpath fill='%232ee59d' d='M24 2 6 10v12c0 11 7.6 21.4 18 24 10.4-2.6 18-13 18-24V10L24 2z'/%3E%3Ctext x='24' y='32' font-size='22' font-weight='bold' text-anchor='middle' fill='%230b1210'%3E₦%3C/text%3E%3C/svg%3E">
 </head>
 <body>
@@ -18,7 +18,7 @@
     </svg>
     <div class="head-txt">
       <h1>Bank Charge <em>Auditor</em></h1>
-      <p>Audits any Nigerian bank statement against the official CBN Guide to Bank Charges — and never guesses.</p>
+      <p>Audits major Nigerian bank statements against the official CBN Guide to Bank Charges — with guided import for other layouts, and never guesses.</p>
     </div>
     <span class="privacy-pill">🔒 100% on your device — nothing is uploaded</span>
     <span class="build-badge" id="build-badge">build …</span>
@@ -73,7 +73,7 @@
   <section class="step-section" id="step-upload">
     <div class="panel">
       <h2>Add the bank statement</h2>
-      <p class="lead">Works with statements from any Nigerian bank — GTBank, Access, Zenith, UBA, First Bank, Stanbic, Fidelity, FCMB, Kuda, OPay and more. CSV or Excel exports from internet banking give the most reliable read; text-based PDF statements also work.</p>
+      <p class="lead">Supports major Nigerian bank statements, with guided import for other layouts — GTBank/GTW, Fidelity, OPay and more as beta fixtures expand. CSV or Excel exports from internet banking give the most reliable read; text-based PDF statements also work.</p>
 
       <div class="dropzone" id="dropzone" role="button" tabindex="0" aria-label="Upload statement file">
         <div class="dz-icon">📄</div>
@@ -199,17 +199,18 @@
   <footer>
     <p><strong>How accuracy is protected:</strong> every rule in this auditor is encoded from the CBN <em>Guide to Charges by Banks, Other Financial and Non-Bank Financial Institutions</em> (effective 1 January 2020), the CBN ATM Fee Circular of 10 February 2025, the Finance Act 2020 (EMTL) and the Nigeria Tax Act 2025, and is applied <em>by date</em> — each transaction is judged by the rule in force on its day. A violation is only declared when the charge exceeds the cap under the most generous lawful reading; anything uncertain is marked “needs review”, never guessed.</p>
     <p class="no-print">⚖ This tool produces a documented audit, not legal advice. Rules current as of June 2026. Your bank's written response and the CBN Consumer Protection Department (cpd@cbn.gov.ng) are the final authorities on any dispute. Privacy: this page makes no network requests with your data — your statement never leaves your device.</p>
+    <p class="no-print"><strong>Browser support:</strong> best used on current Chrome, Edge, Safari, or Firefox. Large PDFs may be slow on low-end phones; CSV/Excel exports are recommended for very large statements.</p>
   </footer>
 </div>
 
 <script src="vendor/xlsx.full.min.js"></script>
 <script src="vendor/pdf.min.js"></script>
 <script src="vendor/pdf.worker.min.js"></script>
-<script src="js/rules.js?v=19"></script>
-<script src="js/patterns.js?v=19"></script>
-<script src="js/engine.js?v=19"></script>
-<script src="js/parser.js?v=19"></script>
-<script src="js/report.js?v=19"></script>
-<script src="js/app.js?v=19"></script>
+<script src="js/rules.js?v=20"></script>
+<script src="js/patterns.js?v=20"></script>
+<script src="js/engine.js?v=20"></script>
+<script src="js/parser.js?v=20"></script>
+<script src="js/report.js?v=20"></script>
+<script src="js/app.js?v=20"></script>
 </body>
 </html>
