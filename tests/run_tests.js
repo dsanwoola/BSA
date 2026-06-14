@@ -770,23 +770,24 @@ check("ragged: normal rows untouched", rbuilt.txns[1].debit === 6);
 
 
 /* ---------------- Wema/ALAT PDF-style wrapped date/reference cells ---------------- */
-var wemaParsedDate = PARSER.parseDate("05-Jan- M122871 2026");
-check("date: Wema wrapped date+reference+year parses", wemaParsedDate && wemaParsedDate.getFullYear() === 2026 && wemaParsedDate.getMonth() === 0 && wemaParsedDate.getDate() === 5);
-var wemaRows = [
-  ["Account Statement"],
-  ["Opening Balance", "Closing Balance", "Start Date", "End Date"],
-  ["₦ 85.31", "₦ 16,859.53", "01-Jan-2026", "31-Jan-2026"],
-  ["R e f e r e n c e"],
-  ["Date", "Transaction Details", "Credit( ₦ )", "Debit( ₦ )", "Balance( ₦ )"],
-  ["Number", "", "", "", ""],
-  ["05-Jan- M122871 2026", "SMS Alert Charges for NOV 25 to DEC 24, 2025", "", "66.00", "85.31"],
-  ["09-Jan- S42709800 2026", "NIP TRANSFER FROM CUSTOMER", "140,000.00", "", "140,085.31"],
-  ["12-Jan- S44386772 2026", "COMM ALAT NIP TRANSFER TO CUSTOMER", "", "25.00", "140,060.31"]
+var wemaPdfPage = [
+  { y: 398, items: [pit(65, 41, "R e f e r e n c e", 398)] },
+  { y: 392, items: [pit(21, 18, "Date", 392), pit(136, 75, "Transaction Details", 392), pit(431, 27, "Credit(", 392), pit(458, 5, "₦", 392), pit(463, 3, ")", 392), pit(482, 24, "Debit(", 392), pit(506, 5, "₦", 392), pit(511, 3, ")", 392), pit(531, 35, "Balance(", 392), pit(566, 5, "₦", 392), pit(571, 3, ")", 392)] },
+  { y: 386, items: [pit(65, 31, "Number", 386)] },
+  { y: 364, items: [pit(19, 29, "05-Jan-", 364)] },
+  { y: 358, items: [pit(64, 26, "M122871", 358), pit(134, 157, "SMS Alert Charges for NOV 25 to DEC 24, 2025", 358), pit(481, 19, "66.00", 358), pit(529, 16, "85.31", 358)] },
+  { y: 352, items: [pit(19, 17, "2026", 352)] },
+  { y: 328, items: [pit(19, 29, "09-Jan-", 328)] },
+  { y: 322, items: [pit(64, 42, "S42709800", 322), pit(134, 155, "NIP TRANSFER FROM CUSTOMER", 322), pit(431, 52, "140,000.00", 322), pit(529, 46, "140,085.31", 322)] },
+  { y: 316, items: [pit(19, 17, "2026", 316)] }
 ];
-var wemaDet = PARSER.detectColumns(wemaRows);
-check("detectColumns: Wema header row detected", wemaDet && wemaDet.headerRow === 4 && wemaDet.complete);
-var wemaBuilt = PARSER.buildTransactions(wemaRows, wemaDet.headerRow, wemaDet.map);
-check("wema: wrapped date/reference rows become transactions", wemaBuilt.txns.length === 3 && wemaBuilt.problems.length === 0, JSON.stringify(wemaBuilt.problems));
+var wemaPdfRows = PDF.assemble([wemaPdfPage]);
+var wemaPdfDet = PARSER.detectColumns(wemaPdfRows);
+check("pdf/wema: stacked Reference Number is added as its own column", wemaPdfDet && wemaPdfDet.map.reference === 1 && wemaPdfRows[wemaPdfDet.headerRow][1] === "Reference Number", JSON.stringify(wemaPdfRows));
+check("pdf/wema: date and reference separated in assembled rows", wemaPdfRows[wemaPdfDet.headerRow + 1][0] === "05-Jan- 2026" && wemaPdfRows[wemaPdfDet.headerRow + 1][1] === "M122871", JSON.stringify(wemaPdfRows[wemaPdfDet.headerRow + 1]));
+var wemaBuilt = PARSER.buildTransactions(wemaPdfRows, wemaPdfDet.headerRow, wemaPdfDet.map);
+check("wema: separated date/reference rows become transactions", wemaBuilt.txns.length === 2 && wemaBuilt.problems.length === 0, JSON.stringify(wemaBuilt.problems));
+check("wema: reference kept out of date and included in narration", wemaBuilt.txns[0].date.getFullYear() === 2026 && /M122871/.test(wemaBuilt.txns[0].narration));
 check("wema: first debit and second credit parsed", wemaBuilt.txns[0].debit === 66 && wemaBuilt.txns[1].credit === 140000);
 check("wema: balance integrity passes", PARSER.integrityCheck(wemaBuilt.txns).ratio === 1);
 
@@ -835,7 +836,7 @@ var appJs = fs.readFileSync(__dirname + "/../js/app.js", "utf8");
 var betaGuide = fs.readFileSync(__dirname + "/../BETA_TESTING.md", "utf8");
 check("static: beta guide appears in app", indexHtml.indexOf("Beta tester checklist") !== -1 && indexHtml.indexOf("anonymized parser diagnostic") !== -1);
 check("static: BETA_TESTING documents privacy-safe diagnostics", betaGuide.indexOf("anonymized parser diagnostic") !== -1 && betaGuide.indexOf("must not contain names") !== -1);
-check("static: APP_BUILD and cache bust agree on 26", appJs.indexOf("APP_BUILD = 26") !== -1 && (indexHtml.match(/v=26/g) || []).length >= 6);
+check("static: APP_BUILD and cache bust agree on 27", appJs.indexOf("APP_BUILD = 27") !== -1 && (indexHtml.match(/v=27/g) || []).length >= 6);
 
 /* ============== REAL-STATEMENT FIXTURES (the training set) ==============
  * Every real bank statement we have debugged is captured as a fixture
