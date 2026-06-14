@@ -813,7 +813,7 @@ var appJs = fs.readFileSync(__dirname + "/../js/app.js", "utf8");
 var betaGuide = fs.readFileSync(__dirname + "/../BETA_TESTING.md", "utf8");
 check("static: beta guide appears in app", indexHtml.indexOf("Beta tester checklist") !== -1 && indexHtml.indexOf("anonymized parser diagnostic") !== -1);
 check("static: BETA_TESTING documents privacy-safe diagnostics", betaGuide.indexOf("anonymized parser diagnostic") !== -1 && betaGuide.indexOf("must not contain names") !== -1);
-check("static: APP_BUILD and cache bust agree on 23", appJs.indexOf("APP_BUILD = 23") !== -1 && (indexHtml.match(/v=23/g) || []).length >= 6);
+check("static: APP_BUILD and cache bust agree on 24", appJs.indexOf("APP_BUILD = 24") !== -1 && (indexHtml.match(/v=24/g) || []).length >= 6);
 
 /* ============== REAL-STATEMENT FIXTURES (the training set) ==============
  * Every real bank statement we have debugged is captured as a fixture
