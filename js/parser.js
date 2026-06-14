@@ -139,6 +139,17 @@
     return drcr ? { amount: n, drcr: drcr } : n;
   }
 
+  function parseMoneyColumn(v) {
+    var parsed = parseAmount(v);
+    if (parsed !== null) return parsed;
+    var raw = String(v == null ? "" : v).trim();
+    if (!raw) return 0;
+    var m = raw.match(/(?:₦|NGN\s*|\bN(?=\s*\d))\s*(-?[\d,]+(?:\.\d{1,2})?)/i);
+    if (m) return parseAmount(m[1]);
+    if (!/\d/.test(raw)) return 0;
+    return null;
+  }
+
   /* ------------------------- column detection ------------------------- */
 
   /* Nigerian banks label their transaction-table columns in many ways and
@@ -263,8 +274,8 @@
     { key: "closingBalance", kind: "amount", re: /CLOSING\s*BALANCE|BALANCE\s*C\/?F\b|CARRIED\s*FORWARD|END(ING)?\s*BALANCE/ },
     { key: "debitCount", kind: "amount", re: /DEBIT\s*COUNT|COUNT\s*OF\s*DEBITS?|NO\.?\s*OF\s*DEBITS?/ },
     { key: "creditCount", kind: "amount", re: /CREDIT\s*COUNT|COUNT\s*OF\s*CREDITS?|NO\.?\s*OF\s*CREDITS?/ },
-    { key: "totalDebit", kind: "amount", re: /TOTAL\s*(DEBITS?|WITHDRAWALS?|MONEY\s*OUT|OUTFLOW|DR)\b|(DEBITS?|WITHDRAWALS?)\s*TOTAL/ },
-    { key: "totalCredit", kind: "amount", re: /TOTAL\s*(CREDITS?|LODGEMENTS?|DEPOSITS?|MONEY\s*IN|INFLOW|CR)\b|(CREDITS?|LODGEMENTS?)\s*TOTAL/ },
+    { key: "totalDebit", kind: "amount", re: /TOTAL\s*(DEBITS?|WITHDRAWALS?|MONEY\s*OUT|OUTFLOW|DR)\b|^MONEY\s*OUT$|(DEBITS?|WITHDRAWALS?)\s*TOTAL/ },
+    { key: "totalCredit", kind: "amount", re: /TOTAL\s*(CREDITS?|LODGEMENTS?|DEPOSITS?|MONEY\s*IN|INFLOW|CR)\b|^MONEY\s*IN$|(CREDITS?|LODGEMENTS?)\s*TOTAL/ },
     { key: "accountNumber", kind: "acctno", re: /AC+OUNT\s*(NO|NUMBER)|\bNUBAN\b|\bACCT?\s*(NO|NUM)\b/ },
     { key: "accountName", kind: "text", re: /ACCOUNT\s*NAME|CUSTOMER\s*NAME|ACCOUNT\s*HOLDER/ },
     { key: "accountTypeRaw", kind: "text", re: /ACCOUNT\s*TYPE|PRODUCT\s*NAME|\bPRODUCT\b|ACCOUNT\s*CLASS|SCHEME\s*(TYPE|NAME)|ACCOUNT\s*CATEGORY/ },
@@ -306,6 +317,7 @@
       var row = rows[r];
       var inHero = headerRow === null || headerRow === undefined || r < headerRow;
       if (inHero) assignStackedSummaryRow(meta, row, rows[r + 1]);
+      if (inHero) assignNearbySplitBalances(meta, row, rows, r);
       for (var c = 0; c < row.length; c++) {
         var cell = row[c];
         if (cell == null || cell === "") continue;
@@ -401,6 +413,28 @@
     labelDefs.forEach(function (def, idx) {
       if (meta[def.key] === null) meta[def.key] = numericValues[idx];
     });
+  }
+
+  function assignNearbySplitBalances(meta, labelRow, rows, rowIdx) {
+    if (!labelRow || labelRow.length > 2 || (meta.openingBalance !== null && meta.closingBalance !== null)) return;
+    var text = labelRow.map(function (c) { return String(c == null ? "" : c); }).join(" ").toUpperCase();
+    if (!/OPENING\s*BALANCE/.test(text) || !/CLOSING\s*BALANCE/.test(text)) return;
+    var vals = [];
+    for (var rr = rowIdx + 1; rr < rows.length && rr <= rowIdx + 4; rr++) {
+      (rows[rr] || []).forEach(function (cell) {
+        var raw = String(cell == null ? "" : cell).trim();
+        if (!raw || parseDate(raw)) return;
+        var m = raw.match(/(?:₦|NGN\s*|\bN(?=\s*\d))?\s*(-?[\d,]+(?:\.\d{1,2})?)/i);
+        if (!m) return;
+        var v = parseAmount(m[1]);
+        if (typeof v === "number") vals.push(Math.abs(v));
+      });
+      if (vals.length >= 2) break;
+    }
+    if (vals.length >= 2) {
+      if (meta.openingBalance === null) meta.openingBalance = vals[0];
+      if (meta.closingBalance === null) meta.closingBalance = vals[1];
+    }
   }
 
   function assignMeta(meta, def, candidates) {
@@ -589,8 +623,8 @@
       // row A date cell: "2025-02-18T15:"; row B date cell: "24:02".
       // Rejoin only when the previous visual row supplied an incomplete ISO
       // date/time prefix and the current row is exactly the missing time tail.
-      if (!date && pendingDatePrefix && /^\d{1,2}:\d{2}$/.test(rawDateText)) {
-        date = parseDate(pendingDatePrefix + rawDateText);
+      if (!date && pendingDatePrefix && /^\d{1,2}:\d{2}(:\d{2})?$/.test(rawDateText)) {
+        date = parseDate(pendingDatePrefix + (pendingDatePrefix.slice(-1) === ":" ? "" : " ") + rawDateText);
       }
       // fallback chain: Trans Date -> Value Date -> a clean date token
       // inside either cell. Only rows failing ALL of these are excluded.
@@ -639,8 +673,8 @@
 
       var debit = 0, credit = 0, balance = null;
       if (map.debit !== undefined || map.credit !== undefined) {
-        var dv = map.debit !== undefined ? parseAmount(row[map.debit]) : 0;
-        var cv = map.credit !== undefined ? parseAmount(row[map.credit]) : 0;
+        var dv = map.debit !== undefined ? parseMoneyColumn(row[map.debit]) : 0;
+        var cv = map.credit !== undefined ? parseMoneyColumn(row[map.credit]) : 0;
         if (dv === null || cv === null) {
           problems.push({ row: r + 1, issue: "Unreadable amount — row was NOT audited", data: row.join(" | ").slice(0, 140) });
           continue;
@@ -673,12 +707,13 @@
       if (debit === 0 && credit === 0) {
         var partialIso = rawDateText.match(/^(\d{4}-\d{2}-\d{2}T\d{1,2}:)\s*$/);
         if (partialIso) pendingDatePrefix = partialIso[1];
+        else if (date && /^\d{1,2}[\/\-.]\d{1,2}[\/\-.]\d{2,4}$/.test(rawDateText)) pendingDatePrefix = rawDateText;
         // a "Balance B/F / opening balance" table row carries the opening figure
         if (balance !== null && txns.length === 0 && /B\/?F|BROUGHT\s*F|OPENING/i.test(narration)) openingBalance = balance;
         continue; // non-monetary row
       }
 
-      lastTxn = { index: txns.length, date: date, narration: narration, debit: debit, credit: credit, balance: balance };
+      lastTxn = { index: txns.length, date: date, rawDateText: rawDateText, narration: narration, debit: debit, credit: credit, balance: balance };
       pendingDatePrefix = null;
       txns.push(lastTxn);
     }
@@ -691,7 +726,7 @@
     function rowHasMoney(row, map) {
       var cells = [map.debit, map.credit, map.amount].filter(function (x) { return x !== undefined; });
       return cells.some(function (c) {
-        var v = parseAmount(row[c]);
+        var v = parseMoneyColumn(row[c]);
         var n = (v && typeof v === "object") ? v.amount : v;
         return typeof n === "number" && n !== 0;
       });
@@ -781,6 +816,9 @@
       var rare = balFreq[head.balance] <= 3;
       for (var k = out.length - 1; k >= Math.max(0, out.length - lookback); k--) {
         var c = out[k];
+        var cRaw = String(c.rawDateText || ""), hRaw = String(head.rawDateText || "");
+        var bothHaveTime = /\d{1,2}:\d{2}/.test(cRaw) && /\d{1,2}:\d{2}/.test(hRaw);
+        if (bothHaveTime && cRaw !== hRaw) continue;
         if (c.balance === head.balance && c.debit === head.debit && c.credit === head.credit &&
             c.date && head.date && c.date.getTime() === head.date.getTime() &&
             sameTxnFingerprint(c.narration, head.narration, rare)) return c;

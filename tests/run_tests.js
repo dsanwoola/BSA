@@ -427,6 +427,26 @@ var premiumMeta = PARSER.extractStatementMeta(premiumRows, premiumDet.headerRow)
 check("premium: trailing reference date fragment stays in 2026", premiumBuilt.txns.length === 2 && premiumBuilt.txns[0].date.getFullYear() === 2026 && premiumBuilt.txns[0].date.getMonth() === 3, JSON.stringify(premiumBuilt.txns));
 check("premium: misspelled Acccount Number and long-form period mined", premiumMeta && premiumMeta.accountNumber === "0111603118" && premiumMeta.periodFrom && premiumMeta.periodFrom.getDate() === 1 && premiumMeta.periodTo && premiumMeta.periodTo.getDate() === 30, JSON.stringify(premiumMeta));
 
+var kudaRows = [
+  ["Opening Balance", "Closing Balance"],
+  ["LAGOS"],
+  ["₦1,000.00"],
+  ["₦900.00"],
+  ["Summary"],
+  ["Money In", "Money Out"],
+  ["₦0.00", "₦100.00"],
+  ["Date/Time", "Money In", "Money Out", "Description", "Balance"],
+  ["01/01/26", "", "outward", "stamp duty on electronic", ""],
+  ["10:00:00", "", "₦50.00 transfer", "funds transfer - 2003845475", "₦950.00"],
+  ["01/01/26 10:01:00", "", "outward ₦50.00 transfer", "stamp duty on electronic funds transfer - 2003845475", "₦900.00"]
+];
+var kudaDet = PARSER.detectColumns(kudaRows);
+var kudaBuilt = PARSER.buildTransactions(kudaRows, kudaDet.headerRow, kudaDet.map);
+var kudaMeta = PARSER.extractStatementMeta(kudaRows, kudaDet.headerRow);
+var kudaRec = PARSER.reconcileWithMeta(kudaBuilt.txns, kudaMeta);
+check("kuda: mixed naira amount cells and split date/time rows parse", kudaBuilt.txns.length === 2 && kudaBuilt.problems.length === 0 && kudaBuilt.txns[0].debit === 50 && kudaBuilt.txns[0].date.getFullYear() === 2026, JSON.stringify(kudaBuilt));
+check("kuda: summary Money In/Out and split balances reconcile", kudaMeta && kudaMeta.openingBalance === 1000 && kudaMeta.closingBalance === 900 && kudaMeta.totalDebit === 100 && kudaRec && kudaRec.allOk, JSON.stringify({ meta: kudaMeta, rec: kudaRec }));
+
 var hres = ENGINE.audit(hbuilt.txns.map(function (t, i) {
   return { index: i, date: t.date, narration: t.narration, debit: t.debit, credit: t.credit };
 }), CTX_SAVINGS);
@@ -889,7 +909,7 @@ var appCss = fs.readFileSync(__dirname + "/../css/app.css", "utf8");
 var betaGuide = fs.readFileSync(__dirname + "/../BETA_TESTING.md", "utf8");
 check("static: beta guide appears in app", indexHtml.indexOf("Beta tester checklist") !== -1 && indexHtml.indexOf("anonymized parser diagnostic") !== -1);
 check("static: BETA_TESTING documents privacy-safe diagnostics", betaGuide.indexOf("anonymized parser diagnostic") !== -1 && betaGuide.indexOf("must not contain names") !== -1);
-check("static: APP_BUILD and cache bust agree on 37", appJs.indexOf("APP_BUILD = 37") !== -1 && (indexHtml.match(/v=37/g) || []).length >= 6);
+check("static: APP_BUILD and cache bust agree on 38", appJs.indexOf("APP_BUILD = 38") !== -1 && (indexHtml.match(/v=38/g) || []).length >= 6);
 check("static: global back button is wired across later steps", indexHtml.indexOf('id="btn-global-back"') !== -1 && indexHtml.indexOf('id="btn-results-back"') !== -1 && appJs.indexOf("function goBack()") !== -1 && appJs.indexOf("PREV_STEP") !== -1);
 check("static: light/dark theme toggle is wired and persisted", indexHtml.indexOf('id="theme-toggle"') !== -1 && indexHtml.indexOf('bsa-theme') !== -1 && appCss.indexOf(':root[data-theme="light"]') !== -1 && appJs.indexOf("function wireTheme()") !== -1 && appJs.indexOf('localStorage.setItem("bsa-theme"') !== -1);
 check("static: Access-style preview columns have explicit role widths", appCss.indexOf("table-layout: fixed") !== -1 && appJs.indexOf("previewColWidth") !== -1 && appJs.indexOf("previewTableWidth") !== -1 && appJs.indexOf("<colgroup>") !== -1);
