@@ -97,3 +97,7 @@ reference/          source documents used to build the rules
 - "Cost recovery" and "negotiable" charges are reported as advisory with the governing rule, because the statement alone cannot prove them right or wrong.
 
 ⚖ This tool produces a documented audit, not legal advice. Unresolved complaints escalate to the CBN Consumer Protection Department: **cpd@cbn.gov.ng**.
+
+## Private beta
+
+Use `BETA_TESTING.md` to guide closed beta testers, collect parser failures safely, and preserve the no-upload privacy promise.

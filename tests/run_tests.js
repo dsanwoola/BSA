@@ -3,6 +3,7 @@
  * Verifies the parser and the audit engine against known CBN scenarios.
  * ========================================================================= */
 "use strict";
+var fs = require("fs");
 
 var PARSER = require("../js/parser.js");
 var ENGINE = require("../js/engine.js");
@@ -783,6 +784,16 @@ check("diagnostic: excludes raw narration/name", sjson.indexOf("DEEN SANWOOLA") 
 check("diagnostic: sanitizes unrecognized header labels", PARSER.anonymizedLayoutDiagnostic([["DEEN SANWOOLA", "Narration"], ["abc", "x"]], 0, {}, {}, null, null, {}).table.headerLabels[0].indexOf("DEEN") === -1);
 check("diagnostic: excludes account number", sjson.indexOf("0123456789") === -1);
 check("diagnostic: excludes transaction amounts and balances", sjson.indexOf("10,000") === -1 && sjson.indexOf("90000") === -1 && sjson.indexOf("89,994") === -1);
+
+
+
+/* ---------------- static beta-launch checks ---------------- */
+var indexHtml = fs.readFileSync(__dirname + "/../index.html", "utf8");
+var appJs = fs.readFileSync(__dirname + "/../js/app.js", "utf8");
+var betaGuide = fs.readFileSync(__dirname + "/../BETA_TESTING.md", "utf8");
+check("static: beta guide appears in app", indexHtml.indexOf("Beta tester checklist") !== -1 && indexHtml.indexOf("anonymized parser diagnostic") !== -1);
+check("static: BETA_TESTING documents privacy-safe diagnostics", betaGuide.indexOf("anonymized parser diagnostic") !== -1 && betaGuide.indexOf("must not contain names") !== -1);
+check("static: APP_BUILD and cache bust agree on 22", appJs.indexOf("APP_BUILD = 22") !== -1 && (indexHtml.match(/v=22/g) || []).length >= 6);
 
 /* ============== REAL-STATEMENT FIXTURES (the training set) ==============
  * Every real bank statement we have debugged is captured as a fixture
