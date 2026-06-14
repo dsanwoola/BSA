@@ -385,6 +385,27 @@ check("hero: checksum passes on a complete parse", hrec && hrec.allOk,
 var hrec2 = PARSER.reconcileWithMeta(hbuilt.txns.slice(0, 1), hmeta);
 check("hero: checksum catches a missing row", hrec2 && hrec2.anyFail);
 
+var stackedSummaryRows = [
+  ["Account Statement"],
+  ["Total Credit", "Total Debit"],
+  ["Account Number", "691,100.98", "533,530.15"],
+  ["Credit Count", "Debit Count"],
+  ["Account Type", "2", "2"],
+  ["Opening Balance", "Closing Balance"],
+  ["₦ 124.05", "₦ 157,694.98"],
+  ["Date", "Reference Number", "Transaction Details", "Credit( ₦ )", "Debit( ₦ )", "Balance( ₦ )"],
+  ["01-Apr- 2026", "S84515082", "WTax.Pd", "", "0.10", "124.05"],
+  ["01-Apr- 2026", "S84515082", "Int.Pd", "0.98", "", "125.03"],
+  ["30-Apr- 2026", "S30127267", "Wallet credit", "691,100.00", "", "691,225.03"],
+  ["30-Apr- 2026", "S30127268", "Wallet debit", "", "533,530.05", "157,694.98"]
+];
+var stackedDet = PARSER.detectColumns(stackedSummaryRows);
+var stackedMeta = PARSER.extractStatementMeta(stackedSummaryRows, stackedDet.headerRow);
+check("meta: stacked PalmPay-style totals ignore leading value-row labels", stackedMeta && stackedMeta.totalCredit === 691100.98 && stackedMeta.totalDebit === 533530.15 && stackedMeta.creditCount === 2 && stackedMeta.debitCount === 2, JSON.stringify(stackedMeta));
+var stackedBuilt = PARSER.buildTransactions(stackedSummaryRows, stackedDet.headerRow, stackedDet.map);
+var stackedRec = PARSER.reconcileWithMeta(stackedBuilt.txns, stackedMeta);
+check("meta: stacked PalmPay-style boundary mismatch is classified separately", stackedRec && stackedRec.summaryBoundaryOnly === true, JSON.stringify(stackedRec));
+
 var hres = ENGINE.audit(hbuilt.txns.map(function (t, i) {
   return { index: i, date: t.date, narration: t.narration, debit: t.debit, credit: t.credit };
 }), CTX_SAVINGS);
@@ -847,7 +868,7 @@ var appCss = fs.readFileSync(__dirname + "/../css/app.css", "utf8");
 var betaGuide = fs.readFileSync(__dirname + "/../BETA_TESTING.md", "utf8");
 check("static: beta guide appears in app", indexHtml.indexOf("Beta tester checklist") !== -1 && indexHtml.indexOf("anonymized parser diagnostic") !== -1);
 check("static: BETA_TESTING documents privacy-safe diagnostics", betaGuide.indexOf("anonymized parser diagnostic") !== -1 && betaGuide.indexOf("must not contain names") !== -1);
-check("static: APP_BUILD and cache bust agree on 35", appJs.indexOf("APP_BUILD = 35") !== -1 && (indexHtml.match(/v=35/g) || []).length >= 6);
+check("static: APP_BUILD and cache bust agree on 36", appJs.indexOf("APP_BUILD = 36") !== -1 && (indexHtml.match(/v=36/g) || []).length >= 6);
 check("static: global back button is wired across later steps", indexHtml.indexOf('id="btn-global-back"') !== -1 && indexHtml.indexOf('id="btn-results-back"') !== -1 && appJs.indexOf("function goBack()") !== -1 && appJs.indexOf("PREV_STEP") !== -1);
 check("static: light/dark theme toggle is wired and persisted", indexHtml.indexOf('id="theme-toggle"') !== -1 && indexHtml.indexOf('bsa-theme') !== -1 && appCss.indexOf(':root[data-theme="light"]') !== -1 && appJs.indexOf("function wireTheme()") !== -1 && appJs.indexOf('localStorage.setItem("bsa-theme"') !== -1);
 check("static: Access-style preview columns have explicit role widths", appCss.indexOf("table-layout: fixed") !== -1 && appJs.indexOf("previewColWidth") !== -1 && appJs.indexOf("previewTableWidth") !== -1 && appJs.indexOf("<colgroup>") !== -1);

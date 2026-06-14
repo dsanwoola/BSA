@@ -6,7 +6,7 @@
 (function () {
   "use strict";
 
-  var APP_BUILD = 35; // shown in the header so stale cached code is obvious
+  var APP_BUILD = 36; // shown in the header so stale cached code is obvious
 
   var PARSER = window.CBN_PARSER, ENGINE = window.CBN_ENGINE,
       REPORT = window.CBN_REPORT, RULES = window.CBN_RULES;
@@ -598,8 +598,12 @@
           return '<li class="' + (ch.ok ? "ok" : "fail") + '">' + (ch.ok ? "✓" : "✗") + " <strong>" + REPORT.esc(ch.label) + ":</strong> " + REPORT.esc(ch.detail) + "</li>";
         }).join("") + "</ul>";
       if (rec.anyFail) {
-        msg += " The statement's own summary figures do not match the parsed rows — rows may be missing or misread (or the file may be missing pages). Fix this before trusting the audit.";
-        if (cls === "ok") cls = "warn";
+        if (rec.summaryBoundaryOnly && ic.hasBalance && ic.ratio >= 0.98) {
+          msg += " The transaction rows, totals and closing balance reconcile; only the statement's opening/closing summary arithmetic differs, so this looks like a small inconsistency in the bank's own summary rather than a misread table.";
+        } else {
+          msg += " The statement's own summary figures do not match the parsed rows — rows may be missing or misread (or the file may be missing pages). Fix this before trusting the audit.";
+          if (cls === "ok") cls = "warn";
+        }
       } else {
         msg += " The parsed rows also add up exactly to the statement's own summary totals — the read is provably complete.";
       }
