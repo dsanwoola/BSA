@@ -325,7 +325,7 @@
             }
             candidates.push(str);
           }
-          for (var k = c + 1; k <= c + 3 && k < row.length; k++) pushCandidate(row[k]);
+          for (var k = c + 1; k < row.length; k++) pushCandidate(row[k]);
           var below = rows[r + 1];
           if (below) for (var k2 = c; k2 <= c + 1 && k2 < below.length; k2++) pushCandidate(below[k2]);
           assignMeta(meta, def, candidates);
@@ -348,6 +348,7 @@
       var raw = String(candidates[i]).replace(/^[\s:=\-–]+/, "").trim();
       if (!raw) continue;
       if (def.kind === "amount") {
+        if (parseDate(raw)) continue; // a date below/near the label is not a money value
         var numMatch = raw.match(/-?[\d,]+(\.\d{1,2})?/);
         if (!numMatch) continue;
         var v = parseAmount(numMatch[0]);
