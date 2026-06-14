@@ -144,14 +144,14 @@ header.app-head {
 /* ---------- mapping ---------- */
 .map-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; margin: 14px 0; }
 .map-table { border-collapse: collapse; width: max-content; min-width: 100%; font-size: 13px; table-layout: fixed; }
-.map-table col.w-date { width: 118px; }
-.map-table col.w-value-date { width: 118px; }
-.map-table col.w-narration { width: 360px; }
-.map-table col.w-reference { width: 190px; }
-.map-table col.w-money { width: 135px; }
-.map-table col.w-generic { width: 150px; }
-.map-table th { background: var(--card-2); padding: 8px; border-bottom: 1px solid var(--line); position: sticky; top: 0; }
-.map-table td { padding: 7px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; color: var(--txt-dim); }
+.map-table col.w-date { width: 96px; }
+.map-table col.w-value-date { width: 96px; }
+.map-table col.w-narration { width: 320px; }
+.map-table col.w-reference { width: 155px; }
+.map-table col.w-money { width: 112px; }
+.map-table col.w-generic { width: 125px; }
+.map-table th { background: var(--card-2); padding: 6px 7px; border-bottom: 1px solid var(--line); position: sticky; top: 0; }
+.map-table td { padding: 6px 7px; border-bottom: 1px solid var(--line); white-space: nowrap; color: var(--txt-dim); }
 .map-table tr.hdr-row td { color: var(--gold); font-weight: 700; }
 .role-sel {
   background: var(--bg); color: var(--txt); border: 1px solid var(--line);
@@ -266,8 +266,8 @@ h3.sec + p.sec-sub { color: var(--txt-dim); font-size: 13.5px; margin: 0 0 14px;
 .map-table .c-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .map-table th.c-num .col-label, .map-table th.c-num .role-tag { text-align: right; }
 .map-table .c-date { white-space: nowrap; }
-.map-table td.c-narr { white-space: normal; min-width: 240px; max-width: 380px; word-break: break-word; line-height: 1.5; color: var(--txt); }
-.map-table td.c-ref { white-space: normal; word-break: break-all; max-width: 180px; font-size: 12px; }
+.map-table td.c-narr { white-space: normal; word-break: break-word; line-height: 1.42; color: var(--txt); }
+.map-table td.c-ref { white-space: normal; word-break: break-all; font-size: 12px; }
 
 /* ---------- header-row picker ---------- */
 .hdr-pick { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 4px 0 10px; font-size: 13px; }
