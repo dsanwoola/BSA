@@ -6,7 +6,7 @@
 (function () {
   "use strict";
 
-  var APP_BUILD = 30; // shown in the header so stale cached code is obvious
+  var APP_BUILD = 31; // shown in the header so stale cached code is obvious
 
   var PARSER = window.CBN_PARSER, ENGINE = window.CBN_ENGINE,
       REPORT = window.CBN_REPORT, RULES = window.CBN_RULES;
@@ -279,8 +279,9 @@
 
     // preview: the bank's header labels on top; the row immediately after
     // the header IS the first transaction row
-    var html = '<table class="map-table"><colgroup>';
-    for (c = 0; c < nCols; c++) html += '<col class="' + previewColWidthClass(roleAtColumn(roleMap, c)) + '">';
+    var previewWidth = previewTableWidth(roleMap, nCols);
+    var html = '<table class="map-table" style="width:' + previewWidth + 'px;min-width:' + previewWidth + 'px"><colgroup>';
+    for (c = 0; c < nCols; c++) html += '<col style="width:' + previewColWidth(roleAtColumn(roleMap, c)) + 'px">';
     html += '</colgroup><thead><tr>';
     for (c = 0; c < nCols; c++) {
       html += '<th><div class="col-label">' + REPORT.esc(labels[c]) + '</div><div class="role-tag" data-col="' + c + '"></div></th>';
@@ -320,6 +321,21 @@
     if (role === "reference") return "w-reference";
     if (role === "debit" || role === "credit" || role === "balance" || role === "amount") return "w-money";
     return "w-generic";
+  }
+
+  function previewColWidth(role) {
+    if (role === "date" || role === "drcr") return 96;
+    if (role === "valueDate") return 96;
+    if (role === "narration") return 320;
+    if (role === "reference") return 155;
+    if (role === "debit" || role === "credit" || role === "balance" || role === "amount") return 112;
+    return 125;
+  }
+
+  function previewTableWidth(map, nCols) {
+    var total = 0;
+    for (var c = 0; c < nCols; c++) total += previewColWidth(roleAtColumn(map, c));
+    return Math.max(total, 760);
   }
 
   /** Lets the user move the start of the transaction table if the automatic
@@ -415,7 +431,11 @@
     if (!table) return;
     Array.prototype.forEach.call(table.querySelectorAll("col"), function (col, ci) {
       col.className = previewColWidthClass(rev[ci]);
+      col.style.width = previewColWidth(rev[ci]) + "px";
     });
+    var width = previewTableWidth(rev, table.querySelectorAll("col").length);
+    table.style.width = width + "px";
+    table.style.minWidth = width + "px";
     function colCls(role) {
       if (role === "debit" || role === "credit" || role === "balance" || role === "amount") return "c-num";
       if (role === "date" || role === "drcr") return "c-date";
