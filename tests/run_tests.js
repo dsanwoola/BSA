@@ -833,13 +833,25 @@ check("diagnostic: excludes transaction amounts and balances", sjson.indexOf("10
 /* ---------------- static beta-launch checks ---------------- */
 var indexHtml = fs.readFileSync(__dirname + "/../index.html", "utf8");
 var appJs = fs.readFileSync(__dirname + "/../js/app.js", "utf8");
+var appCss = fs.readFileSync(__dirname + "/../css/app.css", "utf8");
 var betaGuide = fs.readFileSync(__dirname + "/../BETA_TESTING.md", "utf8");
 check("static: beta guide appears in app", indexHtml.indexOf("Beta tester checklist") !== -1 && indexHtml.indexOf("anonymized parser diagnostic") !== -1);
 check("static: BETA_TESTING documents privacy-safe diagnostics", betaGuide.indexOf("anonymized parser diagnostic") !== -1 && betaGuide.indexOf("must not contain names") !== -1);
-check("static: APP_BUILD and cache bust agree on 28", appJs.indexOf("APP_BUILD = 28") !== -1 && (indexHtml.match(/v=28/g) || []).length >= 6);
+check("static: APP_BUILD and cache bust agree on 29", appJs.indexOf("APP_BUILD = 29") !== -1 && (indexHtml.match(/v=29/g) || []).length >= 6);
+check("static: Access-style preview columns have fixed role widths", appCss.indexOf("table-layout: fixed") !== -1 && appCss.indexOf("w-narration") !== -1 && appJs.indexOf("previewColWidthClass") !== -1 && appJs.indexOf("<colgroup>") !== -1);
 check("static: encrypted PDF password modal is present", indexHtml.indexOf('id="pdf-password-modal"') !== -1 && indexHtml.indexOf('id="pdf-password-input"') !== -1 && indexHtml.indexOf('id="btn-pdf-password-unlock"') !== -1);
 check("static: encrypted PDF retry path is wired", appJs.indexOf("err.pdfPasswordRequired") !== -1 && appJs.indexOf("askPdfPassword") !== -1 && appJs.indexOf("pdfPassword: password") !== -1);
 check("static: PDF passwords stay local", indexHtml.indexOf("not uploaded, stored, logged, or sent anywhere") !== -1);
+var accessMetaRows = [
+  ["Account Name:", "SAMPLE BUSINESS"],
+  ["Product Name:", "MPOWER BIZ"],
+  ["Currency:", "NGN"],
+  ["Opening Balance: 131,073.05"],
+  ["Closing Balance:", "130,990.80"],
+  ["Post Date", "Value Date", "Narration", "Ref/Cheque No.", "Debits", "Credits", "Balance"]
+];
+var accessMeta = PARSER.extractStatementMeta(accessMetaRows, 5);
+check("meta: Access currency stays NGN, not neighboring balance label", accessMeta && accessMeta.currency === "NGN" && accessMeta.openingBalance === 131073.05 && accessMeta.closingBalance === 130990.8, JSON.stringify(accessMeta));
 
 /* ============== REAL-STATEMENT FIXTURES (the training set) ==============
  * Every real bank statement we have debugged is captured as a fixture

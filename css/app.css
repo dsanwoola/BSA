@@ -143,7 +143,13 @@ header.app-head {
 
 /* ---------- mapping ---------- */
 .map-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; margin: 14px 0; }
-.map-table { border-collapse: collapse; width: 100%; font-size: 13px; }
+.map-table { border-collapse: collapse; width: max-content; min-width: 100%; font-size: 13px; table-layout: fixed; }
+.map-table col.w-date { width: 118px; }
+.map-table col.w-value-date { width: 118px; }
+.map-table col.w-narration { width: 360px; }
+.map-table col.w-reference { width: 190px; }
+.map-table col.w-money { width: 135px; }
+.map-table col.w-generic { width: 150px; }
 .map-table th { background: var(--card-2); padding: 8px; border-bottom: 1px solid var(--line); position: sticky; top: 0; }
 .map-table td { padding: 7px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; color: var(--txt-dim); }
 .map-table tr.hdr-row td { color: var(--gold); font-weight: 700; }
