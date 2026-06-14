@@ -493,7 +493,7 @@
   var FOOTER_RE = /\bTOTALS?\b|BROUGHT\s*FORWARD|CARRIED\s*FORWARD|\bB\/F\b|\bC\/F\b|OPENING\s*BAL|CLOSING\s*BAL|PAGE\s+\d+\s*(OF|\/)/i;
 
   function buildTransactions(rows, headerRow, map) {
-    var txns = [], problems = [], lastTxn = null, openingBalance = null;
+    var txns = [], problems = [], lastTxn = null, openingBalance = null, pendingDatePrefix = null;
     var headerLen = rows[headerRow] ? rows[headerRow].length : 0;
     for (var r = headerRow + 1; r < rows.length; r++) {
       var row = rows[r];
@@ -513,7 +513,15 @@
           .concat(row.slice(map.narration + extra + 1));
       }
       var rawDate = row[map.date];
+      var rawDateText = String(rawDate == null ? "" : rawDate).trim();
       var date = parseDate(rawDate);
+      // Moniepoint PDFs sometimes split ISO datetimes across visual rows:
+      // row A date cell: "2025-02-18T15:"; row B date cell: "24:02".
+      // Rejoin only when the previous visual row supplied an incomplete ISO
+      // date/time prefix and the current row is exactly the missing time tail.
+      if (!date && pendingDatePrefix && /^\d{1,2}:\d{2}$/.test(rawDateText)) {
+        date = parseDate(pendingDatePrefix + rawDateText);
+      }
       // fallback chain: Trans Date -> Value Date -> a clean date token
       // inside either cell. Only rows failing ALL of these are excluded.
       if (!date && map.valueDate !== undefined && map.valueDate !== map.date) {
@@ -541,7 +549,7 @@
       }
 
       if (!date) {
-        var rawStr = String(rawDate == null ? "" : rawDate).trim();
+        var rawStr = rawDateText;
         // summary/footer lines (totals, B/F-C/F, page numbers) are not transactions
         if (FOOTER_RE.test(row.join(" "))) continue;
         if (!rawStr && lastTxn && rowHasMoney(row, map)) {
@@ -593,12 +601,15 @@
         if (bv !== null && typeof bv === "object") balance = bv.amount;
       }
       if (debit === 0 && credit === 0) {
+        var partialIso = rawDateText.match(/^(\d{4}-\d{2}-\d{2}T\d{1,2}:)\s*$/);
+        if (partialIso) pendingDatePrefix = partialIso[1];
         // a "Balance B/F / opening balance" table row carries the opening figure
         if (balance !== null && txns.length === 0 && /B\/?F|BROUGHT\s*F|OPENING/i.test(narration)) openingBalance = balance;
         continue; // non-monetary row
       }
 
       lastTxn = { index: txns.length, date: date, narration: narration, debit: debit, credit: credit, balance: balance };
+      pendingDatePrefix = null;
       txns.push(lastTxn);
     }
     var repaired = repairChain(txns);
