@@ -492,6 +492,12 @@
     var headerLen = rows[headerRow] ? rows[headerRow].length : 0;
     for (var r = headerRow + 1; r < rows.length; r++) {
       var row = rows[r];
+      var joinedRow = row.join(" ").replace(/\s+/g, " ").trim();
+      // Wema/ALAT can extract the table header as two visual rows:
+      // "Date | Transaction Details | Credit | Debit | Balance" followed by
+      // a standalone "Number" row (the tail of "Reference Number"). It is
+      // header continuation text, not a transaction row.
+      if (/^(reference\s+)?number$/i.test(joinedRow) || /^r\s*e\s*f\s*e\s*r\s*e\s*n\s*c\s*e\s+number$/i.test(joinedRow)) continue;
       // ragged-CSV repair: some banks export unquoted commas inside the
       // narration, splitting it across extra cells and shifting every
       // column after it — re-join the overflow into the narration cell
