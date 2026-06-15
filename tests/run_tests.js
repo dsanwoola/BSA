@@ -551,7 +551,7 @@ var sterlingDet = PARSER.detectColumns(sterlingRows);
 var sterlingBuilt = sterlingDet && PARSER.buildTransactions(sterlingRows, sterlingDet.headerRow, sterlingDet.map);
 var sterlingMeta = sterlingDet && PARSER.extractStatementMeta(sterlingRows, sterlingDet.headerRow);
 var sterlingRec = sterlingBuilt && PARSER.reconcileWithMeta(sterlingBuilt.txns, sterlingMeta);
-check("pdf/sterling: three-line Reference/Session Money In/Out header detected", sterlingDet && sterlingDet.map.date === 0 && sterlingDet.map.valueDate === 1 && sterlingDet.map.reference === 2 && sterlingDet.map.credit === 4 && sterlingDet.map.debit === 5 && sterlingDet.map.balance === 6, JSON.stringify(sterlingRows[sterlingDet && sterlingDet.headerRow]));
+check("pdf/sterling: three-line Reference/Session Money In/Out header maps combined narration and leaves Reference blank", sterlingDet && sterlingDet.map.date === 0 && sterlingDet.map.valueDate === 1 && sterlingDet.map.narration === 2 && sterlingDet.map.reference === undefined && sterlingDet.map.credit === 3 && sterlingDet.map.debit === 4 && sterlingDet.map.balance === 5 && sterlingRows[sterlingDet.headerRow][2] === "Reference / Session Channel Narration", JSON.stringify(sterlingRows[sterlingDet && sterlingDet.headerRow]));
 check("pdf/sterling: slash month dates and merged narration/reference parse", sterlingBuilt && sterlingBuilt.txns.length === 1 && sterlingBuilt.txns[0].date.getMonth() === 4 && sterlingBuilt.txns[0].debit === 200 && /Airtime purchase/.test(sterlingBuilt.txns[0].narration), JSON.stringify(sterlingBuilt && sterlingBuilt.problems));
 check("pdf/sterling: above-label opening and counted totals reconcile", sterlingRec && sterlingRec.allOk, sterlingRec && JSON.stringify(sterlingRec.checks));
 
@@ -942,7 +942,7 @@ var appCss = fs.readFileSync(__dirname + "/../css/app.css", "utf8");
 var betaGuide = fs.readFileSync(__dirname + "/../BETA_TESTING.md", "utf8");
 check("static: beta guide appears in app", indexHtml.indexOf("Beta tester checklist") !== -1 && indexHtml.indexOf("anonymized parser diagnostic") !== -1);
 check("static: BETA_TESTING documents privacy-safe diagnostics", betaGuide.indexOf("anonymized parser diagnostic") !== -1 && betaGuide.indexOf("must not contain names") !== -1);
-check("static: APP_BUILD and cache bust agree on 42", appJs.indexOf("APP_BUILD = 42") !== -1 && (indexHtml.match(/v=42/g) || []).length >= 6);
+check("static: APP_BUILD and cache bust agree on 43", appJs.indexOf("APP_BUILD = 43") !== -1 && (indexHtml.match(/v=43/g) || []).length >= 6);
 check("static: global back button is wired across later steps", indexHtml.indexOf('id="btn-global-back"') !== -1 && indexHtml.indexOf('id="btn-results-back"') !== -1 && appJs.indexOf("function goBack()") !== -1 && appJs.indexOf("PREV_STEP") !== -1);
 check("static: light/dark theme toggle is wired and persisted", indexHtml.indexOf('id="theme-toggle"') !== -1 && indexHtml.indexOf('bsa-theme') !== -1 && appCss.indexOf(':root[data-theme="light"]') !== -1 && appJs.indexOf("function wireTheme()") !== -1 && appJs.indexOf('localStorage.setItem("bsa-theme"') !== -1);
 check("static: Access-style preview columns have explicit role widths", appCss.indexOf("table-layout: fixed") !== -1 && appJs.indexOf("previewColWidth") !== -1 && appJs.indexOf("previewTableWidth") !== -1 && appJs.indexOf("<colgroup>") !== -1);

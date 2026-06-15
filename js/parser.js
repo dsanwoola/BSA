@@ -165,7 +165,7 @@
   var ROLE_SYNONYMS = {
     date: ["TRANSACTION DATE", "TRANSACTION TIME", "TRANS DATE", "TRANS TIME", "TXN DATE", "TXN TIME", "TRAN DATE", "POSTING DATE", "POSTED DATE", "POST DATE", "DATE POSTED", "ENTRY DATE", "DATE TIME", "DATETIME", "DATE"],
     valueDate: ["VALUE DATE", "VALUEDATE", "VAL DATE", "VAL. DATE", "VALUE. DATE"],
-    narration: ["TRANSACTION DESCRIPTION", "TRANSACTION NARRATION", "TRANSACTION REMARKS", "TRANSACTION DETAILS", "NARRATION", "NARRATIVE", "DESCRIPTION", "PARTICULARS", "REMARKS", "REMARK", "DETAILS", "DESC"],
+    narration: ["REFERENCE / SESSION CHANNEL NARRATION", "REFERENCE/SESSION CHANNEL NARRATION", "TRANSACTION DESCRIPTION", "TRANSACTION NARRATION", "TRANSACTION REMARKS", "TRANSACTION DETAILS", "NARRATION", "NARRATIVE", "DESCRIPTION", "PARTICULARS", "REMARKS", "REMARK", "DETAILS", "DESC"],
     debit: ["WITHDRAWAL (DR)", "DEBIT AMOUNT", "DEBIT (DR)", "DEBIT(DR)", "DEBIT AMT", "WITHDRAWALS", "WITHDRAWAL", "MONEY OUT", "OUTFLOW", "DR AMOUNT", "DEBITS", "DEBIT", "DR"],
     credit: ["DEPOSIT (CR)", "CREDIT AMOUNT", "CREDIT (CR)", "CREDIT(CR)", "CREDIT AMT", "LODGEMENTS", "LODGEMENT", "DEPOSITS", "DEPOSIT", "MONEY IN", "INFLOW", "CR AMOUNT", "CREDITS", "CREDIT", "CR"],
     balance: ["RUNNING BALANCE", "ACCOUNT BALANCE", "AVAILABLE BALANCE", "CURRENT BALANCE", "CLOSING BALANCE", "BALANCE", "BAL"],
@@ -1164,6 +1164,27 @@
     return pdfHeaderQualifies(rebuilt) ? rebuilt : header;
   }
 
+  function pdfMaybeCombineSterlingNarration(header, topLine, midLine) {
+    if (!header || !topLine || !midLine) return header;
+    var topText = lineText(topLine), midText = lineText(midLine);
+    if (!/REFERENCE\s*\/\s*SESSION/i.test(topText) || !/\bCHANNEL\b/i.test(midText) || !/\bNARRATION\b/i.test(midText)) return header;
+
+    var refItems = topLine.items.filter(function (it) { return /REFERENCE\s*\/\s*SESSION/i.test(it.str); });
+    var descItems = midLine.items.filter(function (it) { return /^(channel|narration)$/i.test(it.str); });
+    if (!refItems.length || descItems.length < 2) return header;
+
+    var lo = Math.min.apply(null, refItems.concat(descItems).map(function (it) { return it.x; }));
+    var hi = Math.max.apply(null, refItems.concat(descItems).map(function (it) { return it.x + it.w; }));
+    var cells = header.cells.filter(function (c) {
+      var h = normHeader(c.text);
+      return h.indexOf("REFERENCE") === -1 && h !== "CHANNEL" && h !== "NARRATION";
+    });
+    cells.push({ lo: lo, hi: hi, items: refItems.concat(descItems), text: "Reference / Session Channel Narration" });
+    cells.sort(function (a, b) { return a.lo - b.lo; });
+    var rebuilt = pdfHeaderFromCells(cells);
+    return pdfHeaderQualifies(rebuilt) ? rebuilt : header;
+  }
+
   function pdfMaybeAddSterlingMoneyColumns(header, topLine, bottomLine) {
     if (!header || (header.map.debit !== undefined && header.map.credit !== undefined) || !topLine || !bottomLine) return header;
     var topMoney = topLine.items.filter(function (it) { return /^money$/i.test(it.str); });
@@ -1211,11 +1232,24 @@
    *  description cannot break off into the next column on its own. */
   function pdfAssign(items, anchors) {
     var cols = new Array(anchors.n);
-    pdfClusterCells(items, 6).forEach(function (cl) {
-      var center = (cl.lo + cl.hi) / 2;
+    function colFor(lo, hi) {
+      var center = (lo + hi) / 2;
       var col = 0;
       while (col < anchors.boundaries.length && center > anchors.boundaries[col]) col++;
-      cols[col] = cols[col] ? cols[col] + " " + cl.text : cl.text;
+      return col;
+    }
+    function add(col, text) {
+      if (!text) return;
+      cols[col] = cols[col] ? cols[col] + " " + text : text;
+    }
+    pdfClusterCells(items, 6).forEach(function (cl) {
+      var firstCol = colFor(cl.lo, cl.lo);
+      var lastCol = colFor(cl.hi, cl.hi);
+      if (firstCol !== lastCol && cl.items && cl.items.length > 1) {
+        cl.items.forEach(function (it) { add(colFor(it.x, it.x + it.w), it.str); });
+      } else {
+        add(colFor(cl.lo, cl.hi), cl.text);
+      }
     });
     var out = [];
     for (var i = 0; i < anchors.n; i++) out.push(cols[i] || "");
@@ -1291,6 +1325,7 @@
         if (pdfHeaderQualifies(one)) pick = one;
         if (pdfHeaderQualifies(two) && (!pick || two.labels > one.labels)) { pick = two; usedTwo = true; }
         if (pdfHeaderQualifies(three) && (!pick || three.labels > pick.labels)) { pick = three; usedTwo = false; usedThree = true; }
+        if (pick && usedThree && threeLikeSterling) pick = pdfMaybeCombineSterlingNarration(pick, lines[i], lines[i + 1]);
         if (pick) pick = pdfMaybeAddSterlingMoneyColumns(pick, lines[i], lines[i + 2]);
         if (pick) pick = pdfMaybeAddStackedReferenceNumber(pick, lines[i - 1], lines[i + 1]);
         // a repeated page header refreshes the anchors, but an annex table
