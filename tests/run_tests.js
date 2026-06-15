@@ -577,6 +577,33 @@ var polarisRec = polarisBuilt && PARSER.reconcileWithMeta(polarisBuilt.txns, pol
 check("pdf/polaris: spaced duplicate header labels are detected", polarisDet && polarisDet.map.date === 0 && polarisDet.map.reference === 1 && polarisDet.map.narration === 2 && polarisDet.map.debit === 3 && polarisDet.map.credit === 4 && polarisDet.map.balance === 5, JSON.stringify(polarisRows[polarisDet && polarisDet.headerRow]));
 check("pdf/polaris: M/d/yyyy rows parse and compact spaced summary reconciles", polarisBuilt && polarisBuilt.txns.length === 2 && polarisBuilt.problems.length === 0 && polarisMeta && polarisMeta.openingBalance === 100 && polarisMeta.totalCredit === 50 && polarisRec && polarisRec.allOk, JSON.stringify({ built: polarisBuilt, meta: polarisMeta, rec: polarisRec }));
 
+var gtCorpHeaderPage = [
+  { y: 600, items: [pit(383, 34, "Remarks", 600), pit(401, 80, "OPENING CREDIT", 600)] },
+  { y: 504, items: [pit(383, 72, "Originating Branch", 504), pit(401, 70, "001 BRANCH", 504)] },
+  { y: 422, items: [pit(383, 31, "Balance", 422), pit(401, 35, "1,100.00", 422)] },
+  { y: 342, items: [pit(383, 28, "Credits", 342), pit(401, 35, "100.00", 342)] },
+  { y: 262, items: [pit(383, 24, "Debits", 262)] },
+  { y: 182, items: [pit(383, 39, "Reference", 182), pit(401, 45, "REF001", 182)] },
+  { y: 118, items: [pit(383, 43, "Value. Date", 118), pit(401, 52, "01-Jan-2025", 118)] },
+  { y: 54, items: [pit(383, 44, "Trans. Date", 54), pit(401, 52, "01-Jan-2025", 54)] }
+];
+var gtCorpContinuationPage = [
+  { y: 600, items: [pit(52, 90, "TRANSFER OUT", 600), pit(94, 85, "TRANSFER IN", 600)] },
+  { y: 504, items: [pit(52, 70, "001 BRANCH", 504), pit(94, 70, "001 BRANCH", 504)] },
+  { y: 422, items: [pit(52, 35, "900.00", 422), pit(94, 35, "950.00", 422)] },
+  { y: 342, items: [pit(94, 30, "50.00", 342)] },
+  { y: 262, items: [pit(52, 30, "200.00", 262)] },
+  { y: 182, items: [pit(52, 45, "REF002", 182), pit(94, 45, "REF003", 182)] },
+  { y: 118, items: [pit(52, 52, "02-Jan-2025", 118), pit(94, 52, "03-Jan-2025", 118)] },
+  { y: 54, items: [pit(52, 52, "02-Jan-2025", 54), pit(94, 52, "03-Jan-2025", 54)] }
+];
+var gtCorpRows = PDF.assemble([gtCorpHeaderPage, gtCorpContinuationPage]);
+var gtCorpDet = PARSER.detectColumns(gtCorpRows);
+var gtCorpBuilt = gtCorpDet && PARSER.buildTransactions(gtCorpRows, gtCorpDet.headerRow, gtCorpDet.map);
+var gtCorpIntegrity = gtCorpBuilt && PARSER.integrityCheck(gtCorpBuilt.txns);
+check("pdf/gtbank-corporate: transposed statement headers are reconstructed", gtCorpDet && gtCorpDet.map.date === 0 && gtCorpDet.map.valueDate === 1 && gtCorpDet.map.reference === 2 && gtCorpDet.map.debit === 3 && gtCorpDet.map.credit === 4 && gtCorpDet.map.balance === 5 && gtCorpDet.map.narration === 7, JSON.stringify(gtCorpRows));
+check("pdf/gtbank-corporate: continuation pages without header labels parse", gtCorpBuilt && gtCorpBuilt.txns.length === 3 && gtCorpBuilt.problems.length === 0 && gtCorpIntegrity && gtCorpIntegrity.ratio === 1, JSON.stringify({ built: gtCorpBuilt, integrity: gtCorpIntegrity }));
+
 // page modeled on a real statement: two-line header ("Trans"/"Date",
 // "Value"/"Date"), an EMPTY Debit cell, and Remarks wrapping to a 2nd line
 var pdfPage = [
@@ -964,7 +991,7 @@ var appCss = fs.readFileSync(__dirname + "/../css/app.css", "utf8");
 var betaGuide = fs.readFileSync(__dirname + "/../BETA_TESTING.md", "utf8");
 check("static: beta guide appears in app", indexHtml.indexOf("Beta tester checklist") !== -1 && indexHtml.indexOf("anonymized parser diagnostic") !== -1);
 check("static: BETA_TESTING documents privacy-safe diagnostics", betaGuide.indexOf("anonymized parser diagnostic") !== -1 && betaGuide.indexOf("must not contain names") !== -1);
-check("static: APP_BUILD and cache bust agree on 44", appJs.indexOf("APP_BUILD = 44") !== -1 && (indexHtml.match(/v=44/g) || []).length >= 6);
+check("static: APP_BUILD and cache bust agree on 45", appJs.indexOf("APP_BUILD = 45") !== -1 && (indexHtml.match(/v=45/g) || []).length >= 6);
 check("static: global back button is wired across later steps", indexHtml.indexOf('id="btn-global-back"') !== -1 && indexHtml.indexOf('id="btn-results-back"') !== -1 && appJs.indexOf("function goBack()") !== -1 && appJs.indexOf("PREV_STEP") !== -1);
 check("static: light/dark theme toggle is wired and persisted", indexHtml.indexOf('id="theme-toggle"') !== -1 && indexHtml.indexOf('bsa-theme') !== -1 && appCss.indexOf(':root[data-theme="light"]') !== -1 && appJs.indexOf("function wireTheme()") !== -1 && appJs.indexOf('localStorage.setItem("bsa-theme"') !== -1);
 check("static: Access-style preview columns have explicit role widths", appCss.indexOf("table-layout: fixed") !== -1 && appJs.indexOf("previewColWidth") !== -1 && appJs.indexOf("previewTableWidth") !== -1 && appJs.indexOf("<colgroup>") !== -1);

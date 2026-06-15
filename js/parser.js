@@ -1344,9 +1344,88 @@
     return segs;
   }
 
+  function gtCorporateTransposedRows(lines) {
+    var lineByLabel = {}, sawGtLabels = 0;
+    (lines || []).forEach(function (line) {
+      if (!line || !line.items || !line.items.length) return;
+      var first = normHeader(line.items[0].str);
+      if (/^TRANS\.? DATE$/.test(first)) { lineByLabel.date = line; sawGtLabels++; }
+      else if (/^VALUE\.? DATE$/.test(first)) { lineByLabel.valueDate = line; sawGtLabels++; }
+      else if (first === "REFERENCE") { lineByLabel.reference = line; sawGtLabels++; }
+      else if (/^DEBITS?$/.test(first)) { lineByLabel.debit = line; sawGtLabels++; }
+      else if (/^CREDITS?$/.test(first)) { lineByLabel.credit = line; sawGtLabels++; }
+      else if (first === "BALANCE") { lineByLabel.balance = line; sawGtLabels++; }
+      else if (first === "ORIGINATING BRANCH") { lineByLabel.branch = line; sawGtLabels++; }
+      else if (first === "REMARKS") { lineByLabel.narration = line; sawGtLabels++; }
+    });
+    if (!lineByLabel.date) {
+      (lines || []).forEach(function (line) {
+        if (!line || !line.items || !line.items.length) return;
+        function near(target) { return Math.abs(line.y - target) <= 3; }
+        if (near(54) && line.items.some(function (it) { return parseDate(it.str); })) lineByLabel.date = line;
+        else if (near(118)) lineByLabel.valueDate = line;
+        else if (near(182)) lineByLabel.reference = line;
+        else if (near(262)) lineByLabel.debit = line;
+        else if (near(342)) lineByLabel.credit = line;
+        else if (near(422)) lineByLabel.balance = line;
+        else if (near(504)) lineByLabel.branch = line;
+        else if (near(600)) lineByLabel.narration = line;
+      });
+    }
+    if (!lineByLabel.date || !lineByLabel.valueDate || !lineByLabel.reference || !lineByLabel.balance || !lineByLabel.narration) {
+      return sawGtLabels >= 5 ? [] : null;
+    }
+
+    var starts = [];
+    lineByLabel.date.items.forEach(function (it) {
+      if (parseDate(it.str)) starts.push(it.x);
+    });
+    starts = starts.filter(function (x, idx) {
+      return starts.slice(0, idx).every(function (prev) { return Math.abs(prev - x) > 2; });
+    }).sort(function (a, b) { return a - b; });
+    if (!starts.length) return sawGtLabels >= 5 ? [] : null;
+
+    function txIndexForX(x) {
+      var idx = -1;
+      for (var i = 0; i < starts.length; i++) {
+        if (x >= starts[i] - 2) idx = i;
+        else break;
+      }
+      return idx;
+    }
+    function collect(line, out, fieldIdx) {
+      if (!line) return;
+      line.items.forEach(function (it) {
+        var idx = txIndexForX(it.x);
+        if (idx < 0 || idx >= out.length) return;
+        out[idx][fieldIdx] = out[idx][fieldIdx] ? out[idx][fieldIdx] + " " + it.str : it.str;
+      });
+    }
+
+    var out = starts.map(function () { return ["", "", "", "", "", "", "", ""]; });
+    collect(lineByLabel.date, out, 0);
+    collect(lineByLabel.valueDate, out, 1);
+    collect(lineByLabel.reference, out, 2);
+    collect(lineByLabel.debit, out, 3);
+    collect(lineByLabel.credit, out, 4);
+    collect(lineByLabel.balance, out, 5);
+    collect(lineByLabel.branch, out, 6);
+    collect(lineByLabel.narration, out, 7);
+    return out.filter(function (r) { return parseDate(r[0]) && (r[3] || r[4] || r[5]); });
+  }
+
   function assemblePdfRows(pages) {
-    var rows = [], anchors = null, headerPushed = false, headerShape = 0;
+    var rows = [], anchors = null, headerPushed = false, headerShape = 0, gtCorporateHeaderPushed = false;
     pages.forEach(function (lines) {
+      var gtRows = gtCorporateTransposedRows(lines);
+      if (gtRows !== null) {
+        if (gtRows.length && !gtCorporateHeaderPushed) {
+          rows.push(["Trans. Date", "Value. Date", "Reference", "Debits", "Credits", "Balance", "Originating Branch", "Remarks"]);
+          gtCorporateHeaderPushed = true;
+        }
+        gtRows.forEach(function (r) { rows.push(r); });
+        return;
+      }
       var dataBuf = [];
       function flushData() {
         pdfSegmentByGaps(dataBuf).forEach(function (seg) {
