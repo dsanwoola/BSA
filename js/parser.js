@@ -71,6 +71,13 @@
     // yyyy-mm-dd / yyyy/mm/dd
     m = s.match(/^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})$/);
     if (m) return mk(+m[1], +m[2] - 1, +m[3]);
+    // M/d/yyyy used by some generated bank PDFs (e.g. Polaris). Keep the
+    // normal Nigerian day-first rule for zero-padded dates like 01/02/2025;
+    // only a non-zero-padded first field is treated as month-first.
+    m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (m && m[1].length === 1 && +m[1] >= 1 && +m[1] <= 12 && +m[2] >= 1 && +m[2] <= 31) {
+      return mk(+m[3], +m[1] - 1, +m[2]);
+    }
     // dd-mm-yyyy / dd/mm/yyyy / dd.mm.yyyy  (DAY FIRST — Nigerian convention)
     m = s.match(/^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{2,4})$/);
     if (m) {
@@ -195,14 +202,17 @@
 
   /** Which column role does a single header cell describe, if any? */
   function roleForHeaderCell(h) {
-    if (!h || h.length > 40) return null;
+    if (!h || h.length > 80) return null;
+    var compactH = h.replace(/\s+/g, "");
     for (var i = 0; i < MATCHERS.length; i++) {
-      if (h === MATCHERS[i].syn) return MATCHERS[i];
+      if (h === MATCHERS[i].syn || compactH === MATCHERS[i].syn.replace(/\s+/g, "")) return MATCHERS[i];
     }
     for (i = 0; i < MATCHERS.length; i++) {
       var syn = MATCHERS[i].syn;
-      if (h.indexOf(syn) === 0) return MATCHERS[i];
+      var compactSyn = syn.replace(/\s+/g, "");
+      if (h.indexOf(syn) === 0 || compactH.indexOf(compactSyn) === 0) return MATCHERS[i];
       if (h.length <= syn.length + 12 && h.indexOf(syn) > -1) return MATCHERS[i];
+      if (compactH.length <= compactSyn.length + 12 && compactH.indexOf(compactSyn) > -1) return MATCHERS[i];
     }
     return null;
   }
@@ -323,6 +333,7 @@
       var row = rows[r];
       var inHero = headerRow === null || headerRow === undefined || r < headerRow;
       if (inHero) assignStackedSummaryRow(meta, row, rows[r + 1]);
+      if (inHero) assignCompactHeroSummary(meta, row);
       if (inHero) assignNearbySplitBalances(meta, row, rows, r);
       for (var c = 0; c < row.length; c++) {
         var cell = row[c];
@@ -377,6 +388,39 @@
 
     var any = Object.keys(meta).some(function (k) { return meta[k] !== null; });
     return any ? meta : null;
+  }
+
+  /** Some PDFs render metadata with every letter separated and duplicated
+   *  (e.g. "O p e n i n g B a l a n c e :" twice on one visual line). Compact
+   *  those hero rows only for label/value mining; transaction text is untouched. */
+  function assignCompactHeroSummary(meta, row) {
+    if (!row) return;
+    var compact = row.map(function (cell) { return String(cell == null ? "" : cell); }).join(" ").toUpperCase().replace(/\s+/g, "");
+    if (!compact) return;
+    function assignAmount(key, label) {
+      if (meta[key] !== null) return;
+      var re = new RegExp(label + ":?(?:" + label + ":?)?(-?[\\d,]+(?:\\.\\d{1,2})?)");
+      var m = compact.match(re);
+      if (!m) return;
+      var v = parseAmount(m[1]);
+      if (typeof v === "number") meta[key] = Math.abs(v);
+    }
+    assignAmount("openingBalance", "OPENINGBALANCE");
+    assignAmount("closingBalance", "CLOSINGBALANCE");
+    assignAmount("totalCredit", "TOTALCREDIT");
+    assignAmount("totalDebit", "TOTALDEBIT");
+    if (meta.currency === null) {
+      var cm = compact.match(/(?:ACCOUNTCURRENCY|CURRENCY):?(?:ACCOUNTCURRENCY:?)?([A-Z]{3})\b/);
+      if (cm) meta.currency = cm[1];
+    }
+    if (meta.accountNumber === null) {
+      var am = compact.match(/ACCOUNTNUMBER:?(?:ACCOUNTNUMBER:?)?(\d{10})/);
+      if (am) meta.accountNumber = am[1];
+    }
+    if (meta.accountTypeRaw === null) {
+      var tm = compact.match(/ACCOUNTTYPE:?(?:ACCOUNTTYPE:?)?([A-Z0-9]{2,20})/);
+      if (tm) meta.accountTypeRaw = tm[1];
+    }
   }
 
   /** Some Nigerian/wallet PDFs render summary labels in one row and values
@@ -1073,7 +1117,16 @@
       });
     });
     return Object.keys(byY).map(Number).sort(function (a, b) { return b - a; })
-      .map(function (y) { return { y: y, items: byY[y].sort(function (a, b) { return a.x - b.x; }) }; });
+      .map(function (y) {
+        var seen = {};
+        var items = byY[y].sort(function (a, b) { return a.x - b.x; }).filter(function (it) {
+          var key = Math.round(it.x) + "|" + Math.round(it.w) + "|" + it.str;
+          if (seen[key]) return false;
+          seen[key] = true;
+          return true;
+        });
+        return { y: y, items: items };
+      });
   }
 
   /** Cluster items (possibly from two merged lines) into cells by x-extent. */

@@ -48,6 +48,8 @@ dt = PARSER.parseDate("April 30, 2026");
 check("date: full month name", dt && dt.getDate() === 30 && dt.getMonth() === 3 && dt.getFullYear() === 2026);
 dt = PARSER.parseDate("01/May/2026");
 check("date: dd/MMM/yyyy slash month", dt && dt.getDate() === 1 && dt.getMonth() === 4 && dt.getFullYear() === 2026);
+dt = PARSER.parseDate("4/14/2026");
+check("date: non-zero-padded M/d/yyyy Polaris style", dt && dt.getDate() === 14 && dt.getMonth() === 3 && dt.getFullYear() === 2026);
 check("date: invalid is null", PARSER.parseDate("99/99/2024") === null);
 check("date: 31/02 rejected", PARSER.parseDate("31/02/2024") === null);
 
@@ -555,6 +557,26 @@ check("pdf/sterling: three-line Reference/Session Money In/Out header maps combi
 check("pdf/sterling: slash month dates and merged narration/reference parse", sterlingBuilt && sterlingBuilt.txns.length === 1 && sterlingBuilt.txns[0].date.getMonth() === 4 && sterlingBuilt.txns[0].debit === 200 && /Airtime purchase/.test(sterlingBuilt.txns[0].narration), JSON.stringify(sterlingBuilt && sterlingBuilt.problems));
 check("pdf/sterling: above-label opening and counted totals reconcile", sterlingRec && sterlingRec.allOk, sterlingRec && JSON.stringify(sterlingRec.checks));
 
+var polarisPage = [
+  { y: 510, items: [pit(45, 75, "O p e n i n g B a l a n c e :", 510), pit(45, 75, "O p e n i n g B a l a n c e :", 510), pit(150, 34, "100.00", 510), pit(150, 34, "100.00", 510)] },
+  { y: 496, items: [pit(45, 70, "C l o s i n g B a l a n c e :", 496), pit(45, 70, "C l o s i n g B a l a n c e :", 496), pit(150, 34, "140.00", 496), pit(150, 34, "140.00", 496)] },
+  { y: 482, items: [pit(45, 55, "T o t a l C r e d i t :", 482), pit(45, 55, "T o t a l C r e d i t :", 482), pit(150, 28, "50.00", 482), pit(150, 28, "50.00", 482)] },
+  { y: 468, items: [pit(45, 50, "T o t a l D e b i t :", 468), pit(45, 50, "T o t a l D e b i t :", 468), pit(150, 28, "10.00", 468), pit(150, 28, "10.00", 468)] },
+  { y: 428, items: [pit(54, 32, "T r a n s .", 428), pit(54, 32, "T r a n s .", 428), pit(381, 57, "W i t h d r a w a l", 428), pit(381, 57, "W i t h d r a w a l", 428), pit(446, 40, "D e p o s i t", 428), pit(446, 40, "D e p o s i t", 428)] },
+  { y: 422, items: [pit(112, 65, "R e f . N u m b e r", 422), pit(112, 65, "R e f . N u m b e r", 422), pit(214, 101, "T r a n s a c t i o n D e t a i l s", 422), pit(215, 101, "T r a n s a c t i o n D e t a i l s", 422), pit(506, 38, "B a l a n c e", 422), pit(506, 38, "B a l a n c e", 422)] },
+  { y: 416, items: [pit(54, 22, "D a t e", 416), pit(54, 22, "D a t e", 416), pit(381, 21, "(D R )", 416), pit(381, 21, "(D R )", 416), pit(446, 20, "(C R )", 416), pit(446, 20, "(C R )", 416)] },
+  { y: 398, items: [pit(214, 90, "M OBBN KG : TEST", 398)] },
+  { y: 386, items: [pit(54, 45, "4/14/2026", 386), pit(112, 40, "REF001", 386), pit(214, 80, "TRANSFER OUT", 386), pit(381, 25, "-10.00", 386), pit(506, 28, "90.00", 386)] },
+  { y: 368, items: [pit(54, 45, "4/15/2026", 368), pit(112, 40, "REF002", 368), pit(214, 70, "TRANSFER IN", 368), pit(446, 25, "50.00", 368), pit(506, 30, "140.00", 368)] }
+];
+var polarisRows = PDF.assemble([polarisPage]);
+var polarisDet = PARSER.detectColumns(polarisRows);
+var polarisBuilt = polarisDet && PARSER.buildTransactions(polarisRows, polarisDet.headerRow, polarisDet.map);
+var polarisMeta = polarisDet && PARSER.extractStatementMeta(polarisRows, polarisDet.headerRow);
+var polarisRec = polarisBuilt && PARSER.reconcileWithMeta(polarisBuilt.txns, polarisMeta);
+check("pdf/polaris: spaced duplicate header labels are detected", polarisDet && polarisDet.map.date === 0 && polarisDet.map.reference === 1 && polarisDet.map.narration === 2 && polarisDet.map.debit === 3 && polarisDet.map.credit === 4 && polarisDet.map.balance === 5, JSON.stringify(polarisRows[polarisDet && polarisDet.headerRow]));
+check("pdf/polaris: M/d/yyyy rows parse and compact spaced summary reconciles", polarisBuilt && polarisBuilt.txns.length === 2 && polarisBuilt.problems.length === 0 && polarisMeta && polarisMeta.openingBalance === 100 && polarisMeta.totalCredit === 50 && polarisRec && polarisRec.allOk, JSON.stringify({ built: polarisBuilt, meta: polarisMeta, rec: polarisRec }));
+
 // page modeled on a real statement: two-line header ("Trans"/"Date",
 // "Value"/"Date"), an EMPTY Debit cell, and Remarks wrapping to a 2nd line
 var pdfPage = [
@@ -942,7 +964,7 @@ var appCss = fs.readFileSync(__dirname + "/../css/app.css", "utf8");
 var betaGuide = fs.readFileSync(__dirname + "/../BETA_TESTING.md", "utf8");
 check("static: beta guide appears in app", indexHtml.indexOf("Beta tester checklist") !== -1 && indexHtml.indexOf("anonymized parser diagnostic") !== -1);
 check("static: BETA_TESTING documents privacy-safe diagnostics", betaGuide.indexOf("anonymized parser diagnostic") !== -1 && betaGuide.indexOf("must not contain names") !== -1);
-check("static: APP_BUILD and cache bust agree on 43", appJs.indexOf("APP_BUILD = 43") !== -1 && (indexHtml.match(/v=43/g) || []).length >= 6);
+check("static: APP_BUILD and cache bust agree on 44", appJs.indexOf("APP_BUILD = 44") !== -1 && (indexHtml.match(/v=44/g) || []).length >= 6);
 check("static: global back button is wired across later steps", indexHtml.indexOf('id="btn-global-back"') !== -1 && indexHtml.indexOf('id="btn-results-back"') !== -1 && appJs.indexOf("function goBack()") !== -1 && appJs.indexOf("PREV_STEP") !== -1);
 check("static: light/dark theme toggle is wired and persisted", indexHtml.indexOf('id="theme-toggle"') !== -1 && indexHtml.indexOf('bsa-theme') !== -1 && appCss.indexOf(':root[data-theme="light"]') !== -1 && appJs.indexOf("function wireTheme()") !== -1 && appJs.indexOf('localStorage.setItem("bsa-theme"') !== -1);
 check("static: Access-style preview columns have explicit role widths", appCss.indexOf("table-layout: fixed") !== -1 && appJs.indexOf("previewColWidth") !== -1 && appJs.indexOf("previewTableWidth") !== -1 && appJs.indexOf("<colgroup>") !== -1);
