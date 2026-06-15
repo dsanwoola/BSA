@@ -6,7 +6,7 @@
 (function () {
   "use strict";
 
-  var APP_BUILD = 45; // shown in the header so stale cached code is obvious
+  var APP_BUILD = 46; // shown in the header so stale cached code is obvious
 
   var PARSER = window.CBN_PARSER, ENGINE = window.CBN_ENGINE,
       REPORT = window.CBN_REPORT, RULES = window.CBN_RULES;

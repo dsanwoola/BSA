@@ -105,6 +105,10 @@ check("classify: leading /charge| fee line", cls("/charge|FT/CIB/Goods/NEIGHBOUR
 check("classify: leading charge with GTL channel", cls("/charge|FT/GTL/LAMIDI RAS/LAMIDI RASHEED OYE") === "eft");
 check("classify: fused /chargeFT variant", cls("/chargeFT/CIB/Comm Sept 14th to 27th/TITILOLA") === "eft");
 check("classify: card issuance", cls("DEBIT CARD ISSUANCE FEE") === "card_issuance");
+check("classify: non-clearing withdrawal slip", cls("NON CLEARING WITHDRAWAL SLIP 100 LEAVES") === "nonclearing_slip");
+check("classify: credit card interest", cls("CREDIT CARD INTEREST CHARGE") === "credit_card_interest");
+check("classify: premium minimum-balance forfeiture", cls("GOLD PREMIUM MINIMUM BALANCE FORFEITURE") === "premium_account_forfeiture");
+check("classify: treasury bill processing", cls("TREASURY BILL PROCESSING FEE") === "treasury_bill_processing");
 
 /* ---------------- engine: prohibited charges ---------------- */
 var res = ENGINE.audit([T(0, D(2025, 5, 10), "COT CHARGE", 1200, 0)], CTX_CURRENT);
@@ -342,6 +346,22 @@ check("manual reclassification works", findFor(res, 0) && findFor(res, 0).verdic
 res = ENGINE.audit([T(0, D(2025, 5, 10), "XYZ SERVICE CHARGE", 75, 0)],
   { accountType: "savings", holderType: "individual", overrides: { 0: "ignore" } });
 check("manual 'not a charge' works", res.findings.length === 0);
+
+/* ---------------- uploaded CBN guide: additional charge caps ---------------- */
+res = ENGINE.audit([T(0, D(2025, 5, 10), "CHEQUE BOOK 50 LEAVES", 1612.50, 0)], CTX_CURRENT);
+check("CBN guide: 50-leaf cheque book ₦1,500+VAT compliant", findFor(res, 0).verdict === "compliant");
+res = ENGINE.audit([T(0, D(2025, 5, 10), "CHEQUE BOOK 50 LEAVES", 2000, 0)], CTX_CURRENT);
+check("CBN guide: 50-leaf cheque book over cap violation", findFor(res, 0).verdict === "violation");
+res = ENGINE.audit([T(0, D(2025, 5, 10), "NON CLEARING WITHDRAWAL SLIP 100 LEAVES", 3150, 0)], CTX_CURRENT);
+check("CBN guide: non-clearing slip 100 leaves VAT-inclusive compliant", findFor(res, 0).verdict === "compliant");
+res = ENGINE.audit([T(0, D(2025, 5, 10), "BANK DRAFT FEE", 376.25, 0)], CTX_CURRENT);
+check("CBN guide: current-account customer draft cap ₦350+VAT compliant", findFor(res, 0).verdict === "compliant");
+res = ENGINE.audit([T(0, D(2025, 5, 10), "BANK DRAFT FEE", 600, 0)], CTX_CURRENT);
+check("CBN guide: current-account customer draft over cap violation", findFor(res, 0).verdict === "violation");
+res = ENGINE.audit([T(0, D(2025, 5, 10), "CREDIT CARD INTEREST CHARGE", 2500, 0)], CTX_CURRENT);
+check("CBN guide: credit-card interest recognized as advisory", findFor(res, 0).verdict === "advisory");
+res = ENGINE.audit([T(0, D(2025, 5, 10), "TREASURY BILL PROCESSING FEE", 150, 0)], CTX_CURRENT);
+check("CBN guide: treasury bill processing recognized as advisory", findFor(res, 0).verdict === "advisory");
 
 /* ---------------- integrity check ---------------- */
 var good = [
@@ -991,7 +1011,7 @@ var appCss = fs.readFileSync(__dirname + "/../css/app.css", "utf8");
 var betaGuide = fs.readFileSync(__dirname + "/../BETA_TESTING.md", "utf8");
 check("static: beta guide appears in app", indexHtml.indexOf("Beta tester checklist") !== -1 && indexHtml.indexOf("anonymized parser diagnostic") !== -1);
 check("static: BETA_TESTING documents privacy-safe diagnostics", betaGuide.indexOf("anonymized parser diagnostic") !== -1 && betaGuide.indexOf("must not contain names") !== -1);
-check("static: APP_BUILD and cache bust agree on 45", appJs.indexOf("APP_BUILD = 45") !== -1 && (indexHtml.match(/v=45/g) || []).length >= 6);
+check("static: APP_BUILD and cache bust agree on 46", appJs.indexOf("APP_BUILD = 46") !== -1 && (indexHtml.match(/v=46/g) || []).length >= 6);
 check("static: global back button is wired across later steps", indexHtml.indexOf('id="btn-global-back"') !== -1 && indexHtml.indexOf('id="btn-results-back"') !== -1 && appJs.indexOf("function goBack()") !== -1 && appJs.indexOf("PREV_STEP") !== -1);
 check("static: light/dark theme toggle is wired and persisted", indexHtml.indexOf('id="theme-toggle"') !== -1 && indexHtml.indexOf('bsa-theme') !== -1 && appCss.indexOf(':root[data-theme="light"]') !== -1 && appJs.indexOf("function wireTheme()") !== -1 && appJs.indexOf('localStorage.setItem("bsa-theme"') !== -1);
 check("static: Access-style preview columns have explicit role widths", appCss.indexOf("table-layout: fixed") !== -1 && appJs.indexOf("previewColWidth") !== -1 && appJs.indexOf("previewTableWidth") !== -1 && appJs.indexOf("<colgroup>") !== -1);

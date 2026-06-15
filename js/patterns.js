@@ -42,6 +42,8 @@
     { type: "letter_of_discharge", re: /LETTER OF DISCHARGE/ },
     { type: "draft_repurchase", re: /DRAFT REPURCHASE/ },
 
+    { type: "credit_card_interest", re: /CREDIT CARD.{0,18}(INTEREST|FINANCE CHARGE)|CARD INTEREST/ },
+
     // --- cards ------------------------------------------------------------
     { type: "card_maintenance", re: /(CARD|CRD)\s*MAINT|NAIRA CARD.{0,12}MAINT|QUARTERLY CARD|MAINT.{0,6}(FEE)?.{0,10}(MASTER|VISA|VERVE)|(MASTER|VISA|VERVE).{0,15}MAINT/ },
     { type: "card_issuance", re: /(CARD|CRD).{0,12}(ISSUANCE|ISSUE|ISSUING|REQUEST|REPLACEMENT|RENEWAL|PRODUCTION|COLLECTION)|(DEBIT|ATM|MASTER|VISA|VERVE)\s*CARD\s*(FEE|CHARGE)/ },
@@ -67,6 +69,7 @@
     // --- cheques ---------------------------------------------------------------
     { type: "stopped_cheque", re: /STOP\s*(CHEQUE|CHECK|ORDER|PAYMENT)/ },
     { type: "counter_cheque", re: /COUNTER\s*CHEQUE/ },
+    { type: "nonclearing_slip", re: /NON[-\s]?CLEARING.{0,20}(WITHDRAWAL\s*)?SLIP|WITHDRAWAL\s*SLIP/ },
     { type: "cheque_book", re: /(CHEQUE|CHQ|CHECK)\s*BOOK/ },
     { type: "returned_unfunded", re: /RETURNED?\s*(CHEQUE|CHECK|ITEM)|DISHONOU?RED|UNPAID\s*(CHEQUE|ITEM)|FAILED DIRECT DEBIT/ },
     { type: "bank_draft", re: /(BANK\s*)?DRAFT.{0,15}(FEE|CHARGE|COMM)|MANAGER'?S CHEQUE.{0,15}(FEE|CHARGE|COMM)/ },
@@ -80,6 +83,14 @@
 
     // --- credit & other -------------------------------------------------------------
     { type: "loan_fee", re: /(LOAN|FACILITY|CREDIT).{0,18}(MANAGEMENT|COMMITMENT|RESTRUCTUR|PROCESSING|RENEWAL)?\s*(FEE|CHARGE)|(MANAGEMENT|COMMITMENT|RESTRUCTURING) FEE/ },
+    { type: "credit_card_interest", re: /CREDIT CARD.{0,18}(INTEREST|FINANCE CHARGE)|CARD INTEREST/ },
+    { type: "fx_card_maintenance", re: /(FOREIGN|FX|DOLLAR|USD).{0,18}CARD.{0,18}MAINT/ },
+    { type: "premium_account_forfeiture", re: /(GOLD|PLATINUM|PREMIUM).{0,18}(FORFEIT|MINIMUM BALANCE|MAINTENANCE)/ },
+    { type: "savings_withdrawal_interest_forfeiture", re: /SAVINGS?.{0,25}(INTEREST FORFEIT|FORFEITURE)|EXCESS WITHDRAWAL.{0,18}INTEREST/ },
+    { type: "fixed_deposit_early_liquidation", re: /(FIXED|TERM) DEPOSIT.{0,25}(EARLY|LIQUIDAT|BREAK|PENALTY)|EARLY LIQUIDATION/ },
+    { type: "bond_guarantee", re: /(PERFORMANCE BOND|ADVANCE PAYMENT GUARANTEE|BANK GUARANTEE).{0,20}(FEE|CHARGE|COMM|COMMISSION)?/ },
+    { type: "treasury_bill_processing", re: /(TREASURY BILL|T\s*-?\s*BILL).{0,25}(PROCESSING|FORM|FEE|CHARGE)|\bS4\b.{0,15}(SETTLEMENT|FEE|CHARGE)/ },
+    { type: "syndicated_lending_fee", re: /(SYNDICATED|CONSORTIUM).{0,25}(LOAN|LENDING|AGENCY|MANAGEMENT|COMMITMENT|UNDERWRITING).{0,20}(FEE|CHARGE|COMM)?/ },
     { type: "credit_report", re: /CREDIT (BUREAU|REPORT|REFERENCE|CHECK).{0,12}(FEE|CHARGE)?/ },
     { type: "legal_search", re: /SEARCH (FEE|REPORT|CHARGE)|\bCAC\b.{0,12}(SEARCH|FEE)|\bCTC\b|PERFECTION (FEE|CHARGE)/ },
     { type: "pos_merchant", re: /\bMSC\b|MERCHANT.{0,12}(SERVICE)?.{0,6}COMM|POS.{0,10}COMM/ },

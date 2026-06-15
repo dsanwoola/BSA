@@ -427,11 +427,18 @@
           fc.citation, "Cap " + fmtN(fcCap) + " • charged " + fmtN(t.debit) + " • excess " + fmtN(r2(t.debit - fcCap)));
       }
 
+      case "cheque_book": return evalLeafBook(t, rate, "cheque_book");
+      case "nonclearing_slip": return evalLeafBook(t, rate, "nonclearing_slip");
+      case "bank_draft": return evalBankDraft(t, ctx, rate);
+
       /* ---------- advisory (cost-recovery / negotiable) types ---------- */
-      case "cheque_book": case "bank_draft": case "returned_unfunded":
+      case "returned_unfunded":
       case "fx_commission": case "swift_charge": case "legal_search":
       case "credit_report": case "loan_fee": case "pos_merchant":
-      case "insurance_premium": {
+      case "insurance_premium": case "premium_account_forfeiture":
+      case "credit_card_interest": case "fx_card_maintenance":
+      case "savings_withdrawal_interest_forfeiture": case "fixed_deposit_early_liquidation":
+      case "bond_guarantee": case "treasury_bill_processing": case "syndicated_lending_fee": {
         var at = RULES.advisoryTypes[t.chargeType];
         return mkFinding(t, "advisory", null,
           at.name + " — the CBN sets this at cost-recovery / a formula the statement alone cannot verify. Governing rule: " + at.citation,
@@ -445,6 +452,45 @@
           "This debit looks like a bank charge, but it does not match any charge type in the CBN Guide with certainty. The auditor does not guess: ask the bank to state, in writing, which provision of the CBN Guide to Charges authorises this debit.",
           "CBN Guide to Charges 2020 — banks may only impose charges listed in the Guide; penalty for breach is ₦2,000,000 per infraction");
     }
+  }
+
+  /* ---------------- cheque books / non-clearing slips ---------------- */
+  function evalLeafBook(t, rate, kind) {
+    var n = PATTERNS.norm(t.narration);
+    var capKey;
+    if (/\b50\b/.test(n)) capKey = kind === "cheque_book" ? "cheque_book_50" : "nonclearing_slip_50";
+    else if (/\b100\b/.test(n)) capKey = kind === "cheque_book" ? "cheque_book_100" : "nonclearing_slip_100";
+    else capKey = kind === "cheque_book" ? "cheque_book_100" : "nonclearing_slip_100"; // most generous cap when leaves are not visible
+    var fc = RULES.fixedCaps[capKey];
+    var cap = fc.vat ? capWithVat(fc.max, t, rate) : fc.max;
+    var label = kind === "cheque_book" ? "cheque book" : "non-clearing withdrawal slip booklet";
+    if (t.debit <= cap + TOL) {
+      return mkFinding(t, "compliant", cap,
+        "Within the uploaded CBN guide cap for this " + label + " (" + fc.perUnit + ")." + (capKey.slice(-3) === "100" && !/\b100\b/.test(n) ? " Leaf count was not visible, so the most generous 100-leaf cap was used." : ""),
+        fc.citation, "Cap " + fmtN(cap) + " • charged " + fmtN(t.debit));
+    }
+    return mkFinding(t, "violation", cap,
+      "Above the uploaded CBN guide cap for this " + label + ".",
+      fc.citation, "Cap " + fmtN(cap) + " • charged " + fmtN(t.debit) + " • excess " + fmtN(r2(t.debit - cap)));
+  }
+
+  function evalBankDraft(t, ctx, rate) {
+    var n = PATTERNS.norm(t.narration);
+    if (/NON[-\s]?CUSTOMER/.test(n)) {
+      return mkFinding(t, "advisory", null,
+        "Non-customer bank draft fee is ₦550 + 0.1% of draft value. The statement does not reveal the draft value, so confirm the value before disputing.",
+        RULES.advisoryTypes.bank_draft.citation);
+    }
+    var base = ctx.accountType === "savings" ? 550 : 350;
+    var cap = capWithVat(base, t, rate);
+    if (t.debit <= cap + TOL) {
+      return mkFinding(t, "compliant", cap,
+        "Within the customer bank-draft cap for a " + (ctx.accountType || "current") + " account.",
+        RULES.advisoryTypes.bank_draft.citation, "Cap " + fmtN(cap) + " • charged " + fmtN(t.debit));
+    }
+    return mkFinding(t, "violation", cap,
+      "Above the customer bank-draft cap for a " + (ctx.accountType || "current") + " account.",
+      RULES.advisoryTypes.bank_draft.citation, "Cap " + fmtN(cap) + " • charged " + fmtN(t.debit) + " • excess " + fmtN(r2(t.debit - cap)));
   }
 
   /* ---------------- ATM evaluator ---------------- */

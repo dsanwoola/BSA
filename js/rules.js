@@ -182,8 +182,24 @@
         citation: "CBN Guide to Charges 2020 — bulk payments (salaries, dividends etc.): max ₦15 per beneficiary, paid by sender"
       },
       cashback_purchase: {
-        max: 100, vat: true, perUnit: "₦20,000",
-        citation: "CBN Guide to Charges 2020 — purchase with cash-back: ₦100 per ₦20,000 (max ₦60,000 cumulative daily)"
+        max: 100, vat: true, perUnit: "₦20,000", maxDailyWithdrawal: 100000,
+        citation: "Uploaded CBN Bank Charges guide — purchase with cash-back: ₦100 per ₦20,000, maximum ₦100,000 daily withdrawal"
+      },
+      cheque_book_50: {
+        max: 1500, vat: true, perUnit: "50-leaf book",
+        citation: "Uploaded CBN Bank Charges guide — cheque book 50 leaves: ₦1,500 + VAT"
+      },
+      cheque_book_100: {
+        max: 3000, vat: true, perUnit: "100-leaf book",
+        citation: "Uploaded CBN Bank Charges guide — cheque book 100 leaves: ₦3,000 + VAT"
+      },
+      nonclearing_slip_50: {
+        max: 1500, vat: true, perUnit: "50-leaf booklet",
+        citation: "Uploaded CBN Bank Charges guide — non-clearing withdrawal slips 50 leaves: ₦1,500 + VAT"
+      },
+      nonclearing_slip_100: {
+        max: 3150, vat: false, perUnit: "100-leaf booklet",
+        citation: "Uploaded CBN Bank Charges guide — non-clearing withdrawal slips 100 leaves: ₦3,150 VAT-inclusive"
       }
     },
 
@@ -235,14 +251,14 @@
     /* ---------------- Cashless-policy cash handling -------------------- */
     cashless: {
       deposit: { individual: { threshold: 500000, rate: 0.02 }, business: { threshold: 3000000, rate: 0.03 } },
-      withdrawal: { individual: { threshold: 500000, rate: 0.03 }, business: { threshold: 3000000, rate: 0.05 } },
+      withdrawal: { individual: { threshold: 500000, rate: 0.03 }, business: { threshold: 5000000, rate: 0.05 } },
       /** CBN suspended cash-deposit processing fees: 11 Dec 2023 → 30 Apr 2024,
        *  then re-suspended/extended to 31 Mar 2025 (CBN circulars). */
       depositSuspensions: [
         [d("2023-12-11"), d("2024-04-30")],
         [d("2024-09-27"), d("2025-03-31")]
       ],
-      citation: "CBN Cashless Policy — processing fees on OTC cash: deposits 2% (individual, above ₦500,000) / 3% (corporate, above ₦3,000,000); withdrawals 3% / 5%. Deposit fees were suspended by CBN circulars (Dec 2023–Apr 2024; Sep 2024–Mar 2025)."
+      citation: "Uploaded CBN Bank Charges guide / CBN Cashless Policy — OTC cash withdrawals: 3% for individuals above ₦500,000 per week; 5% for corporates above ₦5,000,000 per week. Cash deposits use cashless-policy deposit thresholds where applicable; deposit processing fees were suspended by CBN circulars (Dec 2023–Apr 2024; Sep 2024–Mar 2025)."
     },
 
     /* ---------------- Cost-recovery / negotiable types ----------------- */
@@ -250,16 +266,25 @@
      *  auditor reports them as ADVISORY with the governing rule, never as
      *  compliant, because compliance cannot be proven from the statement. */
     advisoryTypes: {
-      cheque_book: { name: "Cheque book fee", citation: "CBN Guide to Charges 2020 — cheque books: cost recovery (typical: ₦1,500+VAT for 50 leaves, ₦3,000+VAT for 100 leaves)" },
-      bank_draft: { name: "Bank draft / manager's cheque", citation: "CBN Guide to Charges 2020 — drafts: ₦300 (current) / ₦500 (savings) typical caps; non-customer ₦500 + 0.1% of value" },
-      returned_unfunded: { name: "Returned cheque / failed direct debit (unfunded account)", citation: "CBN Guide to Charges 2020 — 1% of amount or ₦5,000, whichever is HIGHER, borne by the drawer only; NO charge if returned for any reason other than insufficient funds" },
+      cheque_book: { name: "Cheque book fee", citation: "Uploaded CBN Bank Charges guide — cheque books: ₦1,500+VAT for 50 leaves; ₦3,000+VAT for 100 leaves. If leaf count is not stated, the auditor applies the most generous 100-leaf cap." },
+      nonclearing_slip: { name: "Non-clearing withdrawal slip booklet", citation: "Uploaded CBN Bank Charges guide — non-clearing withdrawal slips: ₦1,500+VAT for 50 leaves; ₦3,150 VAT-inclusive for 100 leaves." },
+      bank_draft: { name: "Bank draft / manager's cheque", citation: "Uploaded CBN Bank Charges guide — drafts: ₦350 for customer current accounts; ₦550 for customer savings accounts; non-customer ₦550 + 0.1% of draft value; draft repurchase is free." },
+      returned_unfunded: { name: "Returned cheque / failed direct debit (unfunded account)", citation: "Uploaded CBN Bank Charges guide — failed direct debit due to insufficient funds: 1% of amount or ₦5,000, whichever is higher, drawer only; failed direct debit not due to insufficient funds is free." },
       fx_commission: { name: "Domiciliary account withdrawal commission", citation: "CBN Guide to Charges 2020 — 0.05% of transaction value or $10, whichever is LOWER" },
       swift_charge: { name: "SWIFT / offshore transfer charge", citation: "CBN Guide to Charges 2020 — international transfers: cost recovery + commission as per FX provisions; verify against your bank's published tariff" },
       legal_search: { name: "CAC/legal search, CTC or security perfection fee", citation: "CBN Guide to Charges 2020 — cost recovery only" },
       credit_report: { name: "Credit reference report fee", citation: "CBN Guide to Charges 2020 — cost recovery, applicable to customer-induced reports only" },
       loan_fee: { name: "Loan/credit facility fee", citation: "CBN Guide to Charges 2020 — management fee max 1% of principal (one-off); total lending fees must not exceed 2%; penal rate max 1% flat per month on unpaid amount" },
-      pos_merchant: { name: "POS merchant service commission (MSC)", citation: "CBN Guide to Charges 2020 — general merchants: 0.5% capped at ₦1,000 (local cards); category-dependent for hotels, fuel, travel" },
-      insurance_premium: { name: "Insurance premium", citation: "CBN Guide to Charges 2020 — exact premium only; customer must be offered a choice of at least 3 insurers" }
+      pos_merchant: { name: "POS merchant service commission (MSC)", citation: "Uploaded CBN Bank Charges guide — merchant service fees are category/card-scheme based: supermarkets/schools/pharmacies/utilities/airlines 0.5% capped ₦1,000 locally; hotels 1.25%–2% local; travel airline ₦200 flat or 0.5%; restaurants/NGOs/religious orgs 1.25% capped ₦100 on Interswitch; fuel 0.6875%; international cards 3%–5.5% depending category." },
+      insurance_premium: { name: "Insurance premium", citation: "CBN Guide to Charges 2020 — exact premium only; customer must be offered a choice of at least 3 insurers" },
+      premium_account_forfeiture: { name: "Premium account minimum-balance forfeiture fee", citation: "Uploaded CBN Bank Charges guide — Gold/Platinum premium current account fees may be waived when minimum balances are maintained; if balance falls below minimum, Gold forfeiture fee is ₦2,500/month and Platinum may use ₦1/mille." },
+      credit_card_interest: { name: "Credit card interest", citation: "Uploaded CBN Bank Charges guide — credit-card interest: 2.5% per month for naira, 30% per annum." },
+      fx_card_maintenance: { name: "Foreign-currency card maintenance", citation: "Uploaded CBN Bank Charges guide — foreign-currency card maintenance: $10 per annum." },
+      savings_withdrawal_interest_forfeiture: { name: "Savings excess-withdrawal interest forfeiture", citation: "Uploaded CBN Bank Charges guide — savings interest is generally forfeited for the month from the 5th withdrawal onward; some products forfeit bonus/premium interest after more than one withdrawal in a quarter." },
+      fixed_deposit_early_liquidation: { name: "Fixed deposit early-liquidation interest penalty", citation: "Uploaded CBN Bank Charges guide — early liquidation penalty on interest: 0–25% tenor elapsed = 100%; 26–50% = 75%; 51–75% = 50%; 76–90% = 25%; 91–100% = no penalty." },
+      bond_guarantee: { name: "Bond / bank guarantee fee", citation: "Uploaded CBN Bank Charges guide — performance bond, advance payment guarantee, and bank guarantee: negotiable, maximum 1% of bond value." },
+      treasury_bill_processing: { name: "Treasury bill processing fee", citation: "Uploaded CBN Bank Charges guide — purchase/sale of treasury bills processing fee: ₦100 per form; custodian fee per CBN custodianship guideline; S4 settlement cost recovery." },
+      syndicated_lending_fee: { name: "Consortium / syndicated lending fee", citation: "Uploaded CBN Bank Charges guide — agency/underwriting fees negotiable; management fee max 1% of principal; commitment/non-drawing fee max 0.5% of undisbursed amount." }
     },
 
     /* ---------------- Display names for every charge type -------------- */
@@ -292,6 +317,7 @@
       cash_deposit_fee: "Cash deposit processing fee",
       cash_withdrawal_fee: "Cash withdrawal processing fee",
       cheque_book: "Cheque book fee",
+      nonclearing_slip: "Non-clearing withdrawal slip fee",
       bank_draft: "Bank draft fee",
       returned_unfunded: "Returned cheque / failed debit fee",
       fx_commission: "Domiciliary withdrawal commission",
@@ -300,6 +326,14 @@
       credit_report: "Credit report fee",
       loan_fee: "Loan facility fee",
       pos_merchant: "POS merchant commission",
+      premium_account_forfeiture: "Premium account forfeiture fee",
+      credit_card_interest: "Credit card interest",
+      fx_card_maintenance: "Foreign-currency card maintenance",
+      savings_withdrawal_interest_forfeiture: "Savings excess-withdrawal interest forfeiture",
+      fixed_deposit_early_liquidation: "Fixed deposit early liquidation penalty",
+      bond_guarantee: "Bond / guarantee fee",
+      treasury_bill_processing: "Treasury bill processing fee",
+      syndicated_lending_fee: "Syndicated lending fee",
       insurance_premium: "Insurance premium",
       otc_cheque_deposit_own: "OTC cheque deposit fee (own account)",
       letter_of_discharge: "Letter of discharge fee",
