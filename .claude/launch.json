@@ -6,6 +6,12 @@
       "runtimeExecutable": "python",
       "runtimeArgs": ["serve.py"],
       "port": 8765
+    },
+    {
+      "name": "giftcash",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "C:/Users/Deen/Downloads/ClaudeProjects/GiftCash", "run", "dev", "--", "--port", "3100"],
+      "port": 3100
     }
   ]
 }
