@@ -907,6 +907,22 @@ check("opay: swapped funding pairs re-sequenced", oBuilt.resequenced === 2, "swa
 check("opay: balance chain fully reconciles", PARSER.integrityCheck(oBuilt.txns).ratio === 1,
   JSON.stringify(oBuilt.txns.map(function (t) { return [t.debit, t.credit, t.balance]; })));
 
+var opayPdfPage = [
+  { y: 464, items: [pit(379, 45, "Balance After", 464), pit(409, 5, "(", 464)] },
+  { y: 458, items: [pit(71, 55, "Trans. Time", 458), pit(132, 48, "Value Date", 458), pit(179, 70, "Description", 458), pit(302, 36, "Debit", 458), pit(340, 38, "Credit", 458), pit(421, 42, "Channel", 458), pit(478, 88, "Transaction Reference", 458)] },
+  { y: 452, items: [pit(379, 14, "₦)", 452)] },
+  { y: 432, items: [pit(71, 92, "01 May 2026 11:13:06", 432), pit(132, 58, "01 May 2026", 432), pit(179, 124, "OWealth Withdrawal(Transaction Payment)", 432), pit(302, 10, "--", 432), pit(340, 42, "2,000.00", 432), pit(379, 60, "2,000.00", 432), pit(421, 35, "Mobile", 432), pit(478, 70, "REF001", 432)] },
+  { y: 410, items: [pit(71, 92, "01 May 2026 11:13:01", 410), pit(132, 58, "01 May 2026", 410), pit(179, 70, "Transfer out", 410), pit(302, 42, "2,000.00", 410), pit(340, 10, "--", 410), pit(379, 30, "0.00", 410), pit(421, 35, "Mobile", 410), pit(478, 70, "REF002", 410)] },
+  { y: 390, items: [pit(71, 88, "Savings Account", 390), pit(224, 75, "Period: 01 May 2026", 390)] },
+  { y: 370, items: [pit(71, 92, "02 May 2026 09:00:00", 370), pit(132, 58, "02 May 2026", 370), pit(179, 70, "Savings leg", 370), pit(302, 42, "1,000.00", 370), pit(379, 30, "0.00", 370)] }
+];
+var opayPdfRows = PDF.assemble([opayPdfPage]);
+var opayPdfDet = PARSER.detectColumns(opayPdfRows);
+var opayPdfBuilt = opayPdfDet && PARSER.buildTransactions(opayPdfRows, opayPdfDet.headerRow, opayPdfDet.map);
+check("opay/pdf: split Balance After header is reconstructed", opayPdfDet && opayPdfDet.map.balance === 5 && opayPdfRows[opayPdfDet.headerRow][5] === "Balance After", JSON.stringify(opayPdfRows));
+check("opay/pdf: balance cells with trailing channel text parse", opayPdfBuilt && PARSER.integrityCheck(opayPdfBuilt.txns).ratio === 1, JSON.stringify(opayPdfBuilt && opayPdfBuilt.txns));
+check("opay/pdf: a following Savings Account section is not mixed into the Wallet checksum", opayPdfBuilt && opayPdfBuilt.txns.length === 2, JSON.stringify(opayPdfBuilt && opayPdfBuilt.txns));
+
 // recurring identical payments with colliding balances are NEVER deduped
 // (different references keep their narrations distinct)
 var recurRows = [
@@ -1028,7 +1044,7 @@ var appCss = fs.readFileSync(__dirname + "/../css/app.css", "utf8");
 var betaGuide = fs.readFileSync(__dirname + "/../BETA_TESTING.md", "utf8");
 check("static: beta guide appears in app", indexHtml.indexOf("Beta tester checklist") !== -1 && indexHtml.indexOf("anonymized parser diagnostic") !== -1);
 check("static: BETA_TESTING documents privacy-safe diagnostics", betaGuide.indexOf("anonymized parser diagnostic") !== -1 && betaGuide.indexOf("must not contain names") !== -1);
-check("static: APP_BUILD and cache bust agree on 48", appJs.indexOf("APP_BUILD = 48") !== -1 && (indexHtml.match(/v=48/g) || []).length >= 6);
+check("static: APP_BUILD and cache bust agree on 49", appJs.indexOf("APP_BUILD = 49") !== -1 && (indexHtml.match(/v=49/g) || []).length >= 6);
 check("static: global back button is wired across later steps", indexHtml.indexOf('id="btn-global-back"') !== -1 && indexHtml.indexOf('id="btn-results-back"') !== -1 && appJs.indexOf("function goBack()") !== -1 && appJs.indexOf("PREV_STEP") !== -1);
 check("static: light/dark theme toggle is wired and persisted", indexHtml.indexOf('id="theme-toggle"') !== -1 && indexHtml.indexOf('bsa-theme') !== -1 && appCss.indexOf(':root[data-theme="light"]') !== -1 && appJs.indexOf("function wireTheme()") !== -1 && appJs.indexOf('localStorage.setItem("bsa-theme"') !== -1);
 check("static: Access-style preview columns have explicit role widths", appCss.indexOf("table-layout: fixed") !== -1 && appJs.indexOf("previewColWidth") !== -1 && appJs.indexOf("previewTableWidth") !== -1 && appJs.indexOf("<colgroup>") !== -1);

@@ -159,6 +159,8 @@
     if (!raw) return 0;
     var m = raw.match(/(?:₦|NGN\s*|\bN(?=\s*\d))\s*(-?[\d,]+(?:\.\d{1,2})?)/i);
     if (m) return parseAmount(m[1]);
+    m = raw.match(/^\s*(-?[\d,]+(?:\.\d{1,2})?)(?=\s+[A-Za-z]|$)/);
+    if (m) return parseAmount(m[1]);
     if (!/\d/.test(raw)) return 0;
     return null;
   }
@@ -175,7 +177,7 @@
     narration: ["REFERENCE / SESSION CHANNEL NARRATION", "REFERENCE/SESSION CHANNEL NARRATION", "TRANSACTION DESCRIPTION", "TRANSACTION NARRATION", "TRANSACTION REMARKS", "TRANSACTION DETAILS", "NARRATION", "NARRATIVE", "DESCRIPTION", "PARTICULARS", "REMARKS", "REMARK", "DETAILS", "DESC"],
     debit: ["WITHDRAWAL (DR)", "DEBIT AMOUNT", "DEBIT (DR)", "DEBIT(DR)", "DEBIT AMT", "WITHDRAWALS", "WITHDRAWAL", "MONEY OUT", "OUTFLOW", "DR AMOUNT", "DEBITS", "DEBIT", "DR"],
     credit: ["DEPOSIT (CR)", "CREDIT AMOUNT", "CREDIT (CR)", "CREDIT(CR)", "CREDIT AMT", "LODGEMENTS", "LODGEMENT", "DEPOSITS", "DEPOSIT", "MONEY IN", "INFLOW", "CR AMOUNT", "CREDITS", "CREDIT", "CR"],
-    balance: ["RUNNING BALANCE", "ACCOUNT BALANCE", "AVAILABLE BALANCE", "CURRENT BALANCE", "CLOSING BALANCE", "BALANCE", "BAL"],
+    balance: ["RUNNING BALANCE", "ACCOUNT BALANCE", "AVAILABLE BALANCE", "CURRENT BALANCE", "CLOSING BALANCE", "BALANCE AFTER", "BALANCE", "BAL"],
     amount: ["TRANSACTION AMOUNT", "AMOUNT", "AMT"],
     drcr: ["TRANSACTION TYPE", "DR / CR", "DR/CR", "CR/DR", "INDICATOR", "TYPE", "D/C"],
     reference: ["REFERENCE/SESSION ID", "REFERENCE / SESSION ID", "REFERENCE/SESSION", "REFERENCE / SESSION", "TRANSACTION REF", "REFERENCE NUMBER", "REFERENCE NO", "INSTRUMENT NO", "CHEQUE NO", "TRANS REF", "REFERENCE", "REF NO", "CHQ NO", "REF"]
@@ -703,6 +705,11 @@
     for (var r = headerRow + 1; r < rows.length; r++) {
       var row = rows[r];
       var joinedRow = row.join(" ").replace(/\s+/g, " ").trim();
+      // OPay statements can concatenate a Wallet table and a separate Savings
+      // Account/OWealth table in one PDF. The hero summary above the first
+      // table belongs to the Wallet section, so stop before the next account
+      // section instead of mixing two independent ledgers into one checksum.
+      if (txns.length && /^(SAVINGS?|OWEALTH|WALLET)\s+ACCOUNT\b/i.test(joinedRow) && /\bPERIOD\b/i.test(joinedRow)) break;
       // Wema/ALAT can extract the table header as two visual rows:
       // "Date | Transaction Details | Credit | Debit | Balance" followed by
       // a standalone "Number" row (the tail of "Reference Number"). It is
@@ -802,7 +809,7 @@
         else credit = amt;
       }
       if (map.balance !== undefined) {
-        var bv = parseAmount(row[map.balance]);
+        var bv = parseMoneyColumn(row[map.balance]);
         if (bv !== null && typeof bv !== "object") balance = bv;
         if (bv !== null && typeof bv === "object") balance = bv.amount;
       }
@@ -1260,6 +1267,20 @@
     return pdfHeaderQualifies(rebuilt) ? rebuilt : header;
   }
 
+
+  function pdfMaybeAddOpayBalanceAfter(header, prevLine, nextLine) {
+    if (!header || header.map.balance !== undefined || !prevLine || !nextLine) return header;
+    var prevItems = (prevLine.items || []).filter(function (it) { return /BALANCE\s+AFTER/i.test(it.str); });
+    if (!prevItems.length || !/₦\)?|NGN\)?/i.test(lineText(nextLine))) return header;
+    var all = prevItems.concat((nextLine.items || []).filter(function (it) { return /₦\)?|NGN\)?/i.test(it.str); }));
+    var lo = Math.min.apply(null, all.map(function (it) { return it.x; }));
+    var hi = Math.max.apply(null, all.map(function (it) { return it.x + it.w; }));
+    var cells = header.cells.concat([{ lo: lo, hi: hi, items: all, text: "Balance After" }])
+      .sort(function (a, b) { return a.lo - b.lo; });
+    var rebuilt = pdfHeaderFromCells(cells);
+    return pdfHeaderQualifies(rebuilt) ? rebuilt : header;
+  }
+
   function pdfMaybeCombineSterlingNarration(header, topLine, midLine) {
     if (!header || !topLine || !midLine) return header;
     var topText = lineText(topLine), midText = lineText(midLine);
@@ -1503,6 +1524,7 @@
         if (pick && usedThree && threeLikeSterling) pick = pdfMaybeCombineSterlingNarration(pick, lines[i], lines[i + 1]);
         if (pick) pick = pdfMaybeAddSterlingMoneyColumns(pick, lines[i], lines[i + 2]);
         if (pick) pick = pdfMaybeAddStackedReferenceNumber(pick, lines[i - 1], lines[i + 1]);
+        if (pick) pick = pdfMaybeAddOpayBalanceAfter(pick, lines[i - 1], lines[i + 1]);
         // a repeated page header refreshes the anchors, but an annex table
         // of a DIFFERENT shape (e.g. a wallet's interest section) must not —
         // its rows stay on the main table's columns
