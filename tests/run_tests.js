@@ -577,6 +577,23 @@ check("pdf/sterling: three-line Reference/Session Money In/Out header maps combi
 check("pdf/sterling: slash month dates and merged narration/reference parse", sterlingBuilt && sterlingBuilt.txns.length === 1 && sterlingBuilt.txns[0].date.getMonth() === 4 && sterlingBuilt.txns[0].debit === 200 && /Airtime purchase/.test(sterlingBuilt.txns[0].narration), JSON.stringify(sterlingBuilt && sterlingBuilt.problems));
 check("pdf/sterling: above-label opening and counted totals reconcile", sterlingRec && sterlingRec.allOk, sterlingRec && JSON.stringify(sterlingRec.checks));
 
+var zenithPage = [
+  { y: 596, items: [pit(52, 24, "DATE", 596), pit(111, 70, "DESCRIPTION", 596), pit(265, 30, "DEBIT", 596), pit(339, 34, "CREDIT", 596), pit(413, 54, "VALUE DATE", 596), pit(473, 45, "BALANCE", 596)] },
+  { y: 586, items: [pit(111, 80, "Opening Balance", 586), pit(321, 25, "0.00", 586), pit(396, 25, "0.00", 586), pit(508, 55, "1,000.00", 586)] },
+  { y: 576, items: [pit(52, 55, "11/01/2026", 576), pit(111, 80, "FGN STAMP DUTY", 576), pit(318, 35, "50.00", 576), pit(396, 72, "0.00 11/01/2026", 576), pit(508, 55, "950.00", 576)] },
+  { y: 566, items: [pit(52, 55, "12/01/2026", 566), pit(111, 85, "TRANSFER INFLOW", 566), pit(321, 25, "0.00", 566), pit(374, 88, "200.00 12/01/2026", 566), pit(508, 55, "1,150.00", 566)] },
+  { y: 556, items: [pit(234, 40, "TOTALS", 556), pit(292, 45, "-50.00", 556), pit(365, 55, "1,200.00", 556)] },
+  { y: 546, items: [pit(147, 130, "TOTAL (CLEARED + UNCLEARED)", 546), pit(292, 45, "-50.00", 546), pit(365, 55, "1,200.00", 546), pit(516, 55, "1,150.00", 546)] }
+];
+var zenithRows = PDF.assemble([zenithPage]);
+var zenithDet = PARSER.detectColumns(zenithRows);
+var zenithBuilt = zenithDet && PARSER.buildTransactions(zenithRows, zenithDet.headerRow, zenithDet.map);
+var zenithMeta = zenithDet && PARSER.extractStatementMeta(zenithRows, zenithDet.headerRow);
+var zenithRec = zenithBuilt && PARSER.reconcileWithMeta(zenithBuilt.txns, zenithMeta);
+check("pdf/zenith: compact Debit/Credit header with fused value-date cells is normalized", zenithRows[zenithDet.headerRow + 2][2] === "50.00" && zenithRows[zenithDet.headerRow + 2][3] === "0.00" && zenithRows[zenithDet.headerRow + 3][2] === "0.00" && zenithRows[zenithDet.headerRow + 3][3] === "200.00", JSON.stringify(zenithRows));
+check("pdf/zenith: transactions parse without balance-proven side repairs", zenithBuilt && zenithBuilt.txns.length === 2 && zenithBuilt.moneySideRepairs === 0 && zenithBuilt.txns[0].debit === 50 && zenithBuilt.txns[1].credit === 200, JSON.stringify(zenithBuilt));
+check("pdf/zenith: opening and totals metadata reconcile with credit total including opening balance", zenithMeta && zenithMeta.openingBalance === 1000 && zenithMeta.totalDebit === 50 && zenithMeta.totalCredit === 200 && zenithRec && zenithRec.allOk, JSON.stringify({ meta: zenithMeta, rec: zenithRec }));
+
 var polarisPage = [
   { y: 510, items: [pit(45, 75, "O p e n i n g B a l a n c e :", 510), pit(45, 75, "O p e n i n g B a l a n c e :", 510), pit(150, 34, "100.00", 510), pit(150, 34, "100.00", 510)] },
   { y: 496, items: [pit(45, 70, "C l o s i n g B a l a n c e :", 496), pit(45, 70, "C l o s i n g B a l a n c e :", 496), pit(150, 34, "140.00", 496), pit(150, 34, "140.00", 496)] },
@@ -1011,7 +1028,7 @@ var appCss = fs.readFileSync(__dirname + "/../css/app.css", "utf8");
 var betaGuide = fs.readFileSync(__dirname + "/../BETA_TESTING.md", "utf8");
 check("static: beta guide appears in app", indexHtml.indexOf("Beta tester checklist") !== -1 && indexHtml.indexOf("anonymized parser diagnostic") !== -1);
 check("static: BETA_TESTING documents privacy-safe diagnostics", betaGuide.indexOf("anonymized parser diagnostic") !== -1 && betaGuide.indexOf("must not contain names") !== -1);
-check("static: APP_BUILD and cache bust agree on 47", appJs.indexOf("APP_BUILD = 47") !== -1 && (indexHtml.match(/v=47/g) || []).length >= 6);
+check("static: APP_BUILD and cache bust agree on 48", appJs.indexOf("APP_BUILD = 48") !== -1 && (indexHtml.match(/v=48/g) || []).length >= 6);
 check("static: global back button is wired across later steps", indexHtml.indexOf('id="btn-global-back"') !== -1 && indexHtml.indexOf('id="btn-results-back"') !== -1 && appJs.indexOf("function goBack()") !== -1 && appJs.indexOf("PREV_STEP") !== -1);
 check("static: light/dark theme toggle is wired and persisted", indexHtml.indexOf('id="theme-toggle"') !== -1 && indexHtml.indexOf('bsa-theme') !== -1 && appCss.indexOf(':root[data-theme="light"]') !== -1 && appJs.indexOf("function wireTheme()") !== -1 && appJs.indexOf('localStorage.setItem("bsa-theme"') !== -1);
 check("static: Access-style preview columns have explicit role widths", appCss.indexOf("table-layout: fixed") !== -1 && appJs.indexOf("previewColWidth") !== -1 && appJs.indexOf("previewTableWidth") !== -1 && appJs.indexOf("<colgroup>") !== -1);

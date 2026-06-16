@@ -335,6 +335,7 @@
       if (inHero) assignStackedSummaryRow(meta, row, rows[r + 1]);
       if (inHero) assignCompactHeroSummary(meta, row);
       if (inHero) assignNearbySplitBalances(meta, row, rows, r);
+      assignZenithSummaryRow(meta, row);
       for (var c = 0; c < row.length; c++) {
         var cell = row[c];
         if (cell == null || cell === "") continue;
@@ -488,6 +489,48 @@
     if (vals.length >= 2) {
       if (meta.openingBalance === null) meta.openingBalance = vals[0];
       if (meta.closingBalance === null) meta.closingBalance = vals[1];
+    }
+  }
+
+
+  /** Zenith PDFs can print the transaction table's opening and footer totals
+   *  inside the same six-column table. In that layout the opening balance sits
+   *  in the Balance column while zero Debit/Credit placeholders sit earlier,
+   *  and the footer prints TOTALS as two adjacent figures. Prefer those
+   *  statement-summary positions so checksum metadata is not stolen by the
+   *  placeholder zeroes. */
+  function assignZenithSummaryRow(meta, row) {
+    if (!row || row.length < 2) return;
+    var label = normHeader(row[1]);
+    function amountAt(idx) {
+      var v = parseAmount(row[idx]);
+      return typeof v === "number" ? Math.abs(v) : null;
+    }
+    if (/OPENING\s+BALANCE/.test(label)) {
+      var ob = amountAt(row.length - 1);
+      if (ob !== null) meta.openingBalance = ob;
+      return;
+    }
+    if (/^TOTALS?$|^TOTAL\s*\(CLEARED\s*\+\s*UNCLEARED\)/.test(label)) {
+      var nums = [];
+      row.slice(2).forEach(function (cell) {
+        var found = String(cell == null ? "" : cell).match(/-?[\d,]+(?:\.\d{1,2})?/g) || [];
+        found.forEach(function (m) {
+          var v = parseAmount(m);
+          if (typeof v === "number") nums.push(Math.abs(v));
+        });
+      });
+      if (nums.length >= 2) {
+        if (meta.totalDebit === null) meta.totalDebit = nums[0];
+        if (meta.totalCredit === null) {
+          // Zenith's printed credit total includes the opening balance as the
+          // first credit-side figure. The transaction checksum compares only
+          // statement-period credits, so remove that opening carry-forward when
+          // present.
+          meta.totalCredit = meta.openingBalance !== null && nums[1] > meta.openingBalance ? Math.round((nums[1] - meta.openingBalance) * 100) / 100 : nums[1];
+        }
+      }
+      if (nums.length >= 3 && meta.closingBalance === null) meta.closingBalance = nums[nums.length - 1];
     }
   }
 
@@ -1483,7 +1526,41 @@
       }
       flushData();
     });
-    return rows.filter(function (r) { return r.some(function (c) { return String(c).trim() !== ""; }); });
+    rows = rows.filter(function (r) { return r.some(function (c) { return String(c).trim() !== ""; }); });
+    return normalizeZenithPdfRows(rows);
+  }
+
+  function isZenithHeader(row) {
+    if (!row || row.length !== 6) return false;
+    var h = row.map(normHeader);
+    return h[0] === "DATE" && h[1] === "DESCRIPTION" && h[2] === "DEBIT" && h[3] === "CREDIT" && h[4] === "VALUE DATE" && h[5] === "BALANCE";
+  }
+
+  /** Zenith's PDF text layer commonly emits compact Debit/Credit headers while
+   *  the numeric values are right-aligned. The Debit amount therefore lands one
+   *  column to the right, and the Credit zero/value can be fused with Value
+   *  Date as one text item (e.g. "0.00 11/01/2026" or "700,000.00 28/01/2026").
+   *  Normalize only this exact header shape, preserving the visual table roles:
+   *  DATE | DESCRIPTION | DEBIT | CREDIT | VALUE DATE | BALANCE. */
+  function normalizeZenithPdfRows(rows) {
+    var headerIdx = -1;
+    for (var i = 0; i < rows.length; i++) if (isZenithHeader(rows[i])) { headerIdx = i; break; }
+    if (headerIdx < 0) return rows;
+    var out = rows.map(function (r) { return r.slice(); });
+    for (i = headerIdx + 1; i < out.length; i++) {
+      var row = out[i];
+      if (!row || row.length !== 6) continue;
+      var vd = String(row[4] == null ? "" : row[4]).trim();
+      var m = vd.match(/^(-?[\d,]+(?:\.\d{1,2})?)\s+(\d{1,2}\/\d{1,2}\/\d{4})$/);
+      if (!m) continue;
+      var shifted = parseAmount(row[3]);
+      var fused = parseAmount(m[1]);
+      if (shifted === null || fused === null) continue;
+      if (String(row[2] || "").trim() === "") row[2] = row[3];
+      row[3] = m[1];
+      row[4] = m[2];
+    }
+    return out;
   }
 
   /* ---------------- anonymized parser diagnostics ---------------- */
