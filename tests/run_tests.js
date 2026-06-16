@@ -415,6 +415,22 @@ check("hero: account type detected as savings", hmeta && hmeta.accountType === "
 check("hero: statement period mined", hmeta && hmeta.periodFrom && hmeta.periodFrom.getDate() === 1 &&
   hmeta.periodFrom.getMonth() === 4 && hmeta.periodTo.getDate() === 31);
 
+var globusLikeRows = [
+  ["Summary Statement for,", "2025-01-01 to 2025-12-31", "Account Number", "1000000000"],
+  ["SAMPLE BUSINESS LIMITED", "Opening Balance"],
+  ["Account Name"],
+  ["LIMITED"],
+  ["Total Withdrawals", "46,440,475.54"],
+  ["Total Lodgement", "46,465,685.38"],
+  ["Closing Balance", "25,209.84"],
+  ["Post Date", "Value Date", "Description", "Debit", "Credit", "Balance"],
+  ["1 01/1/2025", "01/1/2025", "Opening Balance", "--", "0.00", "0.00"],
+  ["2 16-01-2025", "16-01-2025", "Opening credit", "--", "50,000.00", "50,000.00"]
+];
+var globusLikeDet = PARSER.detectColumns(globusLikeRows);
+var globusLikeMeta = PARSER.extractStatementMeta(globusLikeRows, globusLikeDet.headerRow);
+check("meta/globus: opening label beside statement date range does not steal date fragments as balance", globusLikeMeta && globusLikeMeta.openingBalance === null && globusLikeMeta.closingBalance === 25209.84 && globusLikeMeta.totalDebit === 46440475.54 && globusLikeMeta.totalCredit === 46465685.38, JSON.stringify(globusLikeMeta));
+
 var hbuilt = PARSER.buildTransactions(heroRows, hdet.headerRow, hdet.map);
 check("hero: txns built with reference merged into narration", hbuilt.txns.length === 2 && /REF001/.test(hbuilt.txns[0].narration));
 
@@ -1044,7 +1060,7 @@ var appCss = fs.readFileSync(__dirname + "/../css/app.css", "utf8");
 var betaGuide = fs.readFileSync(__dirname + "/../BETA_TESTING.md", "utf8");
 check("static: beta guide appears in app", indexHtml.indexOf("Beta tester checklist") !== -1 && indexHtml.indexOf("anonymized parser diagnostic") !== -1);
 check("static: BETA_TESTING documents privacy-safe diagnostics", betaGuide.indexOf("anonymized parser diagnostic") !== -1 && betaGuide.indexOf("must not contain names") !== -1);
-check("static: APP_BUILD and cache bust agree on 49", appJs.indexOf("APP_BUILD = 49") !== -1 && (indexHtml.match(/v=49/g) || []).length >= 6);
+check("static: APP_BUILD and cache bust agree on 50", appJs.indexOf("APP_BUILD = 50") !== -1 && (indexHtml.match(/v=50/g) || []).length >= 6);
 check("static: global back button is wired across later steps", indexHtml.indexOf('id="btn-global-back"') !== -1 && indexHtml.indexOf('id="btn-results-back"') !== -1 && appJs.indexOf("function goBack()") !== -1 && appJs.indexOf("PREV_STEP") !== -1);
 check("static: light/dark theme toggle is wired and persisted", indexHtml.indexOf('id="theme-toggle"') !== -1 && indexHtml.indexOf('bsa-theme') !== -1 && appCss.indexOf(':root[data-theme="light"]') !== -1 && appJs.indexOf("function wireTheme()") !== -1 && appJs.indexOf('localStorage.setItem("bsa-theme"') !== -1);
 check("static: Access-style preview columns have explicit role widths", appCss.indexOf("table-layout: fixed") !== -1 && appJs.indexOf("previewColWidth") !== -1 && appJs.indexOf("previewTableWidth") !== -1 && appJs.indexOf("<colgroup>") !== -1);

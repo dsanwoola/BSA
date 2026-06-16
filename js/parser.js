@@ -349,7 +349,9 @@
           var def = META_LABELS[i];
           // amounts/period may also live in the table FOOTER (totals row);
           // identity fields are only trusted from the hero section
-          var allowed = inHero || def.kind === "amount" || def.kind === "period";
+          var bodyBalanceSummary = /^(openingBalance|closingBalance)$/.test(def.key) &&
+            row.every(function (cell) { return !extractDateToken(cell); });
+          var allowed = inHero || def.kind === "period" || /^(totalDebit|totalCredit|debitCount|creditCount)$/.test(def.key) || bodyBalanceSummary;
           if (!allowed) continue;
           if (def.key === "period" && (meta.periodFrom || meta.periodTo)) continue;
           if (def.key !== "period" && meta[def.key] !== null) continue;
@@ -542,7 +544,14 @@
       if (!raw) continue;
       if (def.kind === "amount") {
         if (parseDate(raw)) continue; // a date below/near the label is not a money value
-        var matches = raw.match(/-?[\d,]+(?:\.\d{1,2})?/g);
+        // Globus-style hero rows may place an Opening Balance label beside a
+        // statement date range (e.g. "2025-01-01 to 2025-12-31") with the
+        // actual amount elsewhere/absent. Strip recognizable date tokens before
+        // looking for money so day/year fragments are never stolen as balances.
+        var moneySource = raw.replace(DATE_TOKEN, " ");
+        DATE_TOKEN.lastIndex = 0;
+        if (!/\d/.test(moneySource)) continue;
+        var matches = moneySource.match(/-?[\d,]+(?:\.\d{1,2})?/g);
         if (!matches || !matches.length) continue;
         // Sterling-style totals can be printed as "Total Debit (100): 295,943.85 NGN".
         // For total amount labels, the count in parentheses is not the money value;
