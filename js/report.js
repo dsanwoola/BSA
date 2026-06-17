@@ -70,19 +70,21 @@
       reviewAmount: (audit.summary && audit.summary.underReview) || 0,
       suspiciousAmount: r2(suspicious),
       largestDebit: largestDebit ? { date: largestDebit.date, narration: largestDebit.narration, debit: largestDebit.debit } : null,
-      averageDebit: debitCount ? r2(totalOut / debitCount) : 0
+      averageDebit: debitCount ? r2(totalOut / debitCount) : 0,
+      periodFrom: audit.summary && audit.summary.period ? audit.summary.period.from : null,
+      periodTo: audit.summary && audit.summary.period ? audit.summary.period.to : null
     };
   }
 
-  function renderSmeDashboard(txns, audit) {
+  function renderSmeDashboard(txns, audit, opts) {
+    opts = opts || {};
+    var premium = !!opts.premiumUnlocked;
     var d = smeDashboard(txns, audit);
     var cashTone = d.netCashflow >= 0 ? "positive" : "negative";
-    var ownerLine = d.refundDue > 0
-      ? "Action: send the refund demand letter and track recovery of " + fmtN(d.refundDue) + "."
-      : (d.reviewAmount > 0 ? "Action: review unclear charges worth " + fmtN(d.reviewAmount) + " before accepting the statement." : "Action: no proven refundable bank charge found in this run.");
+    var ownerLine = ownerSummaryLine(d);
     var largest = d.largestDebit ? fmtDate(d.largestDebit.date) + " — " + fmtN(d.largestDebit.debit) : "None";
     return '<section class="sme-dashboard" id="sme-dashboard">' +
-      '<div class="sme-head"><div><h3>SME finance dashboard</h3><p>Owner/accountant view of cash movement, bank-charge leakage and review items from this statement.</p></div><span class="badge v-advisory">PHASE 1</span></div>' +
+      '<div class="sme-head"><div><h3>SME finance dashboard</h3><p>Owner/accountant view of cash movement, bank-charge leakage and review items from this statement.</p></div><span class="badge premium-badge">PREMIUM</span></div>' +
       '<div class="sme-grid">' +
         smeCard("Money in", fmtN(d.totalIn), "Total credits/read inflows") +
         smeCard("Money out", fmtN(d.totalOut), "Total debits/outflows") +
@@ -93,10 +95,81 @@
       '</div>' +
       '<div class="sme-notes"><div><strong>Owner summary:</strong> ' + esc(ownerLine) + '</div>' +
       '<div><strong>Accountant checks:</strong> suspicious/review exposure ' + fmtN(d.suspiciousAmount) + '; largest ordinary debit ' + esc(largest) + '; average debit ' + fmtN(d.averageDebit) + '.</div></div>' +
+      '<div class="premium-panel ' + (premium ? 'premium-open' : 'premium-locked') + '">' +
+        '<div><strong>SME Premium monthly report</strong><p>' + (premium ? 'Unlocked: export a board/accountant-ready monthly finance report or copy a WhatsApp owner summary.' : 'Locked premium feature: monthly finance report export and owner WhatsApp summary for SMEs, accountants and bookkeepers.') + '</p></div>' +
+        '<div class="premium-actions">' +
+          (premium ? '' : '<button class="btn btn-primary btn-small" id="btn-premium-unlock" type="button">Unlock SME Premium</button>') +
+          '<button class="btn btn-ghost btn-small" id="btn-sme-monthly-report" type="button"' + (premium ? '' : ' disabled aria-disabled="true"') + '>Download monthly SME report</button>' +
+          '<button class="btn btn-ghost btn-small" id="btn-sme-whatsapp-summary" type="button"' + (premium ? '' : ' disabled aria-disabled="true"') + '>Copy owner WhatsApp summary</button>' +
+        '</div>' +
+      '</div>' +
       '</section>';
     function smeCard(title, big, sub, cls) {
       return '<div class="sme-card ' + (cls || "") + '"><span>' + esc(title) + '</span><strong>' + esc(big) + '</strong><small>' + esc(sub) + '</small></div>';
     }
+  }
+
+  function ownerSummaryLine(d) {
+    if (d.refundDue > 0) return "Action: send the refund demand letter and track recovery of " + fmtN(d.refundDue) + ".";
+    if (d.reviewAmount > 0) return "Action: review unclear charges worth " + fmtN(d.reviewAmount) + " before accepting the statement.";
+    return "Action: no proven refundable bank charge found in this run.";
+  }
+
+  function monthlySmeReport(txns, audit, ctx, src) {
+    var d = smeDashboard(txns, audit);
+    var lines = [];
+    src = src || {};
+    lines.push("SME MONTHLY FINANCE REPORT — PREMIUM");
+    lines.push("Generated: " + new Date().toLocaleString("en-NG"));
+    lines.push("Statement period: " + fmtDate(d.periodFrom) + " – " + fmtDate(d.periodTo));
+    if (src.fileName) lines.push("Source statement: " + src.fileName);
+    lines.push("Account profile: " + ((ctx && ctx.accountType) || "current") + " / " + ((ctx && ctx.holderType) || "business"));
+    lines.push("");
+    lines.push("OWNER DASHBOARD");
+    lines.push("- Money in: " + fmtN(d.totalIn));
+    lines.push("- Money out: " + fmtN(d.totalOut));
+    lines.push("- Net cashflow: " + fmtN(d.netCashflow));
+    lines.push("- Bank charges detected: " + fmtN(d.bankCharges) + " across " + d.chargeCount + " charge line(s)");
+    lines.push("- Refund/recovery due: " + fmtN(d.refundDue));
+    lines.push("- Needs review: " + fmtN(d.reviewAmount));
+    lines.push("");
+    lines.push("OWNER NEXT ACTION");
+    lines.push("- " + ownerSummaryLine(d));
+    lines.push("");
+    lines.push("ACCOUNTANT CHECKS");
+    lines.push("- Suspicious/review exposure: " + fmtN(d.suspiciousAmount));
+    lines.push("- Largest ordinary debit: " + (d.largestDebit ? fmtDate(d.largestDebit.date) + " — " + fmtN(d.largestDebit.debit) + " — " + d.largestDebit.narration : "None"));
+    lines.push("- Average debit: " + fmtN(d.averageDebit));
+    lines.push("");
+    lines.push("CHARGE FINDINGS SUMMARY");
+    if (!(audit.findings || []).length && !(audit.aggregates || []).length) {
+      lines.push("- No bank-charge findings in this statement.");
+    } else {
+      (audit.findings || []).slice(0, 25).forEach(function (f) {
+        lines.push("- " + fmtDate(f.txn.date) + " | " + f.verdict.toUpperCase() + " | " + f.typeName + " | charged " + fmtN(f.charged) + (f.excess ? " | excess " + fmtN(f.excess) : "") + " | " + f.txn.narration);
+      });
+      (audit.aggregates || []).forEach(function (a) {
+        lines.push("- CROSS-CHECK | " + a.verdict.toUpperCase() + " | " + a.title + (a.excess ? " | excess " + fmtN(a.excess) : ""));
+      });
+    }
+    lines.push("");
+    lines.push("Note: This premium report is generated locally in the browser from the imported statement. It is for SME bookkeeping/recovery follow-up, not legal advice.");
+    return lines.join("\n");
+  }
+
+  function whatsappSmeSummary(txns, audit) {
+    var d = smeDashboard(txns, audit);
+    return [
+      "SME Finance Summary",
+      "Period: " + fmtDate(d.periodFrom) + " – " + fmtDate(d.periodTo),
+      "Money in: " + fmtN(d.totalIn),
+      "Money out: " + fmtN(d.totalOut),
+      "Net cashflow: " + fmtN(d.netCashflow),
+      "Bank charges: " + fmtN(d.bankCharges),
+      "Refund/recovery due: " + fmtN(d.refundDue),
+      "Needs review: " + fmtN(d.reviewAmount),
+      ownerSummaryLine(d)
+    ].join("\n");
   }
 
   function r2(n) { return Math.round(n * 100) / 100; }
@@ -270,6 +343,7 @@
   var API = {
     renderSummary: renderSummary, renderAggregates: renderAggregates,
     smeDashboard: smeDashboard, renderSmeDashboard: renderSmeDashboard,
+    monthlySmeReport: monthlySmeReport, whatsappSmeSummary: whatsappSmeSummary,
     renderFindings: renderFindings, renderAllTxns: renderAllTxns,
     typeOptionsHTML: typeOptionsHTML,
     findingsCSV: findingsCSV, demandLetter: demandLetter, reportMeta: reportMeta,

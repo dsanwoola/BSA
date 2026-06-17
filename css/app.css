@@ -258,6 +258,12 @@ header.app-head {
 .sme-card.sme-negative strong { color: var(--red); }
 .sme-notes { display: grid; gap: 6px; margin-top: 13px; padding-top: 13px; border-top: 1px solid var(--line); color: var(--txt-dim); font-size: 13px; }
 .sme-notes strong { color: var(--txt); }
+.premium-badge { background: rgba(245, 158, 11, .16); color: var(--gold); border: 1px solid rgba(245, 158, 11, .45); }
+.premium-panel { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-top: 14px; padding: 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--card-2); }
+.premium-panel p { margin: 3px 0 0; color: var(--txt-dim); font-size: 12.5px; }
+.premium-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.premium-locked { border-color: rgba(245, 158, 11, .42); background: linear-gradient(135deg, rgba(245, 158, 11, .10), rgba(109, 179, 255, .05)); }
+.premium-open { border-color: var(--status-green-border); background: var(--green-soft); }
 
 h3.sec { font-size: 16.5px; margin: 30px 0 6px; }
 h3.sec + p.sec-sub { color: var(--txt-dim); font-size: 13.5px; margin: 0 0 14px; }
