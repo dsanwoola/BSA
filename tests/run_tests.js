@@ -9,6 +9,7 @@ var PARSER = require("../js/parser.js");
 var ENGINE = require("../js/engine.js");
 var RULES = require("../js/rules.js");
 var PATTERNS = require("../js/patterns.js");
+var REPORT = require("../js/report.js");
 
 var passed = 0, failed = 0, failures = [];
 function check(name, cond, detail) {
@@ -224,6 +225,18 @@ res = ENGINE.audit([
 ], CTX_SAVINGS);
 check("VAT at 7.5% of fee = compliant", findFor(res, 2).verdict === "compliant");
 check("fee with separate VAT judged ex-VAT", findFor(res, 1).verdict === "compliant");
+
+var smeTxns = [
+  T(0, D(2025, 5, 1), "CUSTOMER PAYMENT", 0, 150000),
+  T(1, D(2025, 5, 2), "SUPPLIER PAYMENT", 80000, 0),
+  T(2, D(2025, 5, 2), "NIP TRANSFER CHARGE", 80, 0),
+  T(3, D(2025, 5, 3), "SMS ALERT CHARGE", 7.34, 0)
+];
+var smeAudit = ENGINE.audit(smeTxns.map(function (t, i) { return { index: i, date: t.date, narration: t.narration, debit: t.debit, credit: t.credit }; }), CTX_CURRENT);
+var sme = REPORT.smeDashboard(smeTxns, smeAudit);
+var smeHtml = REPORT.renderSmeDashboard(smeTxns, smeAudit);
+check("SME dashboard calculates cashflow and charge leakage", sme.totalIn === 150000 && sme.totalOut === 80087.34 && sme.netCashflow === 69912.66 && sme.bankCharges === 87.34 && sme.refundDue > 0 && sme.reviewAmount > 0, JSON.stringify(sme));
+check("SME dashboard renders owner/accountant summary", smeHtml.indexOf("SME finance dashboard") !== -1 && smeHtml.indexOf("Owner summary") !== -1 && smeHtml.indexOf("Accountant checks") !== -1);
 
 res = ENGINE.audit([T(0, D(2025, 5, 10), "VAT CHARGE", 500, 0)], CTX_SAVINGS);
 check("orphan VAT = review (no guessing)", findFor(res, 0).verdict === "review");
@@ -1078,10 +1091,12 @@ check("diagnostic: excludes transaction amounts and balances", sjson.indexOf("10
 var indexHtml = fs.readFileSync(__dirname + "/../index.html", "utf8");
 var appJs = fs.readFileSync(__dirname + "/../js/app.js", "utf8");
 var appCss = fs.readFileSync(__dirname + "/../css/app.css", "utf8");
+var reportJs = fs.readFileSync(__dirname + "/../js/report.js", "utf8");
 var betaGuide = fs.readFileSync(__dirname + "/../BETA_TESTING.md", "utf8");
 check("static: beta guide appears in app", indexHtml.indexOf("Beta tester checklist") !== -1 && indexHtml.indexOf("anonymized parser diagnostic") !== -1);
 check("static: BETA_TESTING documents privacy-safe diagnostics", betaGuide.indexOf("anonymized parser diagnostic") !== -1 && betaGuide.indexOf("must not contain names") !== -1);
-check("static: APP_BUILD and cache bust agree on 51", appJs.indexOf("APP_BUILD = 51") !== -1 && (indexHtml.match(/v=51/g) || []).length >= 6);
+check("static: APP_BUILD and cache bust agree on 52", appJs.indexOf("APP_BUILD = 52") !== -1 && (indexHtml.match(/v=52/g) || []).length >= 6);
+check("static: SME dashboard Phase 1 is wired", indexHtml.indexOf('id="sme-dashboard-root"') !== -1 && reportJs.indexOf("renderSmeDashboard") !== -1 && reportJs.indexOf("SME finance dashboard") !== -1 && appJs.indexOf("#sme-dashboard-root") !== -1 && appCss.indexOf(".sme-dashboard") !== -1);
 check("static: global back button is wired across later steps", indexHtml.indexOf('id="btn-global-back"') !== -1 && indexHtml.indexOf('id="btn-results-back"') !== -1 && appJs.indexOf("function goBack()") !== -1 && appJs.indexOf("PREV_STEP") !== -1);
 check("static: light/dark theme toggle is wired and persisted", indexHtml.indexOf('id="theme-toggle"') !== -1 && indexHtml.indexOf('bsa-theme') !== -1 && appCss.indexOf(':root[data-theme="light"]') !== -1 && appJs.indexOf("function wireTheme()") !== -1 && appJs.indexOf('localStorage.setItem("bsa-theme"') !== -1);
 check("static: Access-style preview columns have explicit role widths", appCss.indexOf("table-layout: fixed") !== -1 && appJs.indexOf("previewColWidth") !== -1 && appJs.indexOf("previewTableWidth") !== -1 && appJs.indexOf("<colgroup>") !== -1);

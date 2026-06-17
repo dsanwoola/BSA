@@ -41,6 +41,66 @@
     }
   }
 
+  /* ---------------- SME finance dashboard ---------------- */
+  function smeDashboard(txns, audit) {
+    txns = txns || [];
+    audit = audit || { findings: [], aggregates: [], summary: {} };
+    var totalIn = 0, totalOut = 0, bankCharges = 0, suspicious = 0, largestDebit = null;
+    var findingsByIndex = {}, chargeCount = 0, debitCount = 0;
+    (audit.findings || []).forEach(function (f) { findingsByIndex[f.txnIndex] = f; });
+    txns.forEach(function (t) {
+      totalIn += t.credit || 0;
+      totalOut += t.debit || 0;
+      if (t.debit > 0) debitCount++;
+      var f = findingsByIndex[t.index];
+      if (f) { bankCharges += f.charged || 0; chargeCount++; }
+      if (!f && t.debit > 0 && (!largestDebit || t.debit > largestDebit.debit)) largestDebit = t;
+    });
+    (audit.aggregates || []).forEach(function (a) { if (a.verdict === "violation") suspicious += a.excess || 0; });
+    (audit.findings || []).forEach(function (f) {
+      if (f.verdict === "violation" || f.verdict === "review") suspicious += f.charged || 0;
+    });
+    return {
+      totalIn: r2(totalIn),
+      totalOut: r2(totalOut),
+      netCashflow: r2(totalIn - totalOut),
+      bankCharges: r2(bankCharges),
+      chargeCount: chargeCount,
+      refundDue: (audit.summary && audit.summary.refundDue) || 0,
+      reviewAmount: (audit.summary && audit.summary.underReview) || 0,
+      suspiciousAmount: r2(suspicious),
+      largestDebit: largestDebit ? { date: largestDebit.date, narration: largestDebit.narration, debit: largestDebit.debit } : null,
+      averageDebit: debitCount ? r2(totalOut / debitCount) : 0
+    };
+  }
+
+  function renderSmeDashboard(txns, audit) {
+    var d = smeDashboard(txns, audit);
+    var cashTone = d.netCashflow >= 0 ? "positive" : "negative";
+    var ownerLine = d.refundDue > 0
+      ? "Action: send the refund demand letter and track recovery of " + fmtN(d.refundDue) + "."
+      : (d.reviewAmount > 0 ? "Action: review unclear charges worth " + fmtN(d.reviewAmount) + " before accepting the statement." : "Action: no proven refundable bank charge found in this run.");
+    var largest = d.largestDebit ? fmtDate(d.largestDebit.date) + " — " + fmtN(d.largestDebit.debit) : "None";
+    return '<section class="sme-dashboard" id="sme-dashboard">' +
+      '<div class="sme-head"><div><h3>SME finance dashboard</h3><p>Owner/accountant view of cash movement, bank-charge leakage and review items from this statement.</p></div><span class="badge v-advisory">PHASE 1</span></div>' +
+      '<div class="sme-grid">' +
+        smeCard("Money in", fmtN(d.totalIn), "Total credits/read inflows") +
+        smeCard("Money out", fmtN(d.totalOut), "Total debits/outflows") +
+        smeCard("Net cashflow", fmtN(d.netCashflow), d.netCashflow >= 0 ? "More came in than went out" : "Outflows exceeded inflows", "sme-" + cashTone) +
+        smeCard("Bank charges", fmtN(d.bankCharges), d.chargeCount + " charge line(s) detected") +
+        smeCard("Refund/recovery", fmtN(d.refundDue), "Proven refundable amount", d.refundDue > 0 ? "sme-negative" : "sme-positive") +
+        smeCard("Needs review", fmtN(d.reviewAmount), "Unclear charge amount") +
+      '</div>' +
+      '<div class="sme-notes"><div><strong>Owner summary:</strong> ' + esc(ownerLine) + '</div>' +
+      '<div><strong>Accountant checks:</strong> suspicious/review exposure ' + fmtN(d.suspiciousAmount) + '; largest ordinary debit ' + esc(largest) + '; average debit ' + fmtN(d.averageDebit) + '.</div></div>' +
+      '</section>';
+    function smeCard(title, big, sub, cls) {
+      return '<div class="sme-card ' + (cls || "") + '"><span>' + esc(title) + '</span><strong>' + esc(big) + '</strong><small>' + esc(sub) + '</small></div>';
+    }
+  }
+
+  function r2(n) { return Math.round(n * 100) / 100; }
+
   /* ---------------- aggregate cross-checks ---------------- */
   function renderAggregates(audit) {
     if (!audit.aggregates.length) {
@@ -209,6 +269,7 @@
 
   var API = {
     renderSummary: renderSummary, renderAggregates: renderAggregates,
+    smeDashboard: smeDashboard, renderSmeDashboard: renderSmeDashboard,
     renderFindings: renderFindings, renderAllTxns: renderAllTxns,
     typeOptionsHTML: typeOptionsHTML,
     findingsCSV: findingsCSV, demandLetter: demandLetter, reportMeta: reportMeta,

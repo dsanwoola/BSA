@@ -245,6 +245,20 @@ header.app-head {
 
 .report-meta { background: var(--card-2); border: 1px solid var(--line); border-radius: 10px; padding: 14px 18px; font-size: 13px; color: var(--txt-dim); display: grid; gap: 4px; margin-bottom: 26px; }
 
+.sme-dashboard { border: 1px solid var(--line); border-radius: var(--radius); background: linear-gradient(135deg, rgba(109, 179, 255, .08), rgba(46, 229, 157, .05)); padding: 18px; margin: 6px 0 18px; }
+.sme-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.sme-head h3 { margin: 0; font-size: 17px; }
+.sme-head p { margin: 3px 0 0; color: var(--txt-dim); font-size: 13px; }
+.sme-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(155px, 1fr)); gap: 10px; }
+.sme-card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 13px 14px; }
+.sme-card span { display: block; color: var(--txt-dim); font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .6px; }
+.sme-card strong { display: block; margin: 5px 0 2px; font-size: 20px; line-height: 1.15; }
+.sme-card small { color: var(--txt-dim); font-size: 11.5px; }
+.sme-card.sme-positive strong { color: var(--accent); }
+.sme-card.sme-negative strong { color: var(--red); }
+.sme-notes { display: grid; gap: 6px; margin-top: 13px; padding-top: 13px; border-top: 1px solid var(--line); color: var(--txt-dim); font-size: 13px; }
+.sme-notes strong { color: var(--txt); }
+
 h3.sec { font-size: 16.5px; margin: 30px 0 6px; }
 h3.sec + p.sec-sub { color: var(--txt-dim); font-size: 13.5px; margin: 0 0 14px; }
 
