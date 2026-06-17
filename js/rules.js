@@ -69,6 +69,8 @@
       return 50;
     },
     eftMaxFee: 50, // absolute ceiling regardless of transfer size
+    eftOwnAccountSameBankFeeAllowed: false,
+    eftOwnAccountSameBankCitation: "Operational rule confirmed June 2026 — own-account transfers within the same bank should not attract electronic transfer fees; own-account transfers to another bank remain subject to normal transfer-fee tiers",
 
     /* ---------------- Levy / stamp duty on transfers ------------------ */
     /** Per-event levy is ₦50 flat in both regimes; what changes is who

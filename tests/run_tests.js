@@ -174,6 +174,14 @@ res = ENGINE.audit([
 camfAgg = res.aggregates.find(function (a) { return a.id.indexOf("camf") === 0; });
 check("CAMF with partial month = advisory (no guessing)", camfAgg && camfAgg.verdict === "advisory");
 
+res = ENGINE.audit([
+  T(0, D(2025, 5, 1), "FT OWN ACCOUNT TRANSFER TO MY SAVINGS", 100000, 0),
+  T(1, D(2025, 5, 15), "POS PURCHASE", 1, 0),
+  T(2, D(2025, 5, 31), "ACCOUNT MAINTENANCE FEE MAY", 50, 0)
+], CTX_CURRENT);
+camfAgg = res.aggregates.find(function (a) { return a.id.indexOf("camf") === 0; });
+check("CAMF excludes same-bank own-account transfers from debit turnover", camfAgg && camfAgg.verdict === "violation" && camfAgg.excess > 46, camfAgg && camfAgg.detail);
+
 /* ---------------- engine: EFT fees ---------------- */
 res = ENGINE.audit([
   T(0, D(2025, 5, 10), "NIP/TRF TO MAMA PUT KITCHEN", 3000, 0),
@@ -188,6 +196,19 @@ res = ENGINE.audit([
   T(1, D(2025, 5, 10), "NIP TRANSFER CHARGE", 26.88, 0)
 ], CTX_SAVINGS);
 check("₦26.88 fee on ₦30,000 transfer = compliant", findFor(res, 1).verdict === "compliant");
+
+res = ENGINE.audit([
+  T(0, D(2025, 5, 10), "FT OWN ACCOUNT TRANSFER TO MY SAVINGS", 30000, 0),
+  T(1, D(2025, 5, 10), "TRANSFER CHARGE", 25, 0)
+], CTX_SAVINGS);
+f = findFor(res, 1);
+check("EFT: same-bank own-account transfer fee is refundable", f && f.verdict === "violation" && f.allowed === 0 && f.excess === 25, f && JSON.stringify(f));
+
+res = ENGINE.audit([
+  T(0, D(2025, 5, 10), "NIP/TRF TO DEEN SANWOOLA GTBANK OWN ACCOUNT", 30000, 0),
+  T(1, D(2025, 5, 10), "NIP TRANSFER CHARGE", 26.88, 0)
+], CTX_SAVINGS);
+check("EFT: other-bank own-account transfer can still carry normal transfer fee", findFor(res, 1).verdict === "compliant", JSON.stringify(findFor(res, 1)));
 
 res = ENGINE.audit([T(0, D(2025, 5, 10), "NIP TRANSFER CHARGE", 53.75, 0)], CTX_SAVINGS);
 check("unlinked fee at absolute ceiling = compliant", findFor(res, 0).verdict === "compliant");
@@ -1060,7 +1081,7 @@ var appCss = fs.readFileSync(__dirname + "/../css/app.css", "utf8");
 var betaGuide = fs.readFileSync(__dirname + "/../BETA_TESTING.md", "utf8");
 check("static: beta guide appears in app", indexHtml.indexOf("Beta tester checklist") !== -1 && indexHtml.indexOf("anonymized parser diagnostic") !== -1);
 check("static: BETA_TESTING documents privacy-safe diagnostics", betaGuide.indexOf("anonymized parser diagnostic") !== -1 && betaGuide.indexOf("must not contain names") !== -1);
-check("static: APP_BUILD and cache bust agree on 50", appJs.indexOf("APP_BUILD = 50") !== -1 && (indexHtml.match(/v=50/g) || []).length >= 6);
+check("static: APP_BUILD and cache bust agree on 51", appJs.indexOf("APP_BUILD = 51") !== -1 && (indexHtml.match(/v=51/g) || []).length >= 6);
 check("static: global back button is wired across later steps", indexHtml.indexOf('id="btn-global-back"') !== -1 && indexHtml.indexOf('id="btn-results-back"') !== -1 && appJs.indexOf("function goBack()") !== -1 && appJs.indexOf("PREV_STEP") !== -1);
 check("static: light/dark theme toggle is wired and persisted", indexHtml.indexOf('id="theme-toggle"') !== -1 && indexHtml.indexOf('bsa-theme') !== -1 && appCss.indexOf(':root[data-theme="light"]') !== -1 && appJs.indexOf("function wireTheme()") !== -1 && appJs.indexOf('localStorage.setItem("bsa-theme"') !== -1);
 check("static: Access-style preview columns have explicit role widths", appCss.indexOf("table-layout: fixed") !== -1 && appJs.indexOf("previewColWidth") !== -1 && appJs.indexOf("previewTableWidth") !== -1 && appJs.indexOf("<colgroup>") !== -1);

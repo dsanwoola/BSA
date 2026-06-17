@@ -316,6 +316,13 @@
       /* ---------- electronic transfers ---------- */
       case "eft": {
         var linked = t._feeParent ? { transfers: [t._feeParent] } : linkTransfer(t, txns);
+        var ownSameBankOnly = linked.transfers.length && linked.transfers.every(isOwnAccountSameBankTransfer);
+        if (ownSameBankOnly || isOwnAccountSameBankTransfer(t)) {
+          return mkFinding(t, "violation", 0,
+            "Own-account transfers within the same bank are not eligible for an electronic transfer fee. The full fee is refundable.",
+            RULES.eftOwnAccountSameBankCitation,
+            "Permitted charge: ₦0.00 • Charged: " + fmtN(t.debit) + " • Refund due: " + fmtN(t.debit));
+        }
         var feeCapEx;
         var how;
         if (linked.transfers.length) {
@@ -645,6 +652,20 @@
     return { transfers: out };
   }
 
+  /** Deterministic own-account/same-bank transfer marker. We only apply the
+   *  exemption where the narration explicitly says it is an own/self transfer
+   *  AND does not carry interbank rails such as NIP/NEFT/RTGS. Same-account-name
+   *  transfers to another bank remain chargeable under the normal transfer-fee
+   *  tiers, as confirmed by the user. */
+  function isOwnAccountSameBankTransfer(t) {
+    var n = PATTERNS.norm(t && t.narration);
+    if (!n) return false;
+    var own = /\bOWN\s+(ACCOUNT|ACCT|A\/?C)\b|\bSELF\s+TRANSFER\b|\bTRANSFER\s+TO\s+SELF\b|\bTO\s+SELF\b|\bBETWEEN\s+(OWN|MY)\s+ACCOUNTS?\b|\bINTERNAL\s+TRANSFER\b/.test(n);
+    if (!own) return false;
+    var interbankRails = /\b(NIP|NEFT|RTGS|INTERBANK|INTER\s+BANK|OTHER\s+BANK|TO\s+OTHER\s+BANK)\b/.test(n);
+    return !interbankRails;
+  }
+
   /** Nearest ATM cash withdrawal within 1 day. */
   function nearestAtmWithdrawal(fee, txns) {
     var best = null, bestDist = Infinity;
@@ -694,10 +715,14 @@
         chargedEx = r2(chargedEx + (t.hasSeparateVat ? t.debit : r2(t.debit / (1 + rate))));
       });
 
-      // customer-induced debit turnover: all debits that are not charges
-      var turnover = 0;
+      // customer-induced debit turnover: all debits that are not charges,
+      // excluding deterministically identified own-account same-bank transfers.
+      var turnover = 0, ownSameBankTurnover = 0;
       txns.forEach(function (x) {
-        if (x.debit > 0 && !x.chargeType && monthKey(x.date) === mk) turnover = r2(turnover + x.debit);
+        if (x.debit > 0 && !x.chargeType && monthKey(x.date) === mk) {
+          if (isOwnAccountSameBankTransfer(x)) ownSameBankTurnover = r2(ownSameBankTurnover + x.debit);
+          else turnover = r2(turnover + x.debit);
+        }
       });
       var cap = r2(turnover / 1000);
 
@@ -712,17 +737,18 @@
       }
       if (chargedEx > cap + TOL) {
         var excess = r2(chargedEx - cap);
+        var exclusionNote = ownSameBankTurnover > 0 ? " Deterministically identified own-account same-bank transfers totalling " + fmtN(ownSameBankTurnover) + " were excluded from turnover." : " Same-name transfers that cannot be identified from the narration remain included, so the true cap may be even lower.";
         out.push({
           id: "camf-" + mk, title: "CAMF overcharge — " + mk,
           verdict: "violation", excess: excess,
-          detail: "Your customer-induced debits in " + mk + " totalled " + fmtN(turnover) + ", so the maximum lawful CAMF is " + fmtN(turnover) + " ÷ 1,000 = " + fmtN(cap) + " (ex-VAT). The bank charged " + fmtN(chargedEx) + " (ex-VAT) — an overcharge of " + fmtN(excess) + ". (This cap is computed generously: bank charges were excluded from turnover but same-name transfers, which the CBN also excludes, could not be identified and were left in. The true cap may be even lower.)",
+          detail: "Your customer-induced debits in " + mk + " totalled " + fmtN(turnover) + ", so the maximum lawful CAMF is " + fmtN(turnover) + " ÷ 1,000 = " + fmtN(cap) + " (ex-VAT). The bank charged " + fmtN(chargedEx) + " (ex-VAT) — an overcharge of " + fmtN(excess) + ". (Bank charges were excluded from turnover." + exclusionNote + ")",
           citation: RULES.camf.citation, txns: monthCamf.map(function (t) { return t.index; })
         });
       } else {
         out.push({
           id: "camf-" + mk, title: "CAMF verified — " + mk,
           verdict: "compliant", excess: 0,
-          detail: "Recomputed cap: " + fmtN(turnover) + " of customer-induced debits ÷ 1,000 = " + fmtN(cap) + " (ex-VAT). Charged: " + fmtN(chargedEx) + " (ex-VAT) — within the cap.",
+          detail: "Recomputed cap: " + fmtN(turnover) + " of customer-induced debits ÷ 1,000 = " + fmtN(cap) + " (ex-VAT). Charged: " + fmtN(chargedEx) + " (ex-VAT) — within the cap." + (ownSameBankTurnover > 0 ? " Own-account same-bank transfers totalling " + fmtN(ownSameBankTurnover) + " were excluded from turnover." : ""),
           citation: RULES.camf.citation, txns: monthCamf.map(function (t) { return t.index; })
         });
       }
