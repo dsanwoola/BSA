@@ -6,7 +6,7 @@
 (function () {
   "use strict";
 
-  var APP_BUILD = 54; // shown in the header so stale cached code is obvious
+  var APP_BUILD = 55; // shown in the header so stale cached code is obvious
 
   var PARSER = window.CBN_PARSER, ENGINE = window.CBN_ENGINE,
       REPORT = window.CBN_REPORT, RULES = window.CBN_RULES;
@@ -717,7 +717,8 @@
     var root = $("#sme-dashboard-root");
     if (!root || !state.audit) return;
     root.innerHTML = REPORT.renderSmeDashboard(state.auditTxns || [], state.audit, { premiumUnlocked: state.premiumUnlocked }) +
-      REPORT.renderSmeReconciliation(state.auditTxns || [], state.audit, { premiumUnlocked: state.premiumUnlocked });
+      REPORT.renderSmeReconciliation(state.auditTxns || [], state.audit, { premiumUnlocked: state.premiumUnlocked }) +
+      REPORT.renderSmeCashflowIntelligence(state.auditTxns || [], state.audit, { premiumUnlocked: state.premiumUnlocked });
   }
 
   function renderFindingsPane() {

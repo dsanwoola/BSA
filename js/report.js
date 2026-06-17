@@ -159,6 +159,19 @@
       lines.push("- Large debit reviews: " + recon.reviewItems.map(function (x) { return fmtDate(x.date) + " " + fmtN(x.amount) + " " + x.narration; }).join("; "));
     }
     lines.push("");
+    var intelligence = smeCashflowIntelligence(txns, audit);
+    lines.push("PHASE 3 CASHFLOW INTELLIGENCE");
+    lines.push("- Health score: " + intelligence.healthScore + "/100 (" + intelligence.healthBand + ")");
+    lines.push("- Average daily inflow: " + fmtN(intelligence.avgDailyIn));
+    lines.push("- Average daily outflow: " + fmtN(intelligence.avgDailyOut));
+    lines.push("- Net daily cashflow: " + fmtN(intelligence.netDaily));
+    lines.push("- Runway: " + (intelligence.runwayDays == null ? "N/A" : intelligence.runwayDays + " day(s)"));
+    lines.push("- Income concentration: " + intelligence.incomeConcentration + "% from top customer/source");
+    lines.push("- Expense concentration: " + intelligence.expenseConcentration + "% to top supplier/outflow");
+    if (intelligence.topIncome.length) lines.push("- Top income source: " + intelligence.topIncome[0].name + " — " + fmtN(intelligence.topIncome[0].amount));
+    if (intelligence.topExpenses.length) lines.push("- Top expense/outflow: " + intelligence.topExpenses[0].name + " — " + fmtN(intelligence.topExpenses[0].amount));
+    lines.push("- Action plan: " + intelligence.actions.join("; "));
+    lines.push("");
     lines.push("CHARGE FINDINGS SUMMARY");
     if (!(audit.findings || []).length && !(audit.aggregates || []).length) {
       lines.push("- No bank-charge findings in this statement.");
@@ -271,6 +284,111 @@
       '</section>';
     function reconCard(title, big, sub, cls) {
       return '<div class="sme-card ' + (cls || "") + '"><span>' + esc(title) + '</span><strong>' + esc(big) + '</strong><small>' + esc(sub) + '</small></div>';
+    }
+  }
+
+  function smeCashflowIntelligence(txns, audit) {
+    txns = (txns || []).slice().sort(function (a, b) { return (a.date || 0) - (b.date || 0) || (a.index || 0) - (b.index || 0); });
+    var d = smeDashboard(txns, audit);
+    var recon = smeReconciliation(txns, audit);
+    var first = d.periodFrom || (txns[0] && txns[0].date) || null;
+    var last = d.periodTo || (txns[txns.length - 1] && txns[txns.length - 1].date) || null;
+    var days = first && last ? Math.max(1, Math.round((last - first) / 86400000) + 1) : 1;
+    var avgDailyIn = r2(d.totalIn / days);
+    var avgDailyOut = r2(d.totalOut / days);
+    var netDaily = r2(avgDailyIn - avgDailyOut);
+    var closing = recon.closingBalance;
+    var runwayDays = null;
+    if (closing != null && avgDailyOut > avgDailyIn) runwayDays = Math.max(0, Math.floor(closing / (avgDailyOut - avgDailyIn)));
+    else if (closing != null && avgDailyOut > 0) runwayDays = 999;
+
+    var findingsByIndex = {};
+    (audit.findings || []).forEach(function (f) { findingsByIndex[f.txnIndex] = f; });
+    var income = {}, expenses = {};
+    txns.forEach(function (t) {
+      if (t.credit > 0) addParty(income, partyName(t.narration, true), t.credit);
+      if (t.debit > 0 && !findingsByIndex[t.index]) addParty(expenses, partyName(t.narration, false), t.debit);
+    });
+    var topIncome = partyList(income).slice(0, 3);
+    var topExpenses = partyList(expenses).slice(0, 3);
+    var incomeConcentration = d.totalIn ? Math.round(((topIncome[0] && topIncome[0].amount) || 0) / d.totalIn * 100) : 0;
+    var nonChargeOut = Math.max(0, d.totalOut - d.bankCharges);
+    var expenseConcentration = nonChargeOut ? Math.round(((topExpenses[0] && topExpenses[0].amount) || 0) / nonChargeOut * 100) : 0;
+
+    var score = 70;
+    if (d.netCashflow > 0) score += 10; else if (d.netCashflow < 0) score -= 18;
+    if (runwayDays != null && runwayDays < 14) score -= 18; else if (runwayDays != null && runwayDays >= 60) score += 8;
+    if (d.refundDue > 0) score -= 8;
+    if (d.reviewAmount > 0) score -= 7;
+    if (recon.status === "variance") score -= 15;
+    if (incomeConcentration >= 70) score -= 8;
+    if (expenseConcentration >= 60) score -= 5;
+    score = Math.max(0, Math.min(100, Math.round(score)));
+    var band = score >= 80 ? "Strong" : (score >= 60 ? "Watch" : (score >= 40 ? "Tight" : "Critical"));
+    var actions = [];
+    if (d.netCashflow < 0) actions.push("Reduce discretionary outflows or chase receivables before the next cycle");
+    if (runwayDays != null && runwayDays < 30) actions.push("Protect cash runway; avoid non-essential debits until inflow improves");
+    if (d.refundDue > 0) actions.push("Recover " + fmtN(d.refundDue) + " proven refundable bank charges");
+    if (d.reviewAmount > 0) actions.push("Review unclear bank charges worth " + fmtN(d.reviewAmount));
+    if (recon.status === "variance") actions.push("Resolve reconciliation variance of " + fmtN(Math.abs(recon.variance || 0)));
+    if (incomeConcentration >= 70) actions.push("Diversify income: one customer/source dominates inflows");
+    if (!actions.length) actions.push("Keep monthly reconciliation discipline and monitor bank charges");
+    return {
+      healthScore: score,
+      healthBand: band,
+      daysCovered: days,
+      avgDailyIn: avgDailyIn,
+      avgDailyOut: avgDailyOut,
+      netDaily: netDaily,
+      runwayDays: runwayDays,
+      incomeConcentration: incomeConcentration,
+      expenseConcentration: expenseConcentration,
+      topIncome: topIncome,
+      topExpenses: topExpenses,
+      actions: actions.slice(0, 5)
+    };
+    function addParty(map, name, amount) {
+      map[name] = map[name] || { name: name, count: 0, amount: 0 };
+      map[name].count++;
+      map[name].amount = r2(map[name].amount + amount);
+    }
+    function partyList(map) {
+      return Object.keys(map).map(function (k) { return map[k]; }).sort(function (a, b) { return b.amount - a.amount; });
+    }
+    function partyName(narration, isCredit) {
+      var n = String(narration || "").toUpperCase();
+      n = n.replace(/\b(NIP|TRF|TRANSFER|FROM|TO|POS|WEB|PURCHASE|PAYMENT|PAID|BY|VIA|USSD|ATM|WD|WITHDRAWAL|CREDIT|DEBIT)\b/g, " ");
+      n = n.replace(/[^A-Z0-9 ]+/g, " ").replace(/\s+/g, " ").trim();
+      if (!n) return isCredit ? "Unlabelled income" : "Unlabelled outflow";
+      return n.split(" ").slice(0, 4).join(" ");
+    }
+  }
+
+  function renderSmeCashflowIntelligence(txns, audit, opts) {
+    opts = opts || {};
+    var premium = !!opts.premiumUnlocked;
+    var x = smeCashflowIntelligence(txns, audit);
+    var bandClass = x.healthScore >= 80 ? "sme-positive" : (x.healthScore < 60 ? "sme-negative" : "");
+    return '<section class="phase3-panel ' + (premium ? 'premium-open' : 'premium-locked') + '" id="sme-cashflow-intelligence">' +
+      '<div class="sme-head"><div><h3>Phase 3: SME cashflow intelligence</h3><p>Premium owner playbook: health score, runway, concentration risk and next actions from this statement.</p></div><span class="badge premium-badge">PREMIUM PHASE 3</span></div>' +
+      '<div class="sme-grid">' +
+        intelCard("Health score", x.healthScore + "/100", x.healthBand, bandClass) +
+        intelCard("Avg daily inflow", fmtN(x.avgDailyIn), x.daysCovered + " day statement window") +
+        intelCard("Avg daily outflow", fmtN(x.avgDailyOut), "Daily cash pressure") +
+        intelCard("Net daily cashflow", fmtN(x.netDaily), x.netDaily >= 0 ? "Positive daily movement" : "Negative daily movement", x.netDaily >= 0 ? "sme-positive" : "sme-negative") +
+        intelCard("Runway", x.runwayDays == null ? "—" : (x.runwayDays >= 999 ? "60+ days" : x.runwayDays + " days"), "Based on current burn") +
+        intelCard("Income concentration", x.incomeConcentration + "%", "Top source share of inflows") +
+      '</div>' +
+      '<div class="phase3-lists"><div><strong>Top income sources</strong>' + partyRows(x.topIncome) + '</div><div><strong>Top expenses/outflows</strong>' + partyRows(x.topExpenses) + '</div></div>' +
+      '<div class="sme-notes"><strong>Owner action plan:</strong>' + x.actions.map(function (a) { return '<div>• ' + esc(a) + '</div>'; }).join("") + '</div>' +
+      (premium ? '' : '<div class="premium-panel premium-locked"><div><strong>Unlock SME Premium</strong><p>Phase 3 intelligence is a premium preview and is included in the SME monthly report export after unlock.</p></div></div>') +
+      '</section>';
+    function intelCard(title, big, sub, cls) {
+      return '<div class="sme-card ' + (cls || "") + '"><span>' + esc(title) + '</span><strong>' + esc(big) + '</strong><small>' + esc(sub) + '</small></div>';
+    }
+    function partyRows(items) {
+      if (!items.length) return '<p class="muted">No matching transactions.</p>';
+      return items.map(function (p) { return '<p><span>' + esc(p.name) + '</span><b>' + fmtN(p.amount) + '</b><small>' + p.count + ' item(s)</small></p>'; }).join("");
     }
   }
 
@@ -447,6 +565,7 @@
     smeDashboard: smeDashboard, renderSmeDashboard: renderSmeDashboard,
     monthlySmeReport: monthlySmeReport, whatsappSmeSummary: whatsappSmeSummary,
     smeReconciliation: smeReconciliation, renderSmeReconciliation: renderSmeReconciliation,
+    smeCashflowIntelligence: smeCashflowIntelligence, renderSmeCashflowIntelligence: renderSmeCashflowIntelligence,
     renderFindings: renderFindings, renderAllTxns: renderAllTxns,
     typeOptionsHTML: typeOptionsHTML,
     findingsCSV: findingsCSV, demandLetter: demandLetter, reportMeta: reportMeta,

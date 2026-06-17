@@ -259,6 +259,13 @@ check("SME Phase 2 reconciliation matches opening to closing", recon.status === 
 check("SME Phase 2 reconciliation buckets movement", recon.buckets.income.amount === 100000 && recon.buckets.supplier.amount === 25000 && recon.buckets.cash.amount === 10000 && recon.buckets.charges.amount === 25, JSON.stringify(recon.buckets));
 check("SME Phase 2 reconciliation renders premium panel", reconHtml.indexOf("Phase 2: SME reconciliation") !== -1 && reconHtml.indexOf("PREMIUM PHASE 2") !== -1 && reconHtml.indexOf("Customer/income credits") !== -1);
 check("SME Premium monthly report includes Phase 2 reconciliation", reconReport.indexOf("PHASE 2 RECONCILIATION") !== -1 && reconReport.indexOf("Expected closing") !== -1 && reconReport.indexOf("Customer/income credits") !== -1);
+var intel = REPORT.smeCashflowIntelligence(reconTxns, reconAudit);
+var intelHtml = REPORT.renderSmeCashflowIntelligence(reconTxns, reconAudit, { premiumUnlocked: true });
+var intelReport = REPORT.monthlySmeReport(reconTxns, reconAudit, CTX_CURRENT, { fileName: "intel.csv" });
+check("SME Phase 3 cashflow intelligence scores and concentrations", intel.healthScore > 0 && intel.daysCovered === 4 && intel.avgDailyIn === 25000 && intel.avgDailyOut === 8756.25 && intel.netDaily === 16243.75 && intel.incomeConcentration === 100, JSON.stringify(intel));
+check("SME Phase 3 cashflow intelligence identifies top parties", intel.topIncome[0].name.indexOf("ACME") !== -1 && intel.topExpenses[0].name.indexOf("SUPPLIER") !== -1 && intel.actions.length >= 1, JSON.stringify(intel));
+check("SME Phase 3 renders premium owner playbook", intelHtml.indexOf("Phase 3: SME cashflow intelligence") !== -1 && intelHtml.indexOf("PREMIUM PHASE 3") !== -1 && intelHtml.indexOf("Owner action plan") !== -1);
+check("SME Premium monthly report includes Phase 3 intelligence", intelReport.indexOf("PHASE 3 CASHFLOW INTELLIGENCE") !== -1 && intelReport.indexOf("Health score") !== -1 && intelReport.indexOf("Action plan") !== -1);
 
 res = ENGINE.audit([T(0, D(2025, 5, 10), "VAT CHARGE", 500, 0)], CTX_SAVINGS);
 check("orphan VAT = review (no guessing)", findFor(res, 0).verdict === "review");
@@ -1117,7 +1124,7 @@ var reportJs = fs.readFileSync(__dirname + "/../js/report.js", "utf8");
 var betaGuide = fs.readFileSync(__dirname + "/../BETA_TESTING.md", "utf8");
 check("static: beta guide appears in app", indexHtml.indexOf("Beta tester checklist") !== -1 && indexHtml.indexOf("anonymized parser diagnostic") !== -1);
 check("static: BETA_TESTING documents privacy-safe diagnostics", betaGuide.indexOf("anonymized parser diagnostic") !== -1 && betaGuide.indexOf("must not contain names") !== -1);
-check("static: APP_BUILD and cache bust agree on 54", appJs.indexOf("APP_BUILD = 54") !== -1 && (indexHtml.match(/v=54/g) || []).length >= 6);
+check("static: APP_BUILD and cache bust agree on 55", appJs.indexOf("APP_BUILD = 55") !== -1 && (indexHtml.match(/v=55/g) || []).length >= 6);
 check("static: SME dashboard Phase 1 is wired", indexHtml.indexOf('id="sme-dashboard-root"') !== -1 && reportJs.indexOf("renderSmeDashboard") !== -1 && reportJs.indexOf("SME finance dashboard") !== -1 && appJs.indexOf("#sme-dashboard-root") !== -1 && appCss.indexOf(".sme-dashboard") !== -1);
 check("static: global back button is wired across later steps", indexHtml.indexOf('id="btn-global-back"') !== -1 && indexHtml.indexOf('id="btn-results-back"') !== -1 && appJs.indexOf("function goBack()") !== -1 && appJs.indexOf("PREV_STEP") !== -1);
 check("static: light/dark theme toggle is wired and persisted", indexHtml.indexOf('id="theme-toggle"') !== -1 && indexHtml.indexOf('bsa-theme') !== -1 && appCss.indexOf(':root[data-theme="light"]') !== -1 && appJs.indexOf("function wireTheme()") !== -1 && appJs.indexOf('localStorage.setItem("bsa-theme"') !== -1);
