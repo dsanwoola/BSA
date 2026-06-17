@@ -274,6 +274,11 @@ header.app-head {
 .phase3-lists p { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; margin: 8px 0 0; color: var(--txt-dim); font-size: 12.5px; }
 .phase3-lists p span { color: var(--txt); font-weight: 700; }
 .phase3-lists p small { grid-column: 1 / -1; }
+.phase4-panel { border: 1px solid var(--line); border-radius: var(--radius); background: linear-gradient(135deg, rgba(109, 179, 255, .09), rgba(245, 158, 11, .06)); padding: 18px; margin: 0 0 18px; }
+.phase4-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 10px; margin-top: 13px; }
+.phase4-grid > div { border: 1px solid var(--line); border-radius: 12px; background: var(--card-2); padding: 13px 14px; }
+.phase4-grid ul { margin: 9px 0 0; padding-left: 18px; color: var(--txt-dim); font-size: 12.5px; }
+.phase4-grid li { margin: 4px 0; }
 
 h3.sec { font-size: 16.5px; margin: 30px 0 6px; }
 h3.sec + p.sec-sub { color: var(--txt-dim); font-size: 13.5px; margin: 0 0 14px; }

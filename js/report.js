@@ -172,6 +172,18 @@
     if (intelligence.topExpenses.length) lines.push("- Top expense/outflow: " + intelligence.topExpenses[0].name + " — " + fmtN(intelligence.topExpenses[0].amount));
     lines.push("- Action plan: " + intelligence.actions.join("; "));
     lines.push("");
+    var funding = smeFundingReadiness(txns, audit);
+    lines.push("PHASE 4 FUNDING READINESS");
+    lines.push("- Readiness score: " + funding.readinessScore + "/100 (" + funding.readinessBand + ")");
+    lines.push("- Estimated monthly turnover: " + fmtN(funding.monthlyTurnover));
+    lines.push("- Estimated monthly net cashflow: " + fmtN(funding.monthlyNetCashflow));
+    lines.push("- Bank charge leakage ratio: " + funding.chargeLeakageRatio + "% of inflows");
+    lines.push("- Suggested working-capital facility range: " + fmtN(funding.suggestedFacilityLow) + " – " + fmtN(funding.suggestedFacilityHigh));
+    lines.push("- Maximum safe monthly repayment: " + fmtN(funding.maxMonthlyRepayment));
+    lines.push("- Risk flags: " + (funding.riskFlags.length ? funding.riskFlags.join("; ") : "None from this statement"));
+    lines.push("- Document checklist: " + funding.documentChecklist.join("; "));
+    lines.push("- Lender story: " + funding.lenderStory);
+    lines.push("");
     lines.push("CHARGE FINDINGS SUMMARY");
     if (!(audit.findings || []).length && !(audit.aggregates || []).length) {
       lines.push("- No bank-charge findings in this statement.");
@@ -392,6 +404,93 @@
     }
   }
 
+  function smeFundingReadiness(txns, audit) {
+    var d = smeDashboard(txns, audit);
+    var recon = smeReconciliation(txns, audit);
+    var intel = smeCashflowIntelligence(txns, audit);
+    var days = Math.max(1, intel.daysCovered || 1);
+    var monthlyTurnover = r2((d.totalIn / days) * 30);
+    var monthlyOutflow = r2((d.totalOut / days) * 30);
+    var monthlyNetCashflow = r2(monthlyTurnover - monthlyOutflow);
+    var nonChargeOut = Math.max(0, d.totalOut - d.bankCharges);
+    var chargeLeakageRatio = d.totalIn ? r2((d.bankCharges / d.totalIn) * 100) : 0;
+    var maxMonthlyRepayment = r2(Math.max(0, monthlyNetCashflow) * 0.35);
+    var suggestedFacilityHigh = r2(Math.min(monthlyTurnover * 0.5, maxMonthlyRepayment * 6));
+    var suggestedFacilityLow = r2(suggestedFacilityHigh ? suggestedFacilityHigh * 0.5 : 0);
+    var score = 65;
+    if (intel.healthScore >= 80) score += 12; else if (intel.healthScore < 60) score -= 12;
+    if (monthlyNetCashflow > 0) score += 10; else score -= 18;
+    if (recon.status === "reconciled") score += 8; else if (recon.status === "variance") score -= 15; else score -= 6;
+    if (intel.incomeConcentration >= 70) score -= 8;
+    if (chargeLeakageRatio > 1) score -= 6;
+    if (d.refundDue > 0 || d.reviewAmount > 0) score -= 6;
+    if (suggestedFacilityHigh <= 0) score -= 10;
+    score = Math.max(0, Math.min(100, Math.round(score)));
+    var band = score >= 80 ? "Lender-ready" : (score >= 60 ? "Prepare" : (score >= 40 ? "Weak file" : "Not ready"));
+    var flags = [];
+    if (monthlyNetCashflow <= 0) flags.push("negative monthly net cashflow");
+    if (recon.status !== "reconciled") flags.push(recon.status === "variance" ? "statement reconciliation variance" : "missing balance reconciliation");
+    if (intel.incomeConcentration >= 70) flags.push("single customer/source concentration");
+    if (chargeLeakageRatio > 1) flags.push("high bank-charge leakage");
+    if (d.refundDue > 0) flags.push("recoverable bank charges still outstanding");
+    if (d.reviewAmount > 0) flags.push("unclear charges need review");
+    if (intel.runwayDays != null && intel.runwayDays < 30) flags.push("short cash runway");
+    var checklist = [
+      "3-6 months bank statements",
+      "CAC/business registration evidence",
+      "sales invoices or POS/transfer records",
+      "supplier/expense schedule",
+      "tax/VAT filings where applicable",
+      "bank-charge refund/review evidence from this audit"
+    ];
+    var story = band === "Lender-ready"
+      ? "Present this business as a reconciled account with positive cashflow and a conservative working-capital request."
+      : (band === "Prepare" ? "Clean up the flagged risks, recover charges and package evidence before applying for finance." : "Do not rush a loan application; fix cashflow, reconciliation and concentration issues first.");
+    return {
+      readinessScore: score,
+      readinessBand: band,
+      monthlyTurnover: monthlyTurnover,
+      monthlyOutflow: monthlyOutflow,
+      monthlyNetCashflow: monthlyNetCashflow,
+      chargeLeakageRatio: chargeLeakageRatio,
+      nonChargeOutflow: r2(nonChargeOut),
+      maxMonthlyRepayment: maxMonthlyRepayment,
+      suggestedFacilityLow: suggestedFacilityLow,
+      suggestedFacilityHigh: suggestedFacilityHigh,
+      riskFlags: flags,
+      documentChecklist: checklist,
+      lenderStory: story
+    };
+  }
+
+  function renderSmeFundingReadiness(txns, audit, opts) {
+    opts = opts || {};
+    var premium = !!opts.premiumUnlocked;
+    var f = smeFundingReadiness(txns, audit);
+    var cls = f.readinessScore >= 80 ? "sme-positive" : (f.readinessScore < 60 ? "sme-negative" : "");
+    return '<section class="phase4-panel ' + (premium ? 'premium-open' : 'premium-locked') + '" id="sme-funding-readiness">' +
+      '<div class="sme-head"><div><h3>Phase 4: SME funding readiness</h3><p>Premium lender/investor prep: readiness score, safe repayment capacity, facility range, risk flags and document checklist.</p></div><span class="badge premium-badge">PREMIUM PHASE 4</span></div>' +
+      '<div class="sme-grid">' +
+        fundCard("Readiness score", f.readinessScore + "/100", f.readinessBand, cls) +
+        fundCard("Monthly turnover", fmtN(f.monthlyTurnover), "Annualised from this statement window") +
+        fundCard("Monthly net cashflow", fmtN(f.monthlyNetCashflow), "Estimated monthly surplus/deficit", f.monthlyNetCashflow >= 0 ? "sme-positive" : "sme-negative") +
+        fundCard("Safe repayment", fmtN(f.maxMonthlyRepayment), "35% of positive net cashflow") +
+        fundCard("Facility range", fmtN(f.suggestedFacilityLow) + " – " + fmtN(f.suggestedFacilityHigh), "Conservative working-capital guide") +
+        fundCard("Charge leakage", f.chargeLeakageRatio + "%", "Bank charges as share of inflows") +
+      '</div>' +
+      '<div class="phase4-grid"><div><strong>Risk flags</strong>' + listRows(f.riskFlags, "No major funding-readiness risk from this statement.") + '</div><div><strong>Document checklist</strong>' + listRows(f.documentChecklist) + '</div></div>' +
+      '<div class="sme-notes"><strong>Lender story:</strong> ' + esc(f.lenderStory) + '</div>' +
+      (premium ? '' : '<div class="premium-panel premium-locked"><div><strong>Unlock SME Premium</strong><p>Phase 4 funding readiness is a premium preview and is included in the SME monthly report export after unlock.</p></div></div>') +
+      '</section>';
+    function fundCard(title, big, sub, cls2) {
+      return '<div class="sme-card ' + (cls2 || "") + '"><span>' + esc(title) + '</span><strong>' + esc(big) + '</strong><small>' + esc(sub) + '</small></div>';
+    }
+    function listRows(items, empty) {
+      if (!items || !items.length) return '<p class="muted">' + esc(empty || "None") + '</p>';
+      return '<ul>' + items.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join("") + '</ul>';
+    }
+  }
+
   function r2(n) { return Math.round(n * 100) / 100; }
 
   /* ---------------- aggregate cross-checks ---------------- */
@@ -566,6 +665,7 @@
     monthlySmeReport: monthlySmeReport, whatsappSmeSummary: whatsappSmeSummary,
     smeReconciliation: smeReconciliation, renderSmeReconciliation: renderSmeReconciliation,
     smeCashflowIntelligence: smeCashflowIntelligence, renderSmeCashflowIntelligence: renderSmeCashflowIntelligence,
+    smeFundingReadiness: smeFundingReadiness, renderSmeFundingReadiness: renderSmeFundingReadiness,
     renderFindings: renderFindings, renderAllTxns: renderAllTxns,
     typeOptionsHTML: typeOptionsHTML,
     findingsCSV: findingsCSV, demandLetter: demandLetter, reportMeta: reportMeta,
