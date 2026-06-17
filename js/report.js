@@ -141,6 +141,24 @@
     lines.push("- Largest ordinary debit: " + (d.largestDebit ? fmtDate(d.largestDebit.date) + " — " + fmtN(d.largestDebit.debit) + " — " + d.largestDebit.narration : "None"));
     lines.push("- Average debit: " + fmtN(d.averageDebit));
     lines.push("");
+    var recon = smeReconciliation(txns, audit);
+    lines.push("PHASE 2 RECONCILIATION");
+    lines.push("- Status: " + (recon.status === "reconciled" ? "Reconciled" : (recon.status === "variance" ? "Variance found" : "Needs balance column")));
+    lines.push("- Opening balance: " + (recon.openingBalance == null ? "N/A" : fmtN(recon.openingBalance)));
+    lines.push("- Total credits: " + fmtN(recon.totalCredits));
+    lines.push("- Total debits: " + fmtN(recon.totalDebits));
+    lines.push("- Expected closing: " + (recon.expectedClosing == null ? "N/A" : fmtN(recon.expectedClosing)));
+    lines.push("- Actual closing: " + (recon.closingBalance == null ? "N/A" : fmtN(recon.closingBalance)));
+    lines.push("- Variance: " + (recon.variance == null ? "N/A" : fmtN(recon.variance)));
+    lines.push("- Unreconciled exposure: " + fmtN(recon.unreconciledExposure));
+    Object.keys(recon.buckets).forEach(function (k) {
+      var b = recon.buckets[k];
+      lines.push("- " + b.label + ": " + fmtN(b.amount) + " across " + b.count + " item(s)");
+    });
+    if (recon.reviewItems.length) {
+      lines.push("- Large debit reviews: " + recon.reviewItems.map(function (x) { return fmtDate(x.date) + " " + fmtN(x.amount) + " " + x.narration; }).join("; "));
+    }
+    lines.push("");
     lines.push("CHARGE FINDINGS SUMMARY");
     if (!(audit.findings || []).length && !(audit.aggregates || []).length) {
       lines.push("- No bank-charge findings in this statement.");
@@ -170,6 +188,90 @@
       "Needs review: " + fmtN(d.reviewAmount),
       ownerSummaryLine(d)
     ].join("\n");
+  }
+
+  function smeReconciliation(txns, audit) {
+    txns = (txns || []).slice().sort(function (a, b) { return (a.date || 0) - (b.date || 0) || (a.index || 0) - (b.index || 0); });
+    var d = smeDashboard(txns, audit);
+    var findingsByIndex = {};
+    (audit.findings || []).forEach(function (f) { findingsByIndex[f.txnIndex] = f; });
+    var buckets = {
+      income: { label: "Customer/income credits", count: 0, amount: 0 },
+      supplier: { label: "Supplier/vendor payments", count: 0, amount: 0 },
+      cash: { label: "Cash/ATM/POS/card spend", count: 0, amount: 0 },
+      transfers: { label: "Other transfers/debits", count: 0, amount: 0 },
+      charges: { label: "Bank charges", count: 0, amount: 0 }
+    };
+    var review = [];
+    var firstBalTxn = null, lastBalTxn = null;
+    txns.forEach(function (t) {
+      if (typeof t.balance === "number" && !isNaN(t.balance)) {
+        if (!firstBalTxn) firstBalTxn = t;
+        lastBalTxn = t;
+      }
+      if (t.credit > 0) addBucket(buckets.income, t.credit);
+      if (t.debit > 0) {
+        var f = findingsByIndex[t.index];
+        var n = String(t.narration || "").toUpperCase();
+        if (f) addBucket(buckets.charges, t.debit);
+        else if (/SUPPLIER|VENDOR|INVOICE|INV\b|MARKET|STORE|STORES|FOOD|RENT|SALARY|PAYROLL|WAGES|CONTRACTOR/.test(n)) addBucket(buckets.supplier, t.debit);
+        else if (/ATM|POS|CARD|WEB PURCHASE|ONLINE|USSD|CASH|WITHDRAW/.test(n)) addBucket(buckets.cash, t.debit);
+        else addBucket(buckets.transfers, t.debit);
+        if (!f && d.averageDebit && t.debit >= Math.max(50000, d.averageDebit * 2.5)) {
+          review.push({ date: t.date, narration: t.narration, amount: t.debit, reason: "Large ordinary debit compared with the statement average" });
+        }
+      }
+    });
+    var opening = null, closing = null, expectedClosing = null, variance = null, status = "no_balance";
+    if (firstBalTxn && lastBalTxn) {
+      opening = r2(firstBalTxn.balance + (firstBalTxn.debit || 0) - (firstBalTxn.credit || 0));
+      closing = r2(lastBalTxn.balance);
+      expectedClosing = r2(opening + d.totalIn - d.totalOut);
+      variance = r2(closing - expectedClosing);
+      status = Math.abs(variance) <= 0.05 ? "reconciled" : "variance";
+    }
+    var unreconciledExposure = r2(d.reviewAmount + (status === "variance" ? Math.abs(variance || 0) : 0));
+    return {
+      status: status,
+      openingBalance: opening,
+      totalCredits: d.totalIn,
+      totalDebits: d.totalOut,
+      expectedClosing: expectedClosing,
+      closingBalance: closing,
+      variance: variance,
+      buckets: buckets,
+      reviewItems: review.slice(0, 10),
+      unreconciledExposure: unreconciledExposure
+    };
+    function addBucket(b, amount) { b.count++; b.amount = r2(b.amount + amount); }
+  }
+
+  function renderSmeReconciliation(txns, audit, opts) {
+    opts = opts || {};
+    var premium = !!opts.premiumUnlocked;
+    var r = smeReconciliation(txns, audit);
+    var statusText = r.status === "reconciled" ? "Reconciled" : (r.status === "variance" ? "Variance found" : "Needs balances");
+    var statusClass = r.status === "reconciled" ? "sme-positive" : (r.status === "variance" ? "sme-negative" : "");
+    return '<section class="recon-panel ' + (premium ? 'premium-open' : 'premium-locked') + '" id="sme-reconciliation">' +
+      '<div class="sme-head"><div><h3>Phase 2: SME reconciliation</h3><p>Premium cashbook-style reconciliation of statement movement, categories and unexplained exposure.</p></div><span class="badge premium-badge">PREMIUM PHASE 2</span></div>' +
+      '<div class="sme-grid">' +
+        reconCard("Status", statusText, r.status === "reconciled" ? "Opening + inflows - outflows matches closing balance" : (r.status === "variance" ? "Check the variance before relying on the report" : "No running balance column available"), statusClass) +
+        reconCard("Opening", r.openingBalance == null ? "—" : fmtN(r.openingBalance), "Inferred from first balance row") +
+        reconCard("Expected closing", r.expectedClosing == null ? "—" : fmtN(r.expectedClosing), "Opening + credits - debits") +
+        reconCard("Actual closing", r.closingBalance == null ? "—" : fmtN(r.closingBalance), "Last statement balance") +
+        reconCard("Variance", r.variance == null ? "—" : fmtN(r.variance), "Actual closing minus expected", r.variance && Math.abs(r.variance) > 0.05 ? "sme-negative" : "sme-positive") +
+        reconCard("Unreconciled exposure", fmtN(r.unreconciledExposure), "Review charges plus any balance variance") +
+      '</div>' +
+      '<div class="recon-buckets">' + Object.keys(r.buckets).map(function (k) {
+        var b = r.buckets[k];
+        return '<div><strong>' + esc(b.label) + '</strong><span>' + fmtN(b.amount) + ' · ' + b.count + ' item(s)</span></div>';
+      }).join("") + '</div>' +
+      (r.reviewItems.length ? '<div class="sme-notes"><strong>Large debits to review:</strong>' + r.reviewItems.map(function (x) { return '<div>' + esc(fmtDate(x.date) + ' — ' + fmtN(x.amount) + ' — ' + x.narration + ' (' + x.reason + ')') + '</div>'; }).join("") + '</div>' : '') +
+      (premium ? '' : '<div class="premium-panel premium-locked"><div><strong>Unlock SME Premium</strong><p>Phase 2 reconciliation is visible as a premium preview. Unlock to export it inside the monthly SME report.</p></div></div>') +
+      '</section>';
+    function reconCard(title, big, sub, cls) {
+      return '<div class="sme-card ' + (cls || "") + '"><span>' + esc(title) + '</span><strong>' + esc(big) + '</strong><small>' + esc(sub) + '</small></div>';
+    }
   }
 
   function r2(n) { return Math.round(n * 100) / 100; }
@@ -344,6 +446,7 @@
     renderSummary: renderSummary, renderAggregates: renderAggregates,
     smeDashboard: smeDashboard, renderSmeDashboard: renderSmeDashboard,
     monthlySmeReport: monthlySmeReport, whatsappSmeSummary: whatsappSmeSummary,
+    smeReconciliation: smeReconciliation, renderSmeReconciliation: renderSmeReconciliation,
     renderFindings: renderFindings, renderAllTxns: renderAllTxns,
     typeOptionsHTML: typeOptionsHTML,
     findingsCSV: findingsCSV, demandLetter: demandLetter, reportMeta: reportMeta,

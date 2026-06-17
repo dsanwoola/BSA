@@ -245,6 +245,20 @@ check("SME Premium locks report exports before access", smeLockedHtml.indexOf("P
 check("SME Premium unlock renders monthly report actions", smeUnlockedHtml.indexOf("Download monthly SME report") !== -1 && smeUnlockedHtml.indexOf("disabled") === -1);
 check("SME Premium monthly report exports owner/accountant content", smeMonthly.indexOf("SME MONTHLY FINANCE REPORT — PREMIUM") !== -1 && smeMonthly.indexOf("OWNER DASHBOARD") !== -1 && smeMonthly.indexOf("ACCOUNTANT CHECKS") !== -1 && smeMonthly.indexOf("Refund/recovery due") !== -1);
 check("SME Premium WhatsApp summary is concise", smeWhatsapp.indexOf("SME Finance Summary") === 0 && smeWhatsapp.indexOf("Net cashflow") !== -1 && smeWhatsapp.indexOf("Refund/recovery due") !== -1);
+var reconTxns = [
+  { index: 0, date: D(2025, 5, 1), narration: "CUSTOMER PAYMENT ACME", debit: 0, credit: 100000, balance: 120000 },
+  { index: 1, date: D(2025, 5, 2), narration: "SUPPLIER PAYMENT VENDOR LTD", debit: 25000, credit: 0, balance: 95000 },
+  { index: 2, date: D(2025, 5, 3), narration: "ATM WITHDRAWAL", debit: 10000, credit: 0, balance: 85000 },
+  { index: 3, date: D(2025, 5, 4), narration: "NIP TRANSFER CHARGE", debit: 25, credit: 0, balance: 84975 }
+];
+var reconAudit = ENGINE.audit(reconTxns.map(function (t) { return { index: t.index, date: t.date, narration: t.narration, debit: t.debit, credit: t.credit, balance: t.balance }; }), CTX_CURRENT);
+var recon = REPORT.smeReconciliation(reconTxns, reconAudit);
+var reconHtml = REPORT.renderSmeReconciliation(reconTxns, reconAudit, { premiumUnlocked: true });
+var reconReport = REPORT.monthlySmeReport(reconTxns, reconAudit, CTX_CURRENT, { fileName: "recon.csv" });
+check("SME Phase 2 reconciliation matches opening to closing", recon.status === "reconciled" && recon.openingBalance === 20000 && recon.expectedClosing === 84975 && recon.closingBalance === 84975 && recon.variance === 0, JSON.stringify(recon));
+check("SME Phase 2 reconciliation buckets movement", recon.buckets.income.amount === 100000 && recon.buckets.supplier.amount === 25000 && recon.buckets.cash.amount === 10000 && recon.buckets.charges.amount === 25, JSON.stringify(recon.buckets));
+check("SME Phase 2 reconciliation renders premium panel", reconHtml.indexOf("Phase 2: SME reconciliation") !== -1 && reconHtml.indexOf("PREMIUM PHASE 2") !== -1 && reconHtml.indexOf("Customer/income credits") !== -1);
+check("SME Premium monthly report includes Phase 2 reconciliation", reconReport.indexOf("PHASE 2 RECONCILIATION") !== -1 && reconReport.indexOf("Expected closing") !== -1 && reconReport.indexOf("Customer/income credits") !== -1);
 
 res = ENGINE.audit([T(0, D(2025, 5, 10), "VAT CHARGE", 500, 0)], CTX_SAVINGS);
 check("orphan VAT = review (no guessing)", findFor(res, 0).verdict === "review");
@@ -1103,7 +1117,7 @@ var reportJs = fs.readFileSync(__dirname + "/../js/report.js", "utf8");
 var betaGuide = fs.readFileSync(__dirname + "/../BETA_TESTING.md", "utf8");
 check("static: beta guide appears in app", indexHtml.indexOf("Beta tester checklist") !== -1 && indexHtml.indexOf("anonymized parser diagnostic") !== -1);
 check("static: BETA_TESTING documents privacy-safe diagnostics", betaGuide.indexOf("anonymized parser diagnostic") !== -1 && betaGuide.indexOf("must not contain names") !== -1);
-check("static: APP_BUILD and cache bust agree on 53", appJs.indexOf("APP_BUILD = 53") !== -1 && (indexHtml.match(/v=53/g) || []).length >= 6);
+check("static: APP_BUILD and cache bust agree on 54", appJs.indexOf("APP_BUILD = 54") !== -1 && (indexHtml.match(/v=54/g) || []).length >= 6);
 check("static: SME dashboard Phase 1 is wired", indexHtml.indexOf('id="sme-dashboard-root"') !== -1 && reportJs.indexOf("renderSmeDashboard") !== -1 && reportJs.indexOf("SME finance dashboard") !== -1 && appJs.indexOf("#sme-dashboard-root") !== -1 && appCss.indexOf(".sme-dashboard") !== -1);
 check("static: global back button is wired across later steps", indexHtml.indexOf('id="btn-global-back"') !== -1 && indexHtml.indexOf('id="btn-results-back"') !== -1 && appJs.indexOf("function goBack()") !== -1 && appJs.indexOf("PREV_STEP") !== -1);
 check("static: light/dark theme toggle is wired and persisted", indexHtml.indexOf('id="theme-toggle"') !== -1 && indexHtml.indexOf('bsa-theme') !== -1 && appCss.indexOf(':root[data-theme="light"]') !== -1 && appJs.indexOf("function wireTheme()") !== -1 && appJs.indexOf('localStorage.setItem("bsa-theme"') !== -1);
