@@ -83,6 +83,29 @@ var providusDet = PARSER.detectColumns(providusRows);
 var providusBuilt = PARSER.buildTransactions(providusRows, providusDet.headerRow, providusDet.map);
 check("parser: balance-proven money side repair handles misanchored PDF amounts", providusBuilt.moneySideRepairs === 2 && providusBuilt.txns[0].debit === 100 && providusBuilt.txns[0].credit === 0 && providusBuilt.txns[2].debit === 0 && providusBuilt.txns[2].credit === 25 && PARSER.integrityCheck(providusBuilt.txns).ratio === 1, JSON.stringify({repairs: providusBuilt.moneySideRepairs, txns: providusBuilt.txns, ic: PARSER.integrityCheck(providusBuilt.txns)}));
 
+function pdfLine(y, cells) {
+  var xs = [44, 126, 292, 388, 455, 510];
+  return { y: y, items: cells.map(function (text, i) {
+    return text ? { x: xs[i], w: String(text).length * 5, y: y, str: text } : null;
+  }).filter(Boolean) };
+}
+var ecobankPdfLines = [[
+  pdfLine(800, ["Transaction", "Description", "Value Date", "Debit", "Credit", "Balance"]),
+  pdfLine(786, ["Date", "", "", "", "", ""]),
+  pdfLine(760, ["01-Apr-2026", "OPENING BALANCE", "01-Apr-2026", "0.00", "0.00", "1,000.00"]),
+  pdfLine(746, ["", "carried from previous statement", "", "", "", ""]),
+  pdfLine(732, ["02-Apr-2026", "REFNO:SYNTH001 NIP TRANSFER", "02-Apr-2026", "100.00", "0.00", "900.00"]),
+  pdfLine(718, ["", "wrapped narration stays in same transaction", "", "", "", ""]),
+  pdfLine(704, ["03-Apr-2026", "REFNO:SYNTH002 NIP CREDIT", "03-Apr-2026", "0.00", "250.00", "1,150.00"]),
+  pdfLine(690, ["", "another continuation line", "", "", "", ""])
+]];
+var ecobankRows = PARSER.pdfInternals.assemble(ecobankPdfLines);
+var ecobankDet = PARSER.detectColumns(ecobankRows);
+var ecobankBuilt = ecobankDet ? PARSER.buildTransactions(ecobankRows, ecobankDet.headerRow, ecobankDet.map) : { txns: [], problems: [{ issue: "no header" }] };
+var ecobankIntegrity = PARSER.integrityCheck(ecobankBuilt.txns);
+check("parser: Ecobank-style uniform PDF spacing splits rows by date column", ecobankBuilt.txns.length === 2 && ecobankBuilt.problems.length === 0 && ecobankIntegrity.ratio === 1, JSON.stringify({ rows: ecobankRows, det: ecobankDet, built: ecobankBuilt, integrity: ecobankIntegrity }));
+check("parser: Ecobank-style PDF continuation lines merge into narration", ecobankBuilt.txns[0] && /wrapped narration/.test(ecobankBuilt.txns[0].narration), ecobankBuilt.txns[0] && ecobankBuilt.txns[0].narration);
+
 /* ---------------- classifier ---------------- */
 function cls(s) { var c = PATTERNS.classify(s); return c ? c.type : null; }
 check("classify: COT", cls("COT CHARGE FOR APRIL") === "cot");
@@ -1131,7 +1154,7 @@ var reportJs = fs.readFileSync(__dirname + "/../js/report.js", "utf8");
 var betaGuide = fs.readFileSync(__dirname + "/../BETA_TESTING.md", "utf8");
 check("static: beta guide appears in app", indexHtml.indexOf("Beta tester checklist") !== -1 && indexHtml.indexOf("anonymized parser diagnostic") !== -1);
 check("static: BETA_TESTING documents privacy-safe diagnostics", betaGuide.indexOf("anonymized parser diagnostic") !== -1 && betaGuide.indexOf("must not contain names") !== -1);
-check("static: APP_BUILD and cache bust agree on 57", appJs.indexOf("APP_BUILD = 57") !== -1 && (indexHtml.match(/v=57/g) || []).length >= 6);
+check("static: APP_BUILD and cache bust agree on 58", appJs.indexOf("APP_BUILD = 58") !== -1 && (indexHtml.match(/v=58/g) || []).length >= 6);
 check("static: mobile layout safeguards are present", appCss.indexOf("mobile-first polish") !== -1 && appCss.indexOf("Swipe sideways to see all columns") !== -1 && appCss.indexOf("grid-template-columns: repeat(2, minmax(0, 1fr))") !== -1 && appCss.indexOf("input, select, textarea { font-size: 16px;") !== -1);
 check("static: SME dashboard Phase 1 is wired", indexHtml.indexOf('id="sme-dashboard-root"') !== -1 && reportJs.indexOf("renderSmeDashboard") !== -1 && reportJs.indexOf("SME finance dashboard") !== -1 && appJs.indexOf("#sme-dashboard-root") !== -1 && appCss.indexOf(".sme-dashboard") !== -1);
 check("static: global back button is wired across later steps", indexHtml.indexOf('id="btn-global-back"') !== -1 && indexHtml.indexOf('id="btn-results-back"') !== -1 && appJs.indexOf("function goBack()") !== -1 && appJs.indexOf("PREV_STEP") !== -1);

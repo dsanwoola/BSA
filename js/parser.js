@@ -1341,7 +1341,7 @@
    *  very wide), so its right boundary is pushed to just before the next
    *  label instead of the midpoint — long descriptions stay narration,
    *  while amounts (which sit at/after their own label) are unaffected. */
-  function pdfBoundaries(cells, narrCol) {
+  function pdfBoundaries(cells, narrCol, map) {
     var b = [];
     for (var i = 0; i < cells.length - 1; i++) {
       var edge = (cells[i].hi + cells[i + 1].lo) / 2;
@@ -1350,7 +1350,12 @@
       }
       b.push(edge);
     }
-    return { boundaries: b, n: cells.length };
+    map = map || {};
+    var headerText = cells.map(function (c) { return normHeader(c.text); }).join(" | ");
+    var dateAnchoredRows = map.date !== undefined && map.narration !== undefined &&
+      map.valueDate !== undefined && map.debit !== undefined && map.credit !== undefined && map.balance !== undefined &&
+      /TRANSACTION\s+DATE/.test(headerText) && /\bDESCRIPTION\b/.test(headerText);
+    return { boundaries: b, n: cells.length, map: map, dateAnchoredRows: dateAnchoredRows };
   }
 
   /** Snap a line's items into the header-anchored columns. Items are first
@@ -1415,6 +1420,41 @@
     }
     segs.push(cur);
     return segs;
+  }
+
+  /** Some PDF statements (Ecobank-style) use tight, uniform line spacing for
+   *  both wrapped narrations and the next transaction. Pure gap segmentation
+   *  then merges the whole page into one row, producing amount cells like
+   *  "0.00 50.00 10,000.00". Once we already have header anchors, a safer
+   *  deterministic row boundary is the detected Date column itself: every line
+   *  whose date column contains a real date starts a transaction; following
+   *  lines without a date are continuations of that row's narration/details. */
+  function pdfSegmentByDateAnchors(lines, anchors) {
+    var map = anchors && anchors.map;
+    if (!anchors || !anchors.dateAnchoredRows || !map || map.date === undefined) return null;
+    var out = [], cur = null, starts = 0;
+    (lines || []).forEach(function (ln) {
+      var cells = pdfAssign(ln.items, anchors);
+      if (!cells.some(function (c) { return String(c || "").trim(); })) return;
+      var hasDate = !!extractDateToken(cells[map.date]);
+      var hasTxnSignal = false;
+      [map.valueDate, map.debit, map.credit, map.balance, map.amount].forEach(function (idx) {
+        if (idx === undefined) return;
+        var raw = String(cells[idx] == null ? "" : cells[idx]).trim();
+        if (!raw) return;
+        if (extractDateToken(raw)) hasTxnSignal = true;
+        else if (/\d/.test(raw) && parseMoneyColumn(raw) !== null) hasTxnSignal = true;
+      });
+      if (hasDate && hasTxnSignal) {
+        if (cur) out.push(cur);
+        cur = cells;
+        starts++;
+      } else if (cur) {
+        pdfMergeInto(cur, cells);
+      }
+    });
+    if (cur) out.push(cur);
+    return starts >= 2 ? out : null;
   }
 
   function gtCorporateTransposedRows(lines) {
@@ -1501,6 +1541,12 @@
       }
       var dataBuf = [];
       function flushData() {
+        var dateRows = pdfSegmentByDateAnchors(dataBuf, anchors);
+        if (dateRows) {
+          dateRows.forEach(function (r) { rows.push(r); });
+          dataBuf = [];
+          return;
+        }
         pdfSegmentByGaps(dataBuf).forEach(function (seg) {
           var merged = null;
           seg.forEach(function (ln) {
@@ -1539,7 +1585,7 @@
         // its rows stay on the main table's columns
         if (pick && (!headerPushed || pick.cells.length === headerShape)) {
           flushData();
-          anchors = pdfBoundaries(pick.cells, pick.map.narration);
+          anchors = pdfBoundaries(pick.cells, pick.map.narration, pick.map);
           if (!headerPushed) {
             rows.push(pick.cells.map(function (c) { return c.text; }));
             headerPushed = true;
