@@ -12,7 +12,8 @@
       "sync-to-github.js",
       "HANDOFF.md",
       "README.md",
-      "skills-lock.json"
+      "skills-lock.json",
+      "*.patch"
     ],
     "headers": [
       {
