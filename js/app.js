@@ -6,7 +6,7 @@
 (function () {
   "use strict";
 
-  var APP_BUILD = 59; // shown in the header so stale cached code is obvious
+  var APP_BUILD = 60; // shown in the header so stale cached code is obvious
 
   var PARSER = window.CBN_PARSER, ENGINE = window.CBN_ENGINE,
       REPORT = window.CBN_REPORT, RULES = window.CBN_RULES;
@@ -16,7 +16,6 @@
     rows: null, source: null, fileName: null,
     txns: null, problems: null, integrity: null,
     audit: null, filter: "all",
-    premiumUnlocked: false,
     currentStep: "step-context"
   };
 
@@ -653,7 +652,6 @@
     state.auditTxns = txns;
 
     $("#summary-cards").innerHTML = REPORT.renderSummary(audit);
-    refreshSmeDashboard();
     $("#report-meta").innerHTML = REPORT.reportMeta(audit, state.ctx, {
       fileName: state.fileName, pageCount: state.pageCount, sheetCount: state.sheetCount
     });
@@ -683,43 +681,6 @@
       banner.innerHTML += " The parsed rows also reconcile exactly with the statement's own summary totals.";
       if (banner.className === "integrity warn" && (!ic || !ic.hasBalance)) banner.className = "integrity ok";
     }
-  }
-
-  function loadPremiumAccess() {
-    try { return localStorage.getItem("bsa-premium-sme") === "unlocked"; } catch (e) { return false; }
-  }
-
-  function savePremiumAccess() {
-    state.premiumUnlocked = true;
-    try { localStorage.setItem("bsa-premium-sme", "unlocked"); } catch (e) { /* private mode */ }
-  }
-
-  function unlockPremiumAccess() {
-    var code = window.prompt("Enter your SME Premium access code to unlock monthly report exports and WhatsApp summaries.");
-    if (code == null) return false;
-    code = String(code).trim().toUpperCase();
-    if (code === "BSA-SME-PREMIUM" || code === "SME-PREMIUM-2026") {
-      savePremiumAccess();
-      refreshSmeDashboard();
-      window.alert("SME Premium unlocked on this device.");
-      return true;
-    }
-    window.alert("Premium access code not recognised. Please contact the Bank Statement Auditor team for SME Premium access.");
-    return false;
-  }
-
-  function requirePremiumAccess() {
-    if (state.premiumUnlocked) return true;
-    return unlockPremiumAccess();
-  }
-
-  function refreshSmeDashboard() {
-    var root = $("#sme-dashboard-root");
-    if (!root || !state.audit) return;
-    root.innerHTML = REPORT.renderSmeDashboard(state.auditTxns || [], state.audit, { premiumUnlocked: state.premiumUnlocked }) +
-      REPORT.renderSmeReconciliation(state.auditTxns || [], state.audit, { premiumUnlocked: state.premiumUnlocked }) +
-      REPORT.renderSmeCashflowIntelligence(state.auditTxns || [], state.audit, { premiumUnlocked: state.premiumUnlocked }) +
-      REPORT.renderSmeFundingReadiness(state.auditTxns || [], state.audit, { premiumUnlocked: state.premiumUnlocked });
   }
 
   function renderFindingsPane() {
@@ -771,28 +732,6 @@
       $all(".tab-btn").forEach(function (x) { x.classList.toggle("on", x.getAttribute("data-tab") === "all"); });
       $("#pane-findings").style.display = "none";
       $("#pane-all").style.display = "";
-    });
-
-    $("#sme-dashboard-root").addEventListener("click", function (e) {
-      var btn = e.target.closest("button");
-      if (!btn) return;
-      if (btn.id === "btn-premium-unlock") {
-        unlockPremiumAccess();
-      } else if (btn.id === "btn-sme-monthly-report") {
-        if (!requirePremiumAccess()) return;
-        download("sme_monthly_finance_report.txt", REPORT.monthlySmeReport(state.auditTxns || [], state.audit, state.ctx, {
-          fileName: state.fileName, pageCount: state.pageCount, sheetCount: state.sheetCount
-        }), "text/plain");
-      } else if (btn.id === "btn-sme-whatsapp-summary") {
-        if (!requirePremiumAccess()) return;
-        var summary = REPORT.whatsappSmeSummary(state.auditTxns || [], state.audit);
-        try { navigator.clipboard.writeText(summary); } catch (err) {
-          var ta = document.createElement("textarea");
-          ta.value = summary; document.body.appendChild(ta); ta.select(); document.execCommand("copy"); document.body.removeChild(ta);
-        }
-        btn.textContent = "WhatsApp summary copied ✓";
-        setTimeout(function () { btn.textContent = "Copy owner WhatsApp summary"; }, 1800);
-      }
     });
 
     $("#btn-export-csv").addEventListener("click", function () {
@@ -891,8 +830,6 @@
     var badge = document.getElementById("build-badge");
     if (badge) badge.textContent = "build " + APP_BUILD;
     console.log("Bank Charge Auditor — build " + APP_BUILD);
-    state.premiumUnlocked = loadPremiumAccess();
-
     wireNavigation(); wireTheme(); wireContext(); wireUpload(); wireMapping(); wireResults();
     gotoStep("step-context");
     // open every finding before printing so the full evidence appears on paper
