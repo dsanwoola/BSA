@@ -106,6 +106,29 @@ var ecobankIntegrity = PARSER.integrityCheck(ecobankBuilt.txns);
 check("parser: Ecobank-style uniform PDF spacing splits rows by date column", ecobankBuilt.txns.length === 2 && ecobankBuilt.problems.length === 0 && ecobankIntegrity.ratio === 1, JSON.stringify({ rows: ecobankRows, det: ecobankDet, built: ecobankBuilt, integrity: ecobankIntegrity }));
 check("parser: Ecobank-style PDF continuation lines merge into narration", ecobankBuilt.txns[0] && /wrapped narration/.test(ecobankBuilt.txns[0].narration), ecobankBuilt.txns[0] && ecobankBuilt.txns[0].narration);
 
+var pocketPdfLines = [[
+  pdfLine(820, ["Total Deb ts: ₦ 1,500.00", "", "", "", "", ""]),
+  pdfLine(806, ["Total Cred ts: ₦ 2,000.00", "", "", "", "", ""]),
+  pdfLine(792, ["OPENING BALANCE: ₦ 1,000.00", "", "", "", "", ""]),
+  pdfLine(778, ["CLOSING BALANCE: ₦ 1,500.00", "", "", "", "", ""]),
+  pdfLine(760, ["Full Date", "Memo", "Transact on ID", "Cred t ( ₦ )", "Deb t ( ₦ )", "Balance ( ₦ )"]),
+  // Pocket-style PDFs are printed newest first. The parser should reverse them
+  // before balance-side repairs, then verify the chronological running balance.
+  pdfLine(738, ["3 03-01-2026 09:00:00", "Newest debit", "pocket_disburse_003", "", "-500.00", "1,500.00"]),
+  pdfLine(724, ["pm", "wrapped memo for newest debit", "", "", "", ""]),
+  pdfLine(704, ["2 02-01-2026 09:00:00", "Middle credit", "pocket_funding_002", "2,000.00", "", "2,000.00"]),
+  pdfLine(682, ["1 01-01-2026 09:00:00", "Oldest debit", "pocket_disburse_001", "", "-1,000.00", "0.00"])
+]];
+var pocketRows = PARSER.pdfInternals.assemble(pocketPdfLines);
+var pocketDet = PARSER.detectColumns(pocketRows);
+var pocketBuilt = pocketDet ? PARSER.buildTransactions(pocketRows, pocketDet.headerRow, pocketDet.map) : { txns: [], problems: [{ issue: "no header" }] };
+var pocketIntegrity = PARSER.integrityCheck(pocketBuilt.txns);
+var pocketMeta = pocketDet ? PARSER.extractStatementMeta(pocketRows, pocketDet.headerRow) : null;
+var pocketRec = pocketMeta ? PARSER.reconcileWithMeta(pocketBuilt.txns, pocketMeta) : null;
+check("parser: Pocket font-artifact headers are detected", pocketDet && pocketDet.map.date === 0 && pocketDet.map.narration === 1 && pocketDet.map.reference === 2 && pocketDet.map.credit === 3 && pocketDet.map.debit === 4 && pocketDet.map.balance === 5, JSON.stringify({ rows: pocketRows, det: pocketDet }));
+check("parser: Pocket newest-first PDF is reversed before balance repairs", pocketBuilt.txns.length === 3 && pocketBuilt.problems.length === 0 && pocketBuilt.resequenced >= 1 && pocketIntegrity.ratio === 1 && pocketBuilt.txns[0].balance === 0 && pocketBuilt.txns[2].balance === 1500, JSON.stringify({ built: pocketBuilt, integrity: pocketIntegrity }));
+check("parser: Pocket summary totals with dropped-i labels reconcile", pocketRec && pocketRec.allOk && pocketMeta.totalDebit === 1500 && pocketMeta.totalCredit === 2000, JSON.stringify({ meta: pocketMeta, rec: pocketRec }));
+
 /* ---------------- classifier ---------------- */
 function cls(s) { var c = PATTERNS.classify(s); return c ? c.type : null; }
 check("classify: COT", cls("COT CHARGE FOR APRIL") === "cot");
@@ -1154,7 +1177,7 @@ var reportJs = fs.readFileSync(__dirname + "/../js/report.js", "utf8");
 var betaGuide = fs.readFileSync(__dirname + "/../BETA_TESTING.md", "utf8");
 check("static: beta guide appears in app", indexHtml.indexOf("Beta tester checklist") !== -1 && indexHtml.indexOf("anonymized parser diagnostic") !== -1);
 check("static: BETA_TESTING documents privacy-safe diagnostics", betaGuide.indexOf("anonymized parser diagnostic") !== -1 && betaGuide.indexOf("must not contain names") !== -1);
-check("static: APP_BUILD and cache bust agree on 58", appJs.indexOf("APP_BUILD = 58") !== -1 && (indexHtml.match(/v=58/g) || []).length >= 6);
+check("static: APP_BUILD and cache bust agree on 59", appJs.indexOf("APP_BUILD = 59") !== -1 && (indexHtml.match(/v=59/g) || []).length >= 6);
 check("static: mobile layout safeguards are present", appCss.indexOf("mobile-first polish") !== -1 && appCss.indexOf("Swipe sideways to see all columns") !== -1 && appCss.indexOf("grid-template-columns: repeat(2, minmax(0, 1fr))") !== -1 && appCss.indexOf("input, select, textarea { font-size: 16px;") !== -1);
 check("static: SME dashboard Phase 1 is wired", indexHtml.indexOf('id="sme-dashboard-root"') !== -1 && reportJs.indexOf("renderSmeDashboard") !== -1 && reportJs.indexOf("SME finance dashboard") !== -1 && appJs.indexOf("#sme-dashboard-root") !== -1 && appCss.indexOf(".sme-dashboard") !== -1);
 check("static: global back button is wired across later steps", indexHtml.indexOf('id="btn-global-back"') !== -1 && indexHtml.indexOf('id="btn-results-back"') !== -1 && appJs.indexOf("function goBack()") !== -1 && appJs.indexOf("PREV_STEP") !== -1);

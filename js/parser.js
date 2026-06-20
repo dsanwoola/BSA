@@ -172,15 +172,15 @@
    * LONGEST-LABEL-FIRST so "VALUE DATE" can never be mistaken for "DATE",
    * nor "OPENING BALANCE" for "BALANCE". */
   var ROLE_SYNONYMS = {
-    date: ["TRANSACTION DATE", "TRANSACTION TIME", "TRANS DATE", "TRANS TIME", "TXN DATE", "TXN TIME", "TRAN DATE", "POSTING DATE", "POSTED DATE", "POST DATE", "DATE POSTED", "ENTRY DATE", "DATE TIME", "DATETIME", "DATE"],
+    date: ["TRANSACTION DATE", "TRANSACTION TIME", "TRANS DATE", "TRANS TIME", "TXN DATE", "TXN TIME", "TRAN DATE", "POSTING DATE", "POSTED DATE", "POST DATE", "DATE POSTED", "ENTRY DATE", "DATE TIME", "DATETIME", "FULL DATE", "DATE"],
     valueDate: ["VALUE DATE", "VALUEDATE", "VAL DATE", "VAL. DATE", "VALUE. DATE"],
-    narration: ["REFERENCE / SESSION CHANNEL NARRATION", "REFERENCE/SESSION CHANNEL NARRATION", "TRANSACTION DESCRIPTION", "TRANSACTION NARRATION", "TRANSACTION REMARKS", "TRANSACTION DETAILS", "NARRATION", "NARRATIVE", "DESCRIPTION", "PARTICULARS", "REMARKS", "REMARK", "DETAILS", "DESC"],
+    narration: ["REFERENCE / SESSION CHANNEL NARRATION", "REFERENCE/SESSION CHANNEL NARRATION", "TRANSACTION DESCRIPTION", "TRANSACTION NARRATION", "TRANSACTION REMARKS", "TRANSACTION DETAILS", "NARRATION", "NARRATIVE", "DESCRIPTION", "PARTICULARS", "REMARKS", "REMARK", "DETAILS", "MEMO", "DESC"],
     debit: ["WITHDRAWAL (DR)", "DEBIT AMOUNT", "DEBIT (DR)", "DEBIT(DR)", "DEBIT AMT", "WITHDRAWALS", "WITHDRAWAL", "MONEY OUT", "OUTFLOW", "DR AMOUNT", "DEBITS", "DEBIT", "DR"],
     credit: ["DEPOSIT (CR)", "CREDIT AMOUNT", "CREDIT (CR)", "CREDIT(CR)", "CREDIT AMT", "LODGEMENTS", "LODGEMENT", "DEPOSITS", "DEPOSIT", "MONEY IN", "INFLOW", "CR AMOUNT", "CREDITS", "CREDIT", "CR"],
     balance: ["RUNNING BALANCE", "ACCOUNT BALANCE", "AVAILABLE BALANCE", "CURRENT BALANCE", "CLOSING BALANCE", "BALANCE AFTER", "BALANCE", "BAL"],
     amount: ["TRANSACTION AMOUNT", "AMOUNT", "AMT"],
     drcr: ["TRANSACTION TYPE", "DR / CR", "DR/CR", "CR/DR", "INDICATOR", "TYPE", "D/C"],
-    reference: ["REFERENCE/SESSION ID", "REFERENCE / SESSION ID", "REFERENCE/SESSION", "REFERENCE / SESSION", "TRANSACTION REF", "REFERENCE NUMBER", "REFERENCE NO", "INSTRUMENT NO", "CHEQUE NO", "TRANS REF", "REFERENCE", "REF NO", "CHQ NO", "REF"]
+    reference: ["REFERENCE/SESSION ID", "REFERENCE / SESSION ID", "REFERENCE/SESSION", "REFERENCE / SESSION", "TRANSACTION ID", "TRANSACTION REF", "REFERENCE NUMBER", "REFERENCE NO", "INSTRUMENT NO", "CHEQUE NO", "TRANS REF", "REFERENCE", "REF NO", "CHQ NO", "REF"]
   };
 
   /* Labels that often sit in a statement's table header but carry nothing
@@ -199,7 +199,15 @@
   })();
 
   function normHeader(s) {
-    return String(s == null ? "" : s).toUpperCase().replace(/[._:#*]/g, " ").replace(/\s+/g, " ").trim();
+    return String(s == null ? "" : s).toUpperCase()
+      .replace(/[._:#*]/g, " ")
+      .replace(/\bCRED\s+TS\b/g, "CREDITS")
+      .replace(/\bDEB\s+TS\b/g, "DEBITS")
+      .replace(/\bCRED\s+T\b/g, "CREDIT")
+      .replace(/\bDEB\s+T\b/g, "DEBIT")
+      .replace(/\bTRANSACT\s+ON\b/g, "TRANSACTION")
+      .replace(/\bT\s+TLE\b/g, "TITLE")
+      .replace(/\s+/g, " ").trim();
   }
 
   /** Which column role does a single header cell describe, if any? */
@@ -342,7 +350,7 @@
         var cell = row[c];
         if (cell == null || cell === "") continue;
         var s = cell instanceof Date ? cell.toLocaleDateString("en-GB") : String(cell);
-        var u = s.toUpperCase();
+        var u = normHeader(s);
         if (inHero) heroText.push(u);
 
         for (var i = 0; i < META_LABELS.length; i++) {
@@ -835,12 +843,13 @@
       pendingDatePrefix = null;
       txns.push(lastTxn);
     }
+    var reversed = maybeReversePrintedDescending(txns);
     var sideRepairs = repairMoneySides(txns, openingBalance);
     var repaired = repairChain(txns);
     return {
       txns: txns, problems: problems, openingBalance: openingBalance,
       moneySideRepairs: sideRepairs,
-      duplicates: repaired.dups, resequenced: repaired.swaps
+      duplicates: repaired.dups, resequenced: repaired.swaps + reversed
     };
 
     function rowHasMoney(row, map) {
@@ -852,6 +861,38 @@
       });
     }
     function rowIsOnlyText(row, map) { return !rowHasMoney(row, map); }
+  }
+
+  /* ------------------- reverse-printed statement repair ------------------- */
+
+  /** Some wallet/PDF statements print newest transaction first. Balance-side
+   *  repairs must not run on that order, because a correct debit can appear to
+   *  be a credit when read backwards. If reversing the extracted rows makes the
+   *  running-balance chain dramatically stronger, reverse first; otherwise keep
+   *  the printed order. */
+  function maybeReversePrintedDescending(txns) {
+    var withBal = txns.filter(function (t) { return t.balance !== null; });
+    if (withBal.length < 3) return 0;
+    function rr(n) { return Math.round(n * 100) / 100; }
+    function score(list) {
+      var checked = 0, matched = 0;
+      for (var i = 1; i < list.length; i++) {
+        var p = list[i - 1], t = list[i];
+        if (p.balance === null || t.balance === null) continue;
+        checked++;
+        if (Math.abs(rr(p.balance - t.debit + t.credit) - t.balance) <= 0.011) matched++;
+      }
+      return { checked: checked, matched: matched, ratio: checked ? matched / checked : null };
+    }
+    var forward = score(txns);
+    var reversed = score(txns.slice().reverse());
+    if (reversed.checked >= 2 && reversed.ratio !== null && forward.ratio !== null &&
+        reversed.ratio >= 0.75 && reversed.matched >= forward.matched * 3) {
+      txns.reverse();
+      txns.forEach(function (t, idx) { t.index = idx; });
+      return 1;
+    }
+    return 0;
   }
 
   /* ------------------- balance-proven money-side repair ------------------- */
