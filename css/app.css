@@ -567,6 +567,9 @@ footer strong { color: var(--txt); }
   #step-context .panel > .lead {
     display: none;
   }
+  #launch-guide {
+    display: none;
+  }
   .step-dot {
     min-width: 0;
     border-radius: 12px;
