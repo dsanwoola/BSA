@@ -561,10 +561,11 @@ footer strong { color: var(--txt); }
   .build-badge { align-self: center; padding: 5px 7px; }
 
   .stepper {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
-    margin: 14px 0 18px;
+    display: none;
+  }
+  #step-context .panel > h2,
+  #step-context .panel > .lead {
+    display: none;
   }
   .step-dot {
     min-width: 0;
@@ -576,6 +577,7 @@ footer strong { color: var(--txt); }
   .step-dot .n { flex: none; }
 
   .panel { padding: 18px 14px; border-radius: 16px; }
+  #step-context .panel { padding-top: 16px; }
   .panel h2 { font-size: 19px; line-height: 1.18; }
   .panel .lead { font-size: 13.5px; line-height: 1.5; margin-bottom: 18px; }
 
@@ -684,6 +686,5 @@ footer strong { color: var(--txt); }
   .wrap { padding-left: 10px; padding-right: 10px; }
   header.app-head { grid-template-columns: 38px minmax(0, 1fr) auto; }
   .build-badge { grid-column: 2 / -1; justify-self: start; }
-  .stepper { grid-template-columns: 1fr; }
   .panel { padding: 16px 12px; }
 }
