@@ -514,7 +514,7 @@ footer strong { color: var(--txt); }
 }
 
 
-.beta-guide {
+.launch-guide {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(260px, .9fr);
   gap: 16px;
@@ -524,17 +524,17 @@ footer strong { color: var(--txt); }
   border-radius: 16px;
   background: linear-gradient(135deg, rgba(109, 179, 255, 0.09), rgba(46, 229, 157, 0.05));
 }
-.beta-guide p,
-.beta-guide ul {
+.launch-guide p,
+.launch-guide ul {
   margin: 6px 0 0;
   color: var(--txt-dim);
   font-size: 13px;
   line-height: 1.5;
 }
-.beta-guide ul { padding-left: 18px; }
-.beta-guide li + li { margin-top: 5px; }
+.launch-guide ul { padding-left: 18px; }
+.launch-guide li + li { margin-top: 5px; }
 @media (max-width: 760px) {
-  .beta-guide { grid-template-columns: 1fr; }
+  .launch-guide { grid-template-columns: 1fr; }
 }
 
 /* ---------- mobile-first polish ---------- */
@@ -593,7 +593,7 @@ footer strong { color: var(--txt); }
   .dropzone h3 { font-size: 16px; line-height: 1.25; }
   .fmt-tags { flex-wrap: wrap; }
 
-  .beta-guide, .privacy-diagnostic, .meta-card, .hint-box,
+  .launch-guide, .privacy-diagnostic, .meta-card, .hint-box,
   .sme-dashboard, .recon-panel, .phase3-panel, .phase4-panel {
     padding: 14px;
     border-radius: 14px;

@@ -72,7 +72,7 @@ All rules live in **`js/rules.js`** as data with citations — when the CBN issu
 node tests/run_tests.js
 ```
 
-179+ committed tests cover the parser (amounts, day-first dates, CSV quoting, column detection), the classifier (including merchant names that *look* like fees), every charge family, the cross-checks, VAT pairing, the 2026 stamp-duty regime switch, manual overrides and the integrity check.
+273+ committed tests cover the parser (amounts, day-first dates, CSV quoting, column detection), the classifier (including merchant names that *look* like fees), every charge family, the cross-checks, VAT pairing, the 2026 stamp-duty regime switch, manual overrides, encrypted PDFs, bank-specific PDF layouts, and integrity/checksum verification.
 
 ## Files
 
@@ -98,6 +98,6 @@ reference/          source documents used to build the rules
 
 ⚖ This tool produces a documented audit, not legal advice. Unresolved complaints escalate to the CBN Consumer Protection Department: **cpd@cbn.gov.ng**.
 
-## Private beta
+## Launch / beta feedback
 
-Use `BETA_TESTING.md` to guide closed beta testers, collect parser failures safely, and preserve the no-upload privacy promise.
+For controlled testing, use `BETA_TESTING.md` to guide testers, collect parser failures safely, and preserve the no-upload privacy promise. Public-facing copy should continue to say “Supports major Nigerian bank statements, with guided import for other layouts” rather than claiming every Nigerian bank layout is guaranteed.
