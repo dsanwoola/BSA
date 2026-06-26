@@ -12,6 +12,12 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["--prefix", "C:/Users/Deen/Downloads/ClaudeProjects/GiftCash", "run", "dev", "--", "--port", "3100"],
       "port": 3100
+    },
+    {
+      "name": "imota-lcda",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["serve", "-p", "3500", "C:/Users/Deen/Downloads/ClaudeProjects/ImotaLCDA"],
+      "port": 3500
     }
   ]
 }
