@@ -18,6 +18,12 @@
       "runtimeExecutable": "npx",
       "runtimeArgs": ["serve", "-p", "3500", "C:/Users/Deen/Downloads/ClaudeProjects/ImotaLCDA"],
       "port": 3500
+    },
+    {
+      "name": "icarequiz-dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "C:/Users/Deen/Downloads/ClaudeProjects/icarequiz/code", "run", "dev", "--", "--port", "5173"],
+      "port": 5173
     }
   ]
 }
