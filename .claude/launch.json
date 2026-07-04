@@ -36,6 +36,12 @@
       "runtimeExecutable": "npx",
       "runtimeArgs": ["serve", "-p", "3300", "C:/Users/Deen/Downloads/ClaudeProjects/FoodCard/apps/mobile/merchant_pos/build/web"],
       "port": 3300
+    },
+    {
+      "name": "foodcard-beneficiary-web",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["serve", "-p", "3400", "C:/Users/Deen/Downloads/ClaudeProjects/FoodCard/apps/mobile/beneficiary/build/web"],
+      "port": 3400
     }
   ]
 }
