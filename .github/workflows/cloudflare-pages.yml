@@ -1,0 +1,44 @@
+name: Deploy to Cloudflare Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare Cloudflare Pages assets
+        run: |
+          mkdir -p /tmp/bsa-cloudflare-pages
+          rsync -a ./ /tmp/bsa-cloudflare-pages/ \
+            --exclude firebase.json \
+            --exclude '.*' \
+            --exclude node_modules/ \
+            --exclude tests/ \
+            --exclude reference/ \
+            --exclude public/ \
+            --exclude serve.py \
+            --exclude sync-to-github.js \
+            --exclude HANDOFF.md \
+            --exclude README.md \
+            --exclude skills-lock.json \
+            --exclude '*.patch'
+          cat > /tmp/bsa-cloudflare-pages/_headers <<'EOF'
+          /*.html
+            Cache-Control: no-cache, no-store, must-revalidate
+
+          /*.js
+            Cache-Control: public, max-age=31536000, immutable
+
+          /*.css
+            Cache-Control: public, max-age=31536000, immutable
+          EOF
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy /tmp/bsa-cloudflare-pages --project-name bank-statement-auditor --branch main
