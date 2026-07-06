@@ -6,6 +6,12 @@
       "runtimeExecutable": "python",
       "runtimeArgs": ["serve.py"],
       "port": 8765
+    },
+    {
+      "name": "foodcard-admin",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "C:/Users/Deen/Downloads/ClaudeProjects/FoodCard/apps/admin", "run", "dev"],
+      "port": 3200
     }
   ]
 }
