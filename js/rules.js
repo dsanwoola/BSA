@@ -38,17 +38,24 @@
   var RULES = {
 
     metadata: {
-      version: "2026.06",
-      lastReviewed: "June 2026",
+      version: "2026.07",
+      lastReviewed: "July 2026",
       reviewCadence: "Quarterly, or immediately after any CBN/Nigerian tax circular affecting bank charges",
       sources: [
         "CBN Guide to Charges by Banks, Other Financial and Non-Bank Financial Institutions (effective 1 Jan 2020)",
+        "CBN Guide to Charges by Banks and Other Financial Institutions 2026 (effective 1 May 2026)",
         "CBN Circular on Review of ATM Transaction Fees (10 Feb 2025; effective 1 Mar 2025)",
         "Finance Act 2020 and EMTL Regulations",
         "Nigeria Tax Act 2025 stamp duty provisions effective 1 Jan 2026",
+        "NCC/CBN End-User Billing policy for USSD banking (phased from mid-2025)",
         "CBN Cashless Policy circulars"
       ]
     },
+
+    /** The 2026 Guide to Charges took effect on this date. Several caps
+     *  changed regime on it: EFT tiers, CAMF per-mille, card issuance,
+     *  and the abolition of naira card maintenance fees. */
+    guide2026From: d("2026-05-01"),
 
     /** Earliest date the knowledge base covers. Transactions before this
      *  are sent to human review rather than judged with the wrong rules. */
@@ -62,13 +69,26 @@
 
     /* ---------------- Electronic funds transfer (NIP/USSD/mobile) ----- */
     /** [G2020] Transfers: ≤₦5,000 → ₦10; ₦5,001–₦50,000 → ₦25;
-     *  >₦50,000 → ₦50. All plus VAT. USSD: "current NIP charges apply". */
-    eftFeeFor: function (transferAmount) {
+     *  >₦50,000 → ₦50. All plus VAT. USSD: "current NIP charges apply".
+     *  [G2026] From 1 May 2026: ≤₦5,000 → FREE; ₦5,001–₦50,000 → ₦10;
+     *  >₦50,000 → ₦50. */
+    eftFeeFor: function (transferAmount, date) {
+      if (date && date >= d("2026-05-01")) {
+        if (transferAmount <= 5000) return 0;
+        if (transferAmount <= 50000) return 10;
+        return 50;
+      }
       if (transferAmount <= 5000) return 10;
       if (transferAmount <= 50000) return 25;
       return 50;
     },
-    eftMaxFee: 50, // absolute ceiling regardless of transfer size
+    eftCitationFor: function (date) {
+      if (date && date >= d("2026-05-01")) {
+        return "CBN Guide to Charges 2026 (eff. 1 May 2026) — electronic funds transfer: ≤₦5,000 → FREE; ₦5,001–₦50,000 → ₦10; above ₦50,000 → ₦50";
+      }
+      return "CBN Guide to Charges 2020 — electronic funds transfer: ≤₦5,000 → ₦10; ₦5,001–₦50,000 → ₦25; above ₦50,000 → ₦50, plus VAT";
+    },
+    eftMaxFee: 50, // absolute ceiling regardless of transfer size or date
     eftOwnAccountSameBankFeeAllowed: false,
     eftOwnAccountSameBankCitation: "Operational rule confirmed June 2026 — own-account transfers within the same bank should not attract electronic transfer fees; own-account transfers to another bank remain subject to normal transfer-fee tiers",
 
@@ -98,21 +118,65 @@
     /* ---------------- Current account maintenance fee ----------------- */
     /** [G2020] Max ₦1 per mille (₦1 per ₦1,000) on customer-induced DEBIT
      *  turnover. CURRENT accounts only — never savings. Transfers to
-     *  accounts in the same name are excluded from the turnover. */
+     *  accounts in the same name are excluded from the turnover.
+     *  [G2026] From 1 May 2026 the cap halves to ₦0.5 per mille; from
+     *  1 Jan 2027 CAMF is abolished entirely. */
     camf: {
-      perMille: 1,
+      perMille: 1, // legacy default (pre-May-2026); prefer perMilleFor(date)
+      perMilleFor: function (date) {
+        if (!date || date < d("2026-05-01")) return 1;
+        if (date < d("2027-01-01")) return 0.5;
+        return 0;
+      },
       allowedOn: ["current"],
-      citation: "CBN Guide to Charges 2020 — 'Current Account Maintenance Fee': negotiable, max ₦1 per mille on customer-induced debit transactions"
+      citation: "CBN Guide to Charges 2020 — 'Current Account Maintenance Fee': negotiable, max ₦1 per mille on customer-induced debit transactions",
+      citationFor: function (date) {
+        if (!date || date < d("2026-05-01")) {
+          return "CBN Guide to Charges 2020 — 'Current Account Maintenance Fee': negotiable, max ₦1 per mille on customer-induced debit transactions";
+        }
+        if (date < d("2027-01-01")) {
+          return "CBN Guide to Charges 2026 (eff. 1 May 2026) — CAMF capped at ₦0.5 per mille on customer-induced debit transactions; abolished from 2027";
+        }
+        return "CBN Guide to Charges 2026 — CAMF is abolished from 1 Jan 2027; any CAMF charged is fully refundable";
+      }
     },
 
     /* ---------------- Cards ---------------- */
     cards: {
       issuanceMax: 1000,          // + VAT (₦1,075 VAT-inclusive) [G2020]
+      issuanceMaxFor: function (date) {
+        return (date && date >= d("2026-05-01")) ? 1500 : 1000;
+      },
       maintenancePerQuarterMax: 50, // Naira cards, SAVINGS accounts only [G2020]
       maintenanceAllowedOn: ["savings"],
+      /** [G2026] From 1 May 2026 naira debit/credit card maintenance fees
+       *  are abolished outright — ANY card maintenance charge is a
+       *  violation regardless of account type. */
+      maintenanceAbolishedFrom: d("2026-05-01"),
       fxMaintenancePerAnnumUSD: 10,
       citationIssuance: "CBN Guide to Charges 2020 — card issuance/replacement/renewal: one-off ₦1,000 (₦1,075 VAT-inclusive)",
-      citationMaint: "CBN Guide to Charges 2020 — Naira card maintenance: max ₦50 per QUARTER, applicable to cards linked to SAVINGS accounts only"
+      citationIssuanceFor: function (date) {
+        if (date && date >= d("2026-05-01")) {
+          return "CBN Guide to Charges 2026 (eff. 1 May 2026) — card issuance/replacement: one-off ₦1,500; virtual cards free";
+        }
+        return "CBN Guide to Charges 2020 — card issuance/replacement/renewal: one-off ₦1,000 (₦1,075 VAT-inclusive)";
+      },
+      citationMaint: "CBN Guide to Charges 2020 — Naira card maintenance: max ₦50 per QUARTER, applicable to cards linked to SAVINGS accounts only",
+      citationMaintAbolished: "CBN Guide to Charges 2026 (eff. 1 May 2026) — maintenance fees on naira-denominated debit and credit cards are ABOLISHED; any card maintenance charge from 1 May 2026 is not permitted and is fully refundable"
+    },
+
+    /* ---------------- USSD session fees ---------------- */
+    /** Pre-EUB: USSD session cost (₦6.98/session) was passed through by
+     *  banks as cost recovery. Under the NCC/CBN End-User Billing policy
+     *  (banks migrated in phases from mid-2025) the telco bills the
+     *  customer's airtime directly and the BANK must not debit the account
+     *  for USSD sessions at all. Migration dates vary by bank, so post-EUB
+     *  session-fee debits are flagged for review, not auto-violated. */
+    ussd: {
+      sessionFeeMax: 6.98,
+      eubFrom: d("2025-06-01"),
+      citation: "NCC-approved USSD pricing — ₦6.98 per 120-second session, passed through at cost recovery",
+      eubCitation: "NCC/CBN End-User Billing policy (phased from mid-2025) — once a bank is on EUB, USSD sessions are billed to the customer's AIRTIME by the telco; the bank must not debit the bank account for USSD session fees"
     },
 
     /* ---------------- ATM ---------------- */
@@ -299,6 +363,7 @@
       card_maintenance: "Card maintenance fee",
       atm_fee: "ATM withdrawal fee",
       sms_alert: "SMS alert fee",
+      ussd_session_fee: "USSD session fee",
       vat: "VAT on a bank charge",
       hardware_token: "Hardware token fee",
       bills_payment: "Bills payment fee",

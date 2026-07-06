@@ -59,8 +59,10 @@ Electronic transfer fees (NIP/USSD/app tiers ₦10/₦25/₦50 + VAT) • EMTL /
 ## Rule sources
 
 - CBN *Guide to Charges by Banks, Other Financial and Non-Bank Financial Institutions* (effective 1 Jan 2020)
+- CBN *Guide to Charges by Banks and Other Financial Institutions 2026* (effective 1 May 2026) — free transfers ≤₦5,000, ₦10 mid-tier, CAMF ₦0.5/mille then abolished 2027, naira card maintenance abolished, card issuance ₦1,500
 - CBN Circular on Review of ATM Transaction Fees (10 Feb 2025, effective 1 Mar 2025)
 - Finance Act 2020 & EMTL Regulations; Nigeria Tax Act 2025 (stamp duty from 1 Jan 2026)
+- NCC/CBN End-User Billing policy for USSD banking (phased from mid-2025)
 - CBN Cashless Policy circulars; Finance Act 2019 (VAT 7.5%)
 - Cross-verified against bank pricing guides published "in line with the CBN Guide" (see `reference/`)
 
@@ -72,7 +74,7 @@ All rules live in **`js/rules.js`** as data with citations — when the CBN issu
 node tests/run_tests.js
 ```
 
-273+ committed tests cover the parser (amounts, day-first dates, CSV quoting, column detection), the classifier (including merchant names that *look* like fees), every charge family, the cross-checks, VAT pairing, the 2026 stamp-duty regime switch, manual overrides, encrypted PDFs, bank-specific PDF layouts, and integrity/checksum verification.
+300+ committed tests cover the parser (amounts, day-first dates, CSV quoting, column detection), the classifier (including merchant names that *look* like fees), every charge family, the cross-checks, VAT pairing, the 2026 stamp-duty regime switch, the May-2026 Guide-to-Charges regime switch (transfer tiers, CAMF step-down, card fee changes), USSD End-User Billing, manual overrides, encrypted PDFs, bank-specific PDF layouts, and integrity/checksum verification.
 
 ## Files
 

@@ -139,7 +139,8 @@ check("classify: VAT beats fee words", cls("VAT ON NIP TRANSFER CHARGE") === "va
 check("classify: EMTL", cls("ELECTRONIC MONEY TRANSFER LEVY") === "levy");
 check("classify: stamp duty", cls("STAMP DUTY") === "levy");
 check("classify: NIP fee", cls("NIP TRANSFER CHARGE") === "eft");
-check("classify: USSD fee", cls("USSD SESSION CHARGE") === "eft");
+check("classify: USSD session fee is its own type", cls("USSD SESSION CHARGE") === "ussd_session_fee");
+check("classify: USSD transfer fee stays eft", cls("USSD TRF CHARGE") === "eft");
 check("classify: plain transfer is NOT a charge", cls("NIP/TRF TO JOHN DOE/GTB/REF123") === null);
 check("classify: POS purchase is NOT a charge", cls("POS PURCHASE COFFEE PALACE LAGOS") === null);
 check("classify: merchant named CHARGERS is NOT a charge", cls("WEB PURCHASE CHARGERS LTD") === null);
@@ -189,6 +190,72 @@ res = ENGINE.audit([
 ], CTX_SAVINGS);
 check("card maint in different quarters = no duplicate flag",
   !res.aggregates.some(function (a) { return a.id.indexOf("cardq") === 0 && a.verdict === "violation"; }));
+
+/* ---------------- CBN Guide to Charges 2026 (effective 1 May 2026) ---------------- */
+// EFT tier switch
+check("2026 guide: eft tiers before 1 May 2026 (legacy)",
+  RULES.eftFeeFor(3000, D(2026, 4, 30)) === 10 && RULES.eftFeeFor(20000, D(2026, 4, 30)) === 25 && RULES.eftFeeFor(80000, D(2026, 4, 30)) === 50);
+check("2026 guide: eft tiers from 1 May 2026 (≤5k free, 10, 50)",
+  RULES.eftFeeFor(3000, D(2026, 5, 1)) === 0 && RULES.eftFeeFor(20000, D(2026, 5, 1)) === 10 && RULES.eftFeeFor(80000, D(2026, 5, 1)) === 50);
+check("2026 guide: eftFeeFor without a date keeps legacy tiers", RULES.eftFeeFor(3000) === 10);
+
+// Transfer fee on a small transfer after 1 May 2026 must be FREE
+res = ENGINE.audit([
+  T(0, D(2026, 6, 10), "NIP/TRF TO MAMA PUT KITCHEN", 4000, 0),
+  T(1, D(2026, 6, 10), "NIP TRANSFER CHARGE", 10.75, 0)
+], CTX_SAVINGS);
+f = findFor(res, 1);
+check("2026 guide: fee on ≤₦5,000 transfer after May 2026 = violation (free tier)",
+  f.verdict === "violation" && Math.abs(f.excess - 10.75) < 0.02, "verdict=" + f.verdict + " excess=" + f.excess);
+
+// ₦10 fee on a mid-tier transfer after May 2026 is compliant
+res = ENGINE.audit([
+  T(0, D(2026, 6, 10), "NIP/TRF TO VENDOR LTD", 20000, 0),
+  T(1, D(2026, 6, 10), "NIP TRANSFER CHARGE", 10.75, 0)
+], CTX_SAVINGS);
+check("2026 guide: ₦10.75 fee on ₦20k transfer after May 2026 = compliant", findFor(res, 1).verdict === "compliant");
+
+// ₦25-style legacy fee after May 2026 must be caught
+res = ENGINE.audit([
+  T(0, D(2026, 6, 10), "NIP/TRF TO VENDOR LTD", 20000, 0),
+  T(1, D(2026, 6, 10), "NIP TRANSFER CHARGE", 26.88, 0)
+], CTX_SAVINGS);
+check("2026 guide: legacy ₦25 fee charged after May 2026 = violation", findFor(res, 1).verdict === "violation");
+
+// Card maintenance abolished from 1 May 2026 — any account type
+res = ENGINE.audit([T(0, D(2026, 5, 2), "CARD MAINT FEE", 53.75, 0)], CTX_SAVINGS);
+f = findFor(res, 0);
+check("2026 guide: card maintenance after 1 May 2026 = violation even on savings",
+  f.verdict === "violation" && f.excess === 53.75, "verdict=" + f.verdict + " excess=" + f.excess);
+res = ENGINE.audit([T(0, D(2026, 4, 20), "CARD MAINT FEE", 53.75, 0)], CTX_SAVINGS);
+check("2026 guide: card maintenance before 1 May 2026 still compliant on savings", findFor(res, 0).verdict === "compliant");
+
+// Card issuance cap rises to ₦1,500
+res = ENGINE.audit([T(0, D(2026, 6, 10), "DEBIT CARD ISSUANCE FEE", 1612.50, 0)], CTX_SAVINGS);
+check("2026 guide: ₦1,612.50 card issuance after May 2026 = compliant (₦1,500+VAT)", findFor(res, 0).verdict === "compliant");
+res = ENGINE.audit([T(0, D(2026, 4, 10), "DEBIT CARD ISSUANCE FEE", 1612.50, 0)], CTX_SAVINGS);
+check("2026 guide: ₦1,612.50 card issuance before May 2026 = violation (₦1,000+VAT cap)", findFor(res, 0).verdict === "violation");
+
+// CAMF per-mille schedule
+check("2026 guide: CAMF per-mille schedule",
+  RULES.camf.perMilleFor(D(2026, 4, 30)) === 1 && RULES.camf.perMilleFor(D(2026, 5, 1)) === 0.5 && RULES.camf.perMilleFor(D(2027, 1, 1)) === 0);
+
+// CAMF recomputation at ₦0.5/mille: June 2026, turnover 100,000 → cap ₦50 ex-VAT
+res = ENGINE.audit([
+  T(0, D(2026, 6, 1), "POS PURCHASE SHOPRITE", 60000, 0),
+  T(1, D(2026, 6, 15), "NIP/TRF TO VENDOR LTD", 40000, 0),
+  T(2, D(2026, 6, 30), "ACCOUNT MAINTENANCE FEE JUNE", 107.50, 0),
+  T(3, D(2026, 6, 30), "POS PURCHASE FILLING STATION", 1, 0)
+], CTX_CURRENT);
+var camf26 = res.aggregates.find(function (a) { return a.id.indexOf("camf") === 0; });
+check("2026 guide: CAMF recomputed at ₦0.5/mille = overcharge flagged",
+  camf26 && camf26.verdict === "violation" && Math.abs(camf26.excess - 50) < 0.5, camf26 && ("verdict=" + camf26.verdict + " excess=" + camf26.excess));
+
+// USSD session fees
+res = ENGINE.audit([T(0, D(2025, 3, 10), "USSD SESSION CHARGE", 6.98, 0)], CTX_SAVINGS);
+check("ussd: single session fee before EUB = compliant", findFor(res, 0).verdict === "compliant");
+res = ENGINE.audit([T(0, D(2026, 6, 10), "USSD SESSION CHARGE", 6.98, 0)], CTX_SAVINGS);
+check("ussd: session fee after EUB rollout = review (bank should not debit)", findFor(res, 0).verdict === "review");
 
 /* ---------------- engine: CAMF ---------------- */
 res = ENGINE.audit([T(0, D(2025, 5, 31), "ACCOUNT MAINTENANCE FEE", 200, 0)], CTX_SAVINGS);

@@ -61,6 +61,11 @@
     { type: "cash_deposit_fee", re: /CASH DEPOSIT.{0,15}(FEE|CHARGE|CHG|PROCESSING)|PROCESSING FEE.{0,12}(CASH|DEPOSIT)|CASH HANDLING/ },
     { type: "cash_withdrawal_fee", re: /CASH WITHDRAWAL.{0,15}(FEE|CHARGE|CHG|PROCESSING)|PROCESSING FEE.{0,12}WITHDRAWAL/ },
 
+    // --- USSD session fees (must precede "eft": plain "USSD ... FEE" with
+    //     SESSION wording is a telco session pass-through, not a transfer fee;
+    //     under End-User Billing (mid-2025) banks must not debit these at all)
+    { type: "ussd_session_fee", re: /USSD\s*.{0,20}SESSION.{0,12}(FEE|CHARGE|CHG)|SESSION\s*(FEE|CHARGE|CHG).{0,20}USSD|USSD\s*(MAINTENANCE|ACCESS)\s*(FEE|CHARGE|CHG)/ },
+
     // --- transfers -----------------------------------------------------------
     { type: "rtgs", re: /RTGS.{0,15}(FEE|CHARGE|CHG|COMM)/ },
     { type: "bulk_payment", re: /(BULK|SALARY|DIVIDEND).{0,12}(PAYMENT|TRANSFER|UPLOAD).{0,12}(FEE|CHARGE|CHG|COMM)/ },

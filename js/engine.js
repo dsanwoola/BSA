@@ -276,6 +276,12 @@
 
       /* ---------- cards ---------- */
       case "card_maintenance": {
+        if (t.date && t.date >= RULES.cards.maintenanceAbolishedFrom) {
+          return mkFinding(t, "violation", 0,
+            "Naira card maintenance fees were ABOLISHED by the CBN Guide to Charges 2026, effective 1 May 2026. Any card maintenance charge from that date is not permitted on any account type and is fully refundable.",
+            RULES.cards.citationMaintAbolished,
+            "Permitted from 1 May 2026: ₦0.00 • Charged: " + fmtN(t.debit) + " • Refund due: " + fmtN(t.debit));
+        }
         if (ctx.accountType !== "savings") {
           return mkFinding(t, "violation", 0,
             "Naira card maintenance fees are only permitted on cards linked to SAVINGS accounts. On a " + ctx.accountType + " account this charge is not allowed at all and is fully refundable.",
@@ -296,13 +302,15 @@
       }
 
       case "card_issuance": {
-        var ciCap = capWithVat(RULES.cards.issuanceMax, t, rate);
+        var ciMax = RULES.cards.issuanceMaxFor(t.date);
+        var ciCite = RULES.cards.citationIssuanceFor(t.date);
+        var ciCap = capWithVat(ciMax, t, rate);
         if (t.debit <= ciCap + TOL) {
-          return mkFinding(t, "compliant", ciCap, "Within the one-off ₦1,000 (+VAT) cap for card issuance/replacement/renewal.",
-            RULES.cards.citationIssuance, "Cap " + fmtN(ciCap) + " • charged " + fmtN(t.debit));
+          return mkFinding(t, "compliant", ciCap, "Within the one-off ₦" + ciMax.toLocaleString() + " (+VAT) cap for card issuance/replacement for this date.",
+            ciCite, "Cap " + fmtN(ciCap) + " • charged " + fmtN(t.debit));
         }
-        return mkFinding(t, "violation", ciCap, "Above the ₦1,000 (+VAT) one-off cap for card issuance/replacement/renewal.",
-          RULES.cards.citationIssuance,
+        return mkFinding(t, "violation", ciCap, "Above the ₦" + ciMax.toLocaleString() + " (+VAT) one-off cap for card issuance/replacement for this date.",
+          ciCite,
           "Cap " + fmtN(ciCap) + " • charged " + fmtN(t.debit) + " • excess " + fmtN(r2(t.debit - ciCap)));
       }
 
@@ -326,7 +334,7 @@
         var feeCapEx;
         var how;
         if (linked.transfers.length) {
-          feeCapEx = Math.max.apply(null, linked.transfers.map(function (x) { return RULES.eftFeeFor(x.debit); }));
+          feeCapEx = Math.max.apply(null, linked.transfers.map(function (x) { return RULES.eftFeeFor(x.debit, t.date); }));
           how = linked.transfers.length === 1
             ? "matched to your transfer of " + fmtN(linked.transfers[0].debit) + " on the same day"
             : "checked against the largest of " + linked.transfers.length + " same-day transfers (most generous reading)";
@@ -337,14 +345,34 @@
         var eftCap = capWithVat(feeCapEx, t, rate);
         if (t.debit <= eftCap + TOL) {
           return mkFinding(t, "compliant", eftCap,
-            "Within the CBN transfer-fee tier (" + how + ").",
-            "CBN Guide to Charges 2020 — electronic funds transfer: ≤₦5,000 → ₦10; ₦5,001–₦50,000 → ₦25; above ₦50,000 → ₦50, plus VAT",
+            "Within the CBN transfer-fee tier for this date (" + how + ").",
+            RULES.eftCitationFor(t.date),
             "Tier cap " + fmtN(feeCapEx) + (t.hasSeparateVat ? " (VAT on separate line)" : " +" + (rate * 100) + "% VAT = " + fmtN(eftCap)) + " • charged " + fmtN(t.debit));
         }
         return mkFinding(t, "violation", eftCap,
-          "Above the CBN cap for electronic transfer fees (" + how + ").",
-          "CBN Guide to Charges 2020 — electronic funds transfer: ≤₦5,000 → ₦10; ₦5,001–₦50,000 → ₦25; above ₦50,000 → ₦50, plus VAT",
+          "Above the CBN cap for electronic transfer fees for this date (" + how + ").",
+          RULES.eftCitationFor(t.date),
           "Cap " + fmtN(eftCap) + " • charged " + fmtN(t.debit) + " • excess " + fmtN(r2(t.debit - eftCap)));
+      }
+
+      /* ---------- USSD session fees ---------- */
+      case "ussd_session_fee": {
+        if (t.date && t.date >= RULES.ussd.eubFrom) {
+          return mkFinding(t, "review", null,
+            "Your bank debited a USSD session fee of " + fmtN(t.debit) + ". Under the End-User Billing policy (rolled out from mid-2025) USSD sessions are billed to your AIRTIME by your phone network — a bank that has migrated to EUB must not debit your bank account for USSD sessions. Ask the bank when it migrated to EUB; if this debit is after that date, it is refundable.",
+            RULES.ussd.eubCitation,
+            "Charged: " + fmtN(t.debit) + " • If the bank was on EUB at this date, permitted charge is ₦0.00");
+        }
+        var ussdCap = r2(RULES.ussd.sessionFeeMax);
+        if (t.debit <= ussdCap + TOL) {
+          return mkFinding(t, "compliant", ussdCap,
+            "Single USSD session fee within the NCC cost-recovery benchmark (₦6.98/session).",
+            RULES.ussd.citation, "Benchmark " + fmtN(ussdCap) + " • charged " + fmtN(t.debit));
+        }
+        return mkFinding(t, "review", null,
+          "This USSD session-fee debit of " + fmtN(t.debit) + " exceeds a single ₦6.98 session. It may bundle several sessions — ask the bank for the session count; anything above ₦6.98 × sessions is refundable.",
+          RULES.ussd.citation,
+          "Single-session benchmark " + fmtN(ussdCap) + " • charged " + fmtN(t.debit));
       }
 
       /* ---------- ATM ---------- */
@@ -724,14 +752,26 @@
           else turnover = r2(turnover + x.debit);
         }
       });
-      var cap = r2(turnover / 1000);
+      var perMille = RULES.camf.perMilleFor(monthCamf[0].date);
+      var camfCite = RULES.camf.citationFor(monthCamf[0].date);
+      var cap = r2(turnover * perMille / 1000);
+      var capFormula = "₦" + perMille + "/mille";
 
+      if (perMille === 0) {
+        out.push({
+          id: "camf-" + mk, title: "CAMF charged after abolition — " + mk,
+          verdict: "violation", excess: chargedEx,
+          detail: "CAMF is abolished from 1 Jan 2027 under the CBN Guide to Charges 2026. The " + fmtN(chargedEx) + " (ex-VAT) charged in " + mk + " is not permitted at all and is fully refundable.",
+          citation: camfCite, txns: monthCamf.map(function (t) { return t.index; })
+        });
+        return;
+      }
       if (!covered) {
         out.push({
           id: "camf-" + mk, title: "CAMF check — " + mk + " (incomplete month)",
           verdict: "advisory", excess: 0,
-          detail: "CAMF of " + fmtN(chargedEx) + " (ex-VAT) was charged in " + mk + ", but the statement does not cover that whole month, so the ₦1/mille cap cannot be recomputed fairly. Upload a statement covering the full month to audit it.",
-          citation: RULES.camf.citation, txns: monthCamf.map(function (t) { return t.index; })
+          detail: "CAMF of " + fmtN(chargedEx) + " (ex-VAT) was charged in " + mk + ", but the statement does not cover that whole month, so the " + capFormula + " cap cannot be recomputed fairly. Upload a statement covering the full month to audit it.",
+          citation: camfCite, txns: monthCamf.map(function (t) { return t.index; })
         });
         return;
       }
@@ -741,15 +781,15 @@
         out.push({
           id: "camf-" + mk, title: "CAMF overcharge — " + mk,
           verdict: "violation", excess: excess,
-          detail: "Your customer-induced debits in " + mk + " totalled " + fmtN(turnover) + ", so the maximum lawful CAMF is " + fmtN(turnover) + " ÷ 1,000 = " + fmtN(cap) + " (ex-VAT). The bank charged " + fmtN(chargedEx) + " (ex-VAT) — an overcharge of " + fmtN(excess) + ". (Bank charges were excluded from turnover." + exclusionNote + ")",
-          citation: RULES.camf.citation, txns: monthCamf.map(function (t) { return t.index; })
+          detail: "Your customer-induced debits in " + mk + " totalled " + fmtN(turnover) + ", so the maximum lawful CAMF (" + capFormula + " for this date) is " + fmtN(cap) + " (ex-VAT). The bank charged " + fmtN(chargedEx) + " (ex-VAT) — an overcharge of " + fmtN(excess) + ". (Bank charges were excluded from turnover." + exclusionNote + ")",
+          citation: camfCite, txns: monthCamf.map(function (t) { return t.index; })
         });
       } else {
         out.push({
           id: "camf-" + mk, title: "CAMF verified — " + mk,
           verdict: "compliant", excess: 0,
-          detail: "Recomputed cap: " + fmtN(turnover) + " of customer-induced debits ÷ 1,000 = " + fmtN(cap) + " (ex-VAT). Charged: " + fmtN(chargedEx) + " (ex-VAT) — within the cap." + (ownSameBankTurnover > 0 ? " Own-account same-bank transfers totalling " + fmtN(ownSameBankTurnover) + " were excluded from turnover." : ""),
-          citation: RULES.camf.citation, txns: monthCamf.map(function (t) { return t.index; })
+          detail: "Recomputed cap: " + fmtN(turnover) + " of customer-induced debits at " + capFormula + " = " + fmtN(cap) + " (ex-VAT). Charged: " + fmtN(chargedEx) + " (ex-VAT) — within the cap." + (ownSameBankTurnover > 0 ? " Own-account same-bank transfers totalling " + fmtN(ownSameBankTurnover) + " were excluded from turnover." : ""),
+          citation: camfCite, txns: monthCamf.map(function (t) { return t.index; })
         });
       }
     });
