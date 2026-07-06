@@ -1170,11 +1170,14 @@ check("diagnostic: excludes transaction amounts and balances", sjson.indexOf("10
 
 
 /* ---------------- static beta-launch checks ---------------- */
-var indexHtml = fs.readFileSync(__dirname + "/../index.html", "utf8");
-var appJs = fs.readFileSync(__dirname + "/../js/app.js", "utf8");
-var appCss = fs.readFileSync(__dirname + "/../css/app.css", "utf8");
-var reportJs = fs.readFileSync(__dirname + "/../js/report.js", "utf8");
-var betaGuide = fs.readFileSync(__dirname + "/../BETA_TESTING.md", "utf8");
+/* Normalize CRLF so multiline indexOf checks behave the same on a Windows
+ * checkout (core.autocrlf) as on Linux. */
+function readSrc(rel) { return fs.readFileSync(__dirname + rel, "utf8").replace(/\r\n/g, "\n"); }
+var indexHtml = readSrc("/../index.html");
+var appJs = readSrc("/../js/app.js");
+var appCss = readSrc("/../css/app.css");
+var reportJs = readSrc("/../js/report.js");
+var betaGuide = readSrc("/../BETA_TESTING.md");
 check("static: public launch guidance appears in app", indexHtml.indexOf("Before you audit") !== -1 && indexHtml.indexOf("Beta tester checklist") === -1 && indexHtml.indexOf("beta fixtures") === -1 && indexHtml.indexOf("anonymized parser diagnostic") !== -1 && appCss.indexOf(".launch-guide") !== -1);
 check("static: BETA_TESTING documents privacy-safe diagnostics", betaGuide.indexOf("anonymized parser diagnostic") !== -1 && betaGuide.indexOf("must not contain names") !== -1);
 check("static: APP_BUILD and cache bust agree on 63", appJs.indexOf("APP_BUILD = 63") !== -1 && (indexHtml.match(/v=63/g) || []).length >= 6);
