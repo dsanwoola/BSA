@@ -3,9 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Bank Charge Auditor — CBN Compliance Check for Nigerian Bank Statements</title>
-<meta name="description" content="Audit major Nigerian bank statements against the official CBN Guide to Bank Charges, with guided import for other layouts. Finds illegal and excess charges, computes your refund, and drafts the demand letter. 100% private — runs on your device.">
-<link rel="stylesheet" href="css/app.css?v=64">
+<title>Bank Charge Auditor — Find Excess Nigerian Bank Charges</title>
+<meta name="description" content="Upload a Nigerian bank statement and get a privacy-first CBN charge audit, refund estimate, evidence-backed findings, CSV export and demand letter. Runs entirely on your device.">
+<link rel="stylesheet" href="css/app.css?v=65">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Cpath fill='%232ee59d' d='M24 2 6 10v12c0 11 7.6 21.4 18 24 10.4-2.6 18-13 18-24V10L24 2z'/%3E%3Ctext x='24' y='32' font-size='22' font-weight='bold' text-anchor='middle' fill='%230b1210'%3E₦%3C/text%3E%3C/svg%3E">
 <script>
   (function () {
@@ -50,8 +50,48 @@
   <!-- ================= STEP 1: CONTEXT ================= -->
   <section class="step-section" id="step-context">
     <div class="panel">
-      <h2>Tell the auditor about the account</h2>
-      <p class="lead">CBN rules differ by account type — for example, maintenance fees are only lawful on <strong>current</strong> accounts, while card maintenance fees are only lawful on <strong>savings</strong> accounts. Getting this right is what lets the audit be exact. <strong>Not sure?</strong> Your statement says it at the top — look for "Savings" or "Current" next to the account number.</p>
+      <div class="launch-hero">
+        <div class="hero-copy">
+          <span class="eyebrow">CBN charge audit • Private by design</span>
+          <h2>Find excess bank charges before they become lost money.</h2>
+          <p class="lead">Upload a Nigerian bank statement and get a deterministic CBN compliance audit: refund estimates, rule citations, arithmetic proof, CSV export and a ready-to-send demand letter. Your statement is processed locally in your browser — it is never uploaded.</p>
+          <div class="hero-actions">
+            <button class="btn btn-primary" id="btn-hero-start" type="button">Start free audit →</button>
+            <button class="btn btn-ghost" id="btn-hero-demo" type="button">Try demo statement</button>
+          </div>
+          <div class="trust-row" aria-label="Product assurances">
+            <span>🔒 No upload</span>
+            <span>⚖ CBN citations</span>
+            <span>🧮 Balance checks</span>
+            <span>📄 Demand letter</span>
+          </div>
+        </div>
+        <div class="hero-card" aria-label="Audit preview">
+          <div class="hero-card-top">
+            <span>Estimated refund</span>
+            <strong>₦42,875.00</strong>
+          </div>
+          <div class="hero-bars">
+            <div><span>Transfer fees</span><b style="width:72%"></b></div>
+            <div><span>VAT pairing</span><b style="width:48%"></b></div>
+            <div><span>CAMF check</span><b style="width:63%"></b></div>
+          </div>
+          <ul>
+            <li><strong>Violation</strong> flagged only when provable.</li>
+            <li><strong>Needs review</strong> when statement data is not enough.</li>
+            <li><strong>Compliant</strong> where the bank stayed within the cap.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="launch-proof-grid">
+        <div><strong>For individuals</strong><span>Check salary, savings and current account charges.</span></div>
+        <div><strong>For SMEs</strong><span>Audit CAMF, transfer fees, levies and monthly patterns.</span></div>
+        <div><strong>For finance teams</strong><span>Export evidence and escalate with clean documentation.</span></div>
+      </div>
+
+      <h2 class="context-title">Tell the auditor about the account</h2>
+      <p class="lead context-lead">CBN rules differ by account type — for example, maintenance fees are only lawful on <strong>current</strong> accounts, while card maintenance fees are only lawful on <strong>savings</strong> accounts. Getting this right is what lets the audit be exact. <strong>Not sure?</strong> Your statement says it at the top — look for "Savings" or "Current" next to the account number.</p>
 
       <div class="choice-group">
         <div class="lbl">Account type</div>
@@ -256,11 +296,11 @@
 <script src="vendor/xlsx.full.min.js"></script>
 <script src="vendor/pdf.min.js"></script>
 <script src="vendor/pdf.worker.min.js"></script>
-<script src="js/rules.js?v=64"></script>
-<script src="js/patterns.js?v=64"></script>
-<script src="js/engine.js?v=64"></script>
-<script src="js/parser.js?v=64"></script>
-<script src="js/report.js?v=64"></script>
-<script src="js/app.js?v=64"></script>
+<script src="js/rules.js?v=65"></script>
+<script src="js/patterns.js?v=65"></script>
+<script src="js/engine.js?v=65"></script>
+<script src="js/parser.js?v=65"></script>
+<script src="js/report.js?v=65"></script>
+<script src="js/app.js?v=65"></script>
 </body>
 </html>

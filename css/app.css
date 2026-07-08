@@ -149,6 +149,93 @@ header.app-head {
 .panel h2 { margin: 0 0 6px; font-size: 20px; }
 .panel .lead { color: var(--txt-dim); margin: 0 0 22px; font-size: 14.5px; }
 
+
+/* ---------- public launch hero ---------- */
+.launch-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(300px, .85fr);
+  gap: 24px;
+  align-items: stretch;
+  margin: 0 0 24px;
+  padding: 28px;
+  border: 1px solid rgba(46, 229, 157, .22);
+  border-radius: 24px;
+  background:
+    radial-gradient(700px 240px at 12% 0%, rgba(46, 229, 157, .16), transparent 62%),
+    linear-gradient(135deg, rgba(109, 179, 255, .09), rgba(46, 229, 157, .05));
+  overflow: hidden;
+}
+.eyebrow {
+  display: inline-flex; align-items: center; gap: 8px;
+  color: var(--accent); font-size: 12px; font-weight: 900;
+  letter-spacing: .12em; text-transform: uppercase;
+  margin-bottom: 10px;
+}
+.launch-hero h2 {
+  max-width: 760px;
+  margin: 0 0 12px;
+  font-size: clamp(34px, 6vw, 62px);
+  line-height: .98;
+  letter-spacing: -2.2px;
+}
+.launch-hero .lead {
+  max-width: 760px;
+  font-size: 17px;
+  line-height: 1.58;
+  margin-bottom: 20px;
+}
+.hero-actions { display: flex; gap: 12px; flex-wrap: wrap; margin: 18px 0 16px; }
+.trust-row { display: flex; gap: 9px; flex-wrap: wrap; }
+.trust-row span {
+  border: 1px solid var(--line);
+  background: rgba(0,0,0,.08);
+  color: var(--txt-dim);
+  border-radius: 999px;
+  padding: 7px 11px;
+  font-size: 12px;
+  font-weight: 800;
+}
+.hero-card {
+  display: flex; flex-direction: column; justify-content: space-between;
+  min-height: 100%;
+  padding: 22px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: linear-gradient(180deg, var(--card), var(--bg-soft));
+  box-shadow: 0 18px 42px rgba(0,0,0,.24);
+}
+.hero-card-top span {
+  display: block; color: var(--txt-dim); font-size: 12px;
+  font-weight: 900; letter-spacing: .1em; text-transform: uppercase;
+}
+.hero-card-top strong {
+  display: block; margin-top: 7px; color: var(--red);
+  font-size: clamp(28px, 4vw, 42px); line-height: 1;
+  letter-spacing: -1.2px;
+}
+.hero-bars { display: grid; gap: 12px; margin: 22px 0; }
+.hero-bars div { display: grid; gap: 6px; color: var(--txt-dim); font-size: 12px; font-weight: 800; }
+.hero-bars div::after { content: ""; height: 8px; border-radius: 999px; background: var(--line); grid-row: 2; grid-column: 1; }
+.hero-bars b { height: 8px; border-radius: 999px; background: linear-gradient(90deg, var(--accent-dim), var(--accent)); grid-row: 2; grid-column: 1; z-index: 1; }
+.hero-card ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; }
+.hero-card li { color: var(--txt-dim); font-size: 13px; }
+.hero-card li strong { color: var(--txt); }
+.launch-proof-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0 0 26px;
+}
+.launch-proof-grid div {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 15px 16px;
+  background: var(--card-2);
+}
+.launch-proof-grid strong { display: block; margin-bottom: 4px; }
+.launch-proof-grid span { display: block; color: var(--txt-dim); font-size: 13px; line-height: 1.45; }
+.context-title { padding-top: 4px; }
+
 /* ---------- choice chips ---------- */
 .choice-group { margin-bottom: 20px; }
 .choice-group .lbl { font-size: 13px; font-weight: 700; color: var(--txt-dim); text-transform: uppercase; letter-spacing: .8px; margin-bottom: 9px; }
@@ -583,6 +670,13 @@ footer strong { color: var(--txt); }
   #step-context .panel { padding-top: 16px; }
   .panel h2 { font-size: 19px; line-height: 1.18; }
   .panel .lead { font-size: 13.5px; line-height: 1.5; margin-bottom: 18px; }
+  .launch-hero { grid-template-columns: 1fr; padding: 20px 16px; border-radius: 18px; margin-bottom: 18px; }
+  .launch-hero h2 { font-size: clamp(32px, 12vw, 44px); letter-spacing: -1.4px; }
+  .launch-hero .lead { font-size: 14.5px; }
+  .hero-actions { display: grid; grid-template-columns: 1fr; }
+  .trust-row span { flex: 1 1 45%; text-align: center; }
+  .hero-card { padding: 16px; }
+  .launch-proof-grid { grid-template-columns: 1fr; gap: 9px; margin-bottom: 20px; }
 
   .chips { display: grid; grid-template-columns: 1fr; gap: 9px; }
   .chips label { width: 100%; min-height: 48px; padding: 12px 14px; }

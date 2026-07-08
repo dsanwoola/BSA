@@ -6,7 +6,7 @@
 (function () {
   "use strict";
 
-  var APP_BUILD = 64; // shown in the header so stale cached code is obvious
+  var APP_BUILD = 65; // shown in the header so stale cached code is obvious
 
   var PARSER = window.CBN_PARSER, ENGINE = window.CBN_ENGINE,
       REPORT = window.CBN_REPORT, RULES = window.CBN_RULES;
@@ -164,6 +164,16 @@
 
   /* ---------------- step 1: context ---------------- */
   function wireContext() {
+    var heroStart = $("#btn-hero-start");
+    if (heroStart) heroStart.addEventListener("click", function () {
+      var target = $(".context-title");
+      if (target && target.scrollIntoView) target.scrollIntoView({ behavior: "smooth", block: "start" });
+      var first = document.querySelector('input[name="acctType"]');
+      if (first) first.focus();
+    });
+    var heroDemo = $("#btn-hero-demo");
+    if (heroDemo) heroDemo.addEventListener("click", loadDemo);
+
     $all('input[name="acctType"], input[name="holderType"]').forEach(function (r) {
       r.addEventListener("change", function () {
         state.ctx.accountType = ($('input[name="acctType"]:checked') || {}).value || "current";
@@ -177,6 +187,14 @@
   }
 
   /* ---------------- step 2: upload ---------------- */
+  function loadDemo() {
+    state.rows = PARSER.parseCSVText(DEMO_CSV);
+    state.source = "demo"; state.fileName = "demo_statement.csv";
+    state.pageCount = null; state.sheetCount = null;
+    buildMappingUI();
+    gotoStep("step-mapping");
+  }
+
   function wireUpload() {
     var dz = $("#dropzone"), fi = $("#file-input");
     dz.addEventListener("click", function () { fi.click(); });
@@ -190,13 +208,7 @@
       if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
     });
     fi.addEventListener("change", function () { if (fi.files.length) handleFile(fi.files[0]); fi.value = ""; });
-    $("#btn-demo").addEventListener("click", function () {
-      state.rows = PARSER.parseCSVText(DEMO_CSV);
-      state.source = "demo"; state.fileName = "demo_statement.csv";
-      state.pageCount = null; state.sheetCount = null;
-      buildMappingUI();
-      gotoStep("step-mapping");
-    });
+    $("#btn-demo").addEventListener("click", loadDemo);
     $("#btn-upload-back").addEventListener("click", goBack);
   }
 
