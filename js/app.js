@@ -6,7 +6,7 @@
 (function () {
   "use strict";
 
-  var APP_BUILD = 68; // shown in the header so stale cached code is obvious
+  var APP_BUILD = 69; // shown in the header so stale cached code is obvious
 
   var PARSER = window.CBN_PARSER, ENGINE = window.CBN_ENGINE,
       REPORT = window.CBN_REPORT, RULES = window.CBN_RULES;
@@ -667,6 +667,7 @@
     $("#report-meta").innerHTML = REPORT.reportMeta(audit, state.ctx, {
       fileName: state.fileName, pageCount: state.pageCount, sheetCount: state.sheetCount
     });
+    $("#monetization-panel").innerHTML = REPORT.renderMonetizationPanel(audit);
     $("#aggregates").innerHTML = REPORT.renderAggregates(audit);
     renderFindingsPane();
     $("#all-txns").innerHTML = REPORT.renderAllTxns(txns, audit, RULES.typeNames);

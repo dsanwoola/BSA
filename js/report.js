@@ -586,6 +586,27 @@
     return lines.join("\r\n");
   }
 
+
+  /* ---------------- launch monetization panel ---------------- */
+  function renderMonetizationPanel(audit) {
+    var s = audit.summary || {};
+    var proven = s.refundDue || 0;
+    var review = s.underReview || 0;
+    var totalOpportunity = proven + review;
+    var reviewCount = (s.counts && s.counts.review) || 0;
+    var lead = totalOpportunity > 0
+      ? "This statement shows " + fmtN(totalOpportunity) + " in recovery opportunity: " + fmtN(proven) + " already proven and " + fmtN(review) + " that needs deeper review."
+      : "No immediate recovery amount was found in this run, but paid review can still help with complex statements, business controls and recurring monitoring.";
+    return '<section class="monetization-panel no-print" aria-label="Recovery upgrade options">' +
+      '<div><span class="eyebrow">Launch offer</span><h3>Turn this audit into a recovery action plan</h3><p>' + esc(lead) + '</p>' +
+      '<p class="privacy-note">Payment can be handled separately from the statement scan. The statement itself stays in this browser.</p></div>' +
+      '<div class="monetization-actions">' +
+        '<a class="btn btn-primary" href="mailto:support@bankchargeauditor.ng?subject=Recovery%20Pack%20interest&body=I%20want%20to%20unlock%20the%20Recovery%20Pack.%20Proven%20refund:%20' + encodeURIComponent(fmtN(proven)) + '%20Potential%20review:%20' + encodeURIComponent(fmtN(review)) + '">Request Recovery Pack</a>' +
+        '<span>' + reviewCount + ' review item(s) • ' + fmtN(review) + ' potential refund to review</span>' +
+      '</div>' +
+      '</section>';
+  }
+
   /* ---------------- refund demand letter ---------------- */
   function demandLetter(audit, ctx) {
     var s = audit.summary;
@@ -666,6 +687,7 @@
     smeReconciliation: smeReconciliation, renderSmeReconciliation: renderSmeReconciliation,
     smeCashflowIntelligence: smeCashflowIntelligence, renderSmeCashflowIntelligence: renderSmeCashflowIntelligence,
     smeFundingReadiness: smeFundingReadiness, renderSmeFundingReadiness: renderSmeFundingReadiness,
+    renderMonetizationPanel: renderMonetizationPanel,
     renderFindings: renderFindings, renderAllTxns: renderAllTxns,
     typeOptionsHTML: typeOptionsHTML,
     findingsCSV: findingsCSV, demandLetter: demandLetter, reportMeta: reportMeta,

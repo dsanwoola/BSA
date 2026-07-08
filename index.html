@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bank Charge Auditor — Find Excess Nigerian Bank Charges</title>
 <meta name="description" content="Scan a Nigerian bank statement in your browser and get a privacy-first CBN charge audit, refund estimate, evidence-backed findings, CSV export and demand letter. Your statement never leaves your device.">
-<link rel="stylesheet" href="css/app.css?v=68">
+<link rel="stylesheet" href="css/app.css?v=69">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Cpath fill='%232ee59d' d='M24 2 6 10v12c0 11 7.6 21.4 18 24 10.4-2.6 18-13 18-24V10L24 2z'/%3E%3Ctext x='24' y='32' font-size='22' font-weight='bold' text-anchor='middle' fill='%230b1210'%3E₦%3C/text%3E%3C/svg%3E">
 <script>
   (function () {
@@ -89,6 +89,34 @@
         <div><strong>For SMEs</strong><span>Audit CAMF, transfer fees, levies and monthly patterns.</span></div>
         <div><strong>For finance teams</strong><span>Export evidence and escalate with clean documentation.</span></div>
       </div>
+
+      <section class="launch-pricing" id="launch-pricing" aria-label="Launch pricing">
+        <div class="pricing-head">
+          <span class="eyebrow">Launch monetization plan</span>
+          <h2>Free audit first. Pay when there is recovery value to unlock.</h2>
+          <p>The browser-only audit stays private. Monetization is built around review support, recovery documents and finance-team exports — not selling or storing statement data.</p>
+        </div>
+        <div class="pricing-grid">
+          <article class="price-card">
+            <span class="plan-badge">Free</span>
+            <h3>Quick Audit</h3>
+            <strong>₦0</strong>
+            <p>Scan a statement, verify the read, see proven refunds, review exposure and compliant charges.</p>
+          </article>
+          <article class="price-card featured">
+            <span class="plan-badge">Best for recovery</span>
+            <h3>Recovery Pack</h3>
+            <strong>Pay per statement</strong>
+            <p>Unlock guided review of uncertain refund opportunities, evidence schedules and bank-ready complaint support.</p>
+          </article>
+          <article class="price-card">
+            <span class="plan-badge">For SMEs</span>
+            <h3>Finance Team</h3>
+            <strong>Monthly</strong>
+            <p>Batch-friendly exports, accountant summaries and recurring monitoring for business statements.</p>
+          </article>
+        </div>
+      </section>
 
       <h2 class="context-title">Tell the auditor about the account</h2>
       <p class="lead context-lead">CBN rules differ by account type — for example, maintenance fees are only lawful on <strong>current</strong> accounts, while card maintenance fees are only lawful on <strong>savings</strong> accounts. Getting this right is what lets the audit be exact. <strong>Not sure?</strong> Your statement says it at the top — look for "Savings" or "Current" next to the account number.</p>
@@ -198,6 +226,7 @@
       <div id="integrity-banner" class="integrity"></div>
       <div class="sum-grid" id="summary-cards"></div>
       <div id="report-meta"></div>
+      <div id="monetization-panel"></div>
 
       <h3 class="sec">Smart cross-checks</h3>
       <p class="sec-sub">Rules that cannot be judged one charge at a time — recomputed across the whole statement: the ₦1/mille maintenance cap from your actual turnover, levy counts against qualifying transfers, monthly ATM allowances and quarterly card fees.</p>
@@ -296,11 +325,11 @@
 <script src="vendor/xlsx.full.min.js"></script>
 <script src="vendor/pdf.min.js"></script>
 <script src="vendor/pdf.worker.min.js"></script>
-<script src="js/rules.js?v=68"></script>
-<script src="js/patterns.js?v=68"></script>
-<script src="js/engine.js?v=68"></script>
-<script src="js/parser.js?v=68"></script>
-<script src="js/report.js?v=68"></script>
-<script src="js/app.js?v=68"></script>
+<script src="js/rules.js?v=69"></script>
+<script src="js/patterns.js?v=69"></script>
+<script src="js/engine.js?v=69"></script>
+<script src="js/parser.js?v=69"></script>
+<script src="js/report.js?v=69"></script>
+<script src="js/app.js?v=69"></script>
 </body>
 </html>
