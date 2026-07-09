@@ -601,7 +601,7 @@
       '<div><span class="eyebrow">Launch offer</span><h3>Turn this audit into a recovery action plan</h3><p>' + esc(lead) + '</p>' +
       '<p class="privacy-note">Payment can be handled separately from the statement scan. The statement itself stays in this browser.</p></div>' +
       '<div class="monetization-actions">' +
-        '<a class="btn btn-primary" href="mailto:support@bankchargeauditor.ng?subject=Recovery%20Pack%20interest&body=I%20want%20to%20unlock%20the%20Recovery%20Pack.%20Proven%20refund:%20' + encodeURIComponent(fmtN(proven)) + '%20Potential%20review:%20' + encodeURIComponent(fmtN(review)) + '">Request Recovery Pack</a>' +
+        '<a class="btn btn-primary" id="btn-recovery-pack" href="mailto:support@bankchargeauditor.ng?subject=Recovery%20Pack%20interest&body=I%20want%20to%20unlock%20the%20Recovery%20Pack.%20Proven%20refund:%20' + encodeURIComponent(fmtN(proven)) + '%20Potential%20review:%20' + encodeURIComponent(fmtN(review)) + '">Request Recovery Pack</a>' +
         '<span>' + reviewCount + ' review item(s) • ' + fmtN(review) + ' potential refund to review</span>' +
       '</div>' +
       '</section>';

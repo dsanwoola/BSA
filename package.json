@@ -1,0 +1,8 @@
+{
+  "scripts": {
+    "test": "node tests/run_tests.js"
+  },
+  "devDependencies": {
+    "firebase-tools": "latest"
+  }
+}

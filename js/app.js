@@ -6,7 +6,9 @@
 (function () {
   "use strict";
 
-  var APP_BUILD = 69; // shown in the header so stale cached code is obvious
+  var APP_BUILD = 70; // shown in the header so stale cached code is obvious
+  window.BSA_BUILD = APP_BUILD;
+  var ANALYTICS = window.BSA_ANALYTICS || { track: function () {}, flush: function () {}, fileType: function () { return "unknown"; } };
 
   var PARSER = window.CBN_PARSER, ENGINE = window.CBN_ENGINE,
       REPORT = window.CBN_REPORT, RULES = window.CBN_RULES;
@@ -104,6 +106,7 @@
 
   function gotoStep(id) {
     state.currentStep = id;
+    ANALYTICS.track("step_view", { step: id });
     $all(".step-section").forEach(function (s) { s.classList.toggle("active", s.id === id); });
     $all(".step-dot").forEach(function (d) {
       d.classList.toggle("on", d.getAttribute("data-step") === id);
@@ -158,7 +161,9 @@
     var btn = $("#theme-toggle");
     if (!btn) return;
     btn.addEventListener("click", function () {
-      setTheme(getTheme() === "light" ? "dark" : "light");
+      var next = getTheme() === "light" ? "dark" : "light";
+      setTheme(next);
+      ANALYTICS.track("theme_toggle", { theme: next });
     });
   }
 
@@ -166,6 +171,7 @@
   function wireContext() {
     var heroStart = $("#btn-hero-start");
     if (heroStart) heroStart.addEventListener("click", function () {
+      ANALYTICS.track("context_continue", { source: "hero_start" });
       var target = $(".context-title");
       if (target && target.scrollIntoView) target.scrollIntoView({ behavior: "smooth", block: "start" });
       var first = document.querySelector('input[name="acctType"]');
@@ -183,11 +189,15 @@
     $("#salaryAccount").addEventListener("change", function (e) {
       state.ctx.salaryAccount = e.target.checked;
     });
-    $("#btn-context-next").addEventListener("click", function () { gotoStep("step-upload"); });
+    $("#btn-context-next").addEventListener("click", function () {
+      ANALYTICS.track("context_continue", { accountType: state.ctx.accountType, holderType: state.ctx.holderType, salaryAccount: state.ctx.salaryAccount });
+      gotoStep("step-upload");
+    });
   }
 
   /* ---------------- step 2: upload ---------------- */
   function loadDemo() {
+    ANALYTICS.track("demo_started", { source: "demo" });
     state.rows = PARSER.parseCSVText(DEMO_CSV);
     state.source = "demo"; state.fileName = "demo_statement.csv";
     state.pageCount = null; state.sheetCount = null;
@@ -214,6 +224,7 @@
 
   function handleFile(file, opts) {
     opts = opts || {};
+    ANALYTICS.track("file_selected", { fileType: ANALYTICS.fileType(file && file.name), source: opts.pdfPassword ? "pdf_retry" : "user_file" });
     showError("");
     $("#dropzone").classList.add("busy");
     var isPdf = /\.pdf$/i.test(file.name || "");
@@ -237,6 +248,7 @@
       state.rows = res.rows; state.source = res.source; state.fileName = file.name;
       state.pageCount = res.pageCount || null;
       state.sheetCount = res.sheetCount || null;
+      ANALYTICS.track("file_read_success", { fileType: ANALYTICS.fileType(file && file.name), source: res.source, rowCount: res.rows.length, pageCount: res.pageCount || 0, sheetCount: res.sheetCount || 0 });
       state.ctx.overrides = {};
       buildMappingUI();
       scan.hide();
@@ -253,6 +265,7 @@
           handleFile(file, { pdfPassword: password });
         });
       }
+      ANALYTICS.track("file_read_error", { fileType: ANALYTICS.fileType(file && file.name), errorType: err && err.pdfPasswordRequired ? "pdf_password_required" : "read_error" });
       showError(err.message || String(err));
     });
   }
@@ -629,6 +642,7 @@
   function wireMapping() {
     $("#btn-run-audit").addEventListener("click", function () {
       if (!state.txns || !state.txns.length) return;
+      ANALYTICS.track("audit_started", { source: state.source || "unknown", accountType: state.ctx.accountType, holderType: state.ctx.holderType, txnCount: state.txns.length });
       // big statements take a few seconds to audit + render; show the overlay
       if (state.txns.length > 250) {
         scan.show("Auditing against CBN rules", "Checking " + state.txns.length + " transactions");
@@ -645,6 +659,7 @@
     $("#btn-mapping-back").addEventListener("click", goBack);
 
     $("#btn-download-diagnostic").addEventListener("click", function () {
+      ANALYTICS.track("diagnostic_download", { source: state.source || "unknown" });
       downloadParserDiagnostic();
     });
   }
@@ -674,6 +689,32 @@
 
     var anyViolation = audit.summary.refundDue > 0;
     $("#btn-letter").style.display = anyViolation ? "" : "none";
+
+    var summary = audit.summary || {};
+    ANALYTICS.track("audit_completed", {
+      source: state.source || "unknown",
+      accountType: state.ctx.accountType,
+      holderType: state.ctx.holderType,
+      txnCount: summary.txnCount || txns.length,
+      chargeCount: summary.chargeCount || 0,
+      refundDue: summary.refundDue || 0,
+      underReview: summary.underReview || 0,
+      violationCount: summary.counts ? summary.counts.violation || 0 : 0,
+      reviewCount: summary.counts ? summary.counts.review || 0 : 0
+    });
+
+    var recoveryButton = document.getElementById("btn-recovery-pack");
+    if (recoveryButton) {
+      recoveryButton.addEventListener("click", function () {
+        ANALYTICS.track("recovery_pack_request", {
+          source: state.source || "unknown",
+          refundDue: summary.refundDue || 0,
+          underReview: summary.underReview || 0,
+          reviewCount: summary.counts ? summary.counts.review || 0 : 0
+        });
+        ANALYTICS.flush(true);
+      });
+    }
 
     var ic = state.integrity;
     var banner = $("#integrity-banner");
@@ -748,11 +789,13 @@
     });
 
     $("#btn-export-csv").addEventListener("click", function () {
+      ANALYTICS.track("export_csv", { source: state.source || "unknown" });
       download("audit_findings.csv", REPORT.findingsCSV(state.audit), "text/csv");
     });
-    $("#btn-print").addEventListener("click", function () { window.print(); });
+    $("#btn-print").addEventListener("click", function () { ANALYTICS.track("print_report", { source: state.source || "unknown" }); window.print(); });
 
     $("#btn-letter").addEventListener("click", function () {
+      ANALYTICS.track("copy_demand_letter", { source: state.source || "unknown" });
       var letter = REPORT.demandLetter(state.audit, state.ctx);
       if (!letter) return;
       $("#letter-text").value = letter;
@@ -761,6 +804,7 @@
     $("#btn-letter-close").addEventListener("click", closeLetterModal);
     $("#letter-modal").addEventListener("keydown", trapLetterModalFocus);
     $("#btn-letter-copy").addEventListener("click", function () {
+      ANALYTICS.track("copy_demand_letter", { source: state.source || "unknown" });
       var ta = $("#letter-text");
       ta.select();
       try { navigator.clipboard.writeText(ta.value); } catch (e) { document.execCommand("copy"); }
@@ -842,6 +886,7 @@
     }
     var badge = document.getElementById("build-badge");
     if (badge) badge.textContent = "build " + APP_BUILD;
+    ANALYTICS.track("app_load", { build: APP_BUILD, theme: getTheme() });
     console.log("Bank Charge Auditor — build " + APP_BUILD);
     wireNavigation(); wireTheme(); wireContext(); wireUpload(); wireMapping(); wireResults();
     gotoStep("step-context");
