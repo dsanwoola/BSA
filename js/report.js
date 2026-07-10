@@ -674,9 +674,12 @@
     return '<div class="report-meta">' + srcLine +
       '<div><strong>Statement period:</strong> ' + fmtDate(s.period.from) + " – " + fmtDate(s.period.to) + "</div>" +
       '<div><strong>Account type:</strong> ' + esc(ctx.accountType) + " (" + esc(ctx.holderType) + (ctx.salaryAccount ? ", salary account" : "") + ")</div>" +
+      (audit.bankProfile ? '<div><strong>Bank profile:</strong> ' + esc(audit.bankProfile.name) + ' — ' + esc(audit.bankProfile.confidence) + ' (' + esc(audit.bankProfile.sourceLabel || 'CBN baseline') + ')</div>' : '') +
       '<div><strong>Transactions:</strong> ' + s.txnCount + " &nbsp; <strong>Charge lines:</strong> " + s.chargeCount + "</div>" +
-      '<div><strong>Audited against:</strong> CBN Guide to Charges (eff. 1 Jan 2020), ATM Fee Circular (eff. 1 Mar 2025), Finance Act 2020 (EMTL), Nigeria Tax Act 2025 (stamp duty, eff. 1 Jan 2026), CBN Cashless Policy circulars</div>' +
+      '<div><strong>Audited against:</strong> CBN Guide to Charges plus selected bank tariff presentation where captured. Bank tariff figures are never allowed to override a stricter CBN cap; if the bank publishes a lower price, BSA uses the lower customer-facing price.</div>' +
+      '<div><strong>Regulatory baseline:</strong> CBN Guide to Charges (eff. 1 Jan 2020), CBN Guide/changes effective 2026 where encoded, ATM Fee Circular (eff. 1 Mar 2025), Finance Act 2020 (EMTL), Nigeria Tax Act 2025 (stamp duty, eff. 1 Jan 2026), CBN Cashless Policy circulars</div>' +
       (rulesMeta ? '<div><strong>Rules version:</strong> ' + esc(rulesMeta.version) + ' &nbsp; <strong>Last reviewed:</strong> ' + esc(rulesMeta.lastReviewed) + '</div>' : '') +
+      (audit.bankProfile && audit.bankProfile.notes && audit.bankProfile.notes.length ? '<div><strong>Bank-source note:</strong> ' + esc(audit.bankProfile.notes.join(' ')) + '</div>' : '') +
       "</div>";
   }
 

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bank Charge Auditor — Find Excess Nigerian Bank Charges</title>
 <meta name="description" content="Scan a Nigerian bank statement in your browser and get a privacy-first CBN charge audit, refund estimate, evidence-backed findings, CSV export and demand letter. Your statement never leaves your device.">
-<link rel="stylesheet" href="css/app.css?v=69">
+<link rel="stylesheet" href="css/app.css?v=71">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Cpath fill='%232ee59d' d='M24 2 6 10v12c0 11 7.6 21.4 18 24 10.4-2.6 18-13 18-24V10L24 2z'/%3E%3Ctext x='24' y='32' font-size='22' font-weight='bold' text-anchor='middle' fill='%230b1210'%3E₦%3C/text%3E%3C/svg%3E">
 <script>
   (function () {
@@ -127,6 +127,17 @@
           <label><input type="radio" name="acctType" value="savings"> Savings<small>No maintenance fee allowed at all</small></label>
           <label><input type="radio" name="acctType" value="current" checked> Current<small>CAMF allowed: max ₦1 per ₦1,000</small></label>
           <label><input type="radio" name="acctType" value="domiciliary"> Domiciliary<small>Foreign currency account</small></label>
+        </div>
+      </div>
+
+      <div class="choice-group">
+        <div class="lbl">Bank / tariff profile</div>
+        <p class="choice-help">Pick the bank if you know it. BSA still applies the CBN Guide first, then compares against that bank's captured online tariff presentation where available.</p>
+        <div class="bank-picker-row">
+          <select id="bank-profile" aria-label="Bank tariff profile">
+            <option value="other">Other / not sure — use CBN baseline</option>
+          </select>
+          <small id="bank-profile-note">CBN baseline only until a bank is selected.</small>
         </div>
       </div>
 
@@ -325,12 +336,13 @@
 <script src="vendor/xlsx.full.min.js"></script>
 <script src="vendor/pdf.min.js"></script>
 <script src="vendor/pdf.worker.min.js"></script>
-<script src="js/rules.js?v=70"></script>
-<script src="js/patterns.js?v=70"></script>
-<script src="js/engine.js?v=70"></script>
-<script src="js/parser.js?v=70"></script>
-<script src="js/report.js?v=70"></script>
-<script src="js/analytics.js?v=70"></script>
-<script src="js/app.js?v=70"></script>
+<script src="js/rules.js?v=71"></script>
+<script src="js/bank-profiles.js?v=71"></script>
+<script src="js/patterns.js?v=71"></script>
+<script src="js/engine.js?v=71"></script>
+<script src="js/parser.js?v=71"></script>
+<script src="js/report.js?v=71"></script>
+<script src="js/analytics.js?v=71"></script>
+<script src="js/app.js?v=71"></script>
 </body>
 </html>

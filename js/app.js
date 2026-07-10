@@ -6,15 +6,15 @@
 (function () {
   "use strict";
 
-  var APP_BUILD = 70; // shown in the header so stale cached code is obvious
+  var APP_BUILD = 71; // shown in the header so stale cached code is obvious
   window.BSA_BUILD = APP_BUILD;
   var ANALYTICS = window.BSA_ANALYTICS || { track: function () {}, flush: function () {}, fileType: function () { return "unknown"; } };
 
   var PARSER = window.CBN_PARSER, ENGINE = window.CBN_ENGINE,
-      REPORT = window.CBN_REPORT, RULES = window.CBN_RULES;
+      REPORT = window.CBN_REPORT, RULES = window.CBN_RULES, BANKS = window.CBN_BANK_PROFILES;
 
   var state = {
-    ctx: { accountType: "current", holderType: "individual", salaryAccount: false, overrides: {} },
+    ctx: { accountType: "current", holderType: "individual", salaryAccount: false, bankId: "other", overrides: {} },
     rows: null, source: null, fileName: null,
     txns: null, problems: null, integrity: null,
     audit: null, filter: "all",
@@ -169,6 +169,7 @@
 
   /* ---------------- step 1: context ---------------- */
   function wireContext() {
+    populateBankProfiles();
     var heroStart = $("#btn-hero-start");
     if (heroStart) heroStart.addEventListener("click", function () {
       ANALYTICS.track("context_continue", { source: "hero_start" });
@@ -186,13 +187,33 @@
         state.ctx.holderType = ($('input[name="holderType"]:checked') || {}).value || "individual";
       });
     });
+    var bankSel = $("#bank-profile");
+    if (bankSel) bankSel.addEventListener("change", function () { setBankProfile(bankSel.value, true); });
     $("#salaryAccount").addEventListener("change", function (e) {
       state.ctx.salaryAccount = e.target.checked;
     });
     $("#btn-context-next").addEventListener("click", function () {
-      ANALYTICS.track("context_continue", { accountType: state.ctx.accountType, holderType: state.ctx.holderType, salaryAccount: state.ctx.salaryAccount });
+      ANALYTICS.track("context_continue", { accountType: state.ctx.accountType, holderType: state.ctx.holderType, salaryAccount: state.ctx.salaryAccount, bankId: state.ctx.bankId || "other" });
       gotoStep("step-upload");
     });
+  }
+
+  function populateBankProfiles() {
+    var sel = $("#bank-profile");
+    if (!sel || !BANKS) return;
+    var current = state.ctx.bankId || "other";
+    sel.innerHTML = BANKS.list().map(function (p) {
+      return '<option value="' + p.id + '"' + (p.id === current ? " selected" : "") + '>' + REPORT.esc(p.name) + (p.confidence && p.id !== "other" ? " — " + REPORT.esc(p.confidence) : "") + '</option>';
+    }).join("");
+    setBankProfile(current, false);
+  }
+
+  function setBankProfile(id, track) {
+    state.ctx.bankId = id || "other";
+    var p = BANKS ? BANKS.get(state.ctx.bankId) : null;
+    var note = $("#bank-profile-note");
+    if (note && p) note.textContent = p.id === "other" ? "CBN baseline only until a bank is selected." : (p.sourceLabel + " • confidence: " + p.confidence);
+    if (track) ANALYTICS.track("bank_profile_selected", { bankId: state.ctx.bankId, confidence: p && p.confidence });
   }
 
   /* ---------------- step 2: upload ---------------- */
@@ -334,6 +355,7 @@
 
     // everything ABOVE the chosen header row is the hero/summary section
     state.meta = PARSER.extractStatementMeta(rows, headerRow);
+    detectBankFromStatement(rows, headerRow);
     renderMetaCard();
     renderHeaderPicker(rows, headerRow, !!det);
 
@@ -443,6 +465,16 @@
     $("#header-row-sel").addEventListener("change", function () {
       buildMappingUI(+this.value);
     });
+  }
+
+  function detectBankFromStatement(rows, headerRow) {
+    if (!BANKS || (state.ctx.bankId && state.ctx.bankId !== "other")) return;
+    var hero = rows.slice(0, Math.max(1, Math.min(headerRow || 12, 18))).map(function (r) { return (r || []).join(" "); }).join(" ");
+    var p = BANKS.detect(hero + " " + (state.fileName || ""));
+    if (!p) return;
+    setBankProfile(p.id, false);
+    var sel = $("#bank-profile");
+    if (sel) sel.value = p.id;
   }
 
   /** Show what was mined from the statement's hero/summary section, and

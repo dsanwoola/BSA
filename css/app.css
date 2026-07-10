@@ -825,3 +825,32 @@ footer strong { color: var(--txt); }
   .build-badge { grid-column: 2 / -1; justify-self: start; }
   .panel { padding: 16px 12px; }
 }
+
+/* bank-aware tariff profile selector */
+.choice-help {
+  margin: -4px 0 10px;
+  color: var(--txt-dim);
+  font-size: 13px;
+}
+.bank-picker-row {
+  display: grid;
+  grid-template-columns: minmax(220px, 420px) minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+}
+.bank-picker-row select {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--card-2);
+  color: var(--txt);
+  padding: 12px 13px;
+  font: 700 14px var(--font);
+}
+.bank-picker-row small {
+  color: var(--txt-dim);
+  font-size: 12px;
+}
+@media (max-width: 720px) {
+  .bank-picker-row { grid-template-columns: 1fr; }
+}

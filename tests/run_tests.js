@@ -330,6 +330,18 @@ check("unlinked fee at absolute ceiling = compliant", findFor(res, 0).verdict ==
 res = ENGINE.audit([T(0, D(2025, 5, 10), "NIP TRANSFER CHARGE", 80, 0)], CTX_SAVINGS);
 check("unlinked ₦80 transfer fee = violation (beyond any tier)", findFor(res, 0).verdict === "violation");
 
+// Bank-aware overlay: a bank tariff cannot override a stricter CBN date-aware cap.
+res = ENGINE.audit([
+  T(0, D(2026, 6, 10), "NIP/TRF TO SMALL VENDOR", 3000, 0),
+  T(1, D(2026, 6, 10), "NIP TRANSFER CHARGE", 10.75, 0)
+], { accountType: "savings", holderType: "individual", bankId: "sterling" });
+f = findFor(res, 1);
+check("bank-aware: Sterling-published legacy ₦10.75 fee is still violation after CBN 2026 free tier", f && f.verdict === "violation" && f.bankProfile && f.bankProfile.id === "sterling", f && JSON.stringify({ verdict: f.verdict, allowed: f.allowed, reason: f.reason }));
+
+res = ENGINE.audit([T(0, D(2025, 5, 10), "DEBIT CARD ISSUANCE FEE", 1200, 0)], { accountType: "savings", holderType: "individual", bankId: "stanbic" });
+f = findFor(res, 0);
+check("bank-aware: Stanbic lower published card issuance cap is enforced", f && f.verdict === "violation" && Math.abs(f.allowed - 1075) < 0.02 && f.bankProfile.id === "stanbic", f && JSON.stringify(f));
+
 /* ---------------- engine: VAT pairing ---------------- */
 res = ENGINE.audit([
   T(0, D(2025, 5, 10), "NIP/TRF TO VENDOR LTD", 30000, 0),
@@ -1247,7 +1259,7 @@ var reportJs = readSrc("/../js/report.js");
 var betaGuide = readSrc("/../BETA_TESTING.md");
 check("static: public launch guidance appears in app", indexHtml.indexOf("Before you audit") !== -1 && indexHtml.indexOf("Find excess bank charges") !== -1 && indexHtml.indexOf("Start free audit") !== -1 && indexHtml.indexOf("Scan a Nigerian bank statement") !== -1 && indexHtml.indexOf("Your statement never leaves your browser") !== -1 && indexHtml.indexOf("Beta tester checklist") === -1 && indexHtml.indexOf("beta fixtures") === -1 && indexHtml.indexOf("anonymized parser diagnostic") !== -1 && appCss.indexOf(".launch-guide") !== -1 && appCss.indexOf(".launch-hero") !== -1);
 check("static: BETA_TESTING documents privacy-safe diagnostics", betaGuide.indexOf("anonymized parser diagnostic") !== -1 && betaGuide.indexOf("must not contain names") !== -1);
-check("static: APP_BUILD and cache bust agree on 70", appJs.indexOf("APP_BUILD = 70") !== -1 && (indexHtml.match(/v=70/g) || []).length >= 7);
+check("static: APP_BUILD and cache bust agree on 71", appJs.indexOf("APP_BUILD = 71") !== -1 && (indexHtml.match(/v=71/g) || []).length >= 8);
 check("static: mobile hides stepper, Step 1 intro, and upload guidance", appCss.indexOf(".stepper {\n    display: none;") !== -1 && appCss.indexOf("#step-context .panel > h2") !== -1 && appCss.indexOf("#step-context .panel > .lead") !== -1 && appCss.indexOf("#launch-guide") !== -1 && appCss.indexOf("#launch-guide {\n    display: none;") !== -1);
 check("static: mobile layout safeguards are present", appCss.indexOf("mobile-first polish") !== -1 && appCss.indexOf("Swipe sideways to see all columns") !== -1 && appCss.indexOf(".chips { display: grid; grid-template-columns: 1fr;") !== -1 && appCss.indexOf("input, select, textarea { font-size: 16px;") !== -1);
 check("static: old SME premium surfaces stay disabled", indexHtml.indexOf('id="sme-dashboard-root"') === -1 && appJs.indexOf("bsa-premium-sme") === -1 && appJs.indexOf("btn-premium-unlock") === -1);
@@ -1265,7 +1277,7 @@ check("static: launch monetization surfaces are present and privacy-safe", index
 var analyticsJs = readSrc("/../js/analytics.js");
 var firebaseJson = readSrc("/../firebase.json");
 var functionsIndex = readSrc("/../functions/index.js");
-check("analytics: client is loaded and cache-busted", indexHtml.indexOf('js/analytics.js?v=70') !== -1 && analyticsJs.indexOf('BSA_ANALYTICS') !== -1 && analyticsJs.indexOf('/api/analytics') !== -1);
+check("analytics: client is loaded and cache-busted", indexHtml.indexOf('js/analytics.js?v=71') !== -1 && analyticsJs.indexOf('BSA_ANALYTICS') !== -1 && analyticsJs.indexOf('/api/analytics') !== -1);
 check("analytics: backend route is configured", firebaseJson.indexOf('"source": "/api/analytics"') !== -1 && firebaseJson.indexOf('"function": "analytics"') !== -1 && firebaseJson.indexOf('"source": "functions"') !== -1);
 check("analytics: backend uses aggregate counters only", functionsIndex.indexOf('analytics_daily') !== -1 && functionsIndex.indexOf('FieldValue.increment') !== -1 && functionsIndex.indexOf('raw statement') === -1 && functionsIndex.indexOf('narration') === -1);
 check("analytics: key journey events are instrumented", appJs.indexOf('"app_load"') !== -1 && appJs.indexOf('"file_selected"') !== -1 && appJs.indexOf('"file_read_success"') !== -1 && appJs.indexOf('"audit_completed"') !== -1 && appJs.indexOf('"recovery_pack_request"') !== -1);

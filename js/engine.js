@@ -29,6 +29,8 @@
     ? require("./rules.js") : global.CBN_RULES;
   var PATTERNS = (typeof module !== "undefined" && module.exports)
     ? require("./patterns.js") : global.CBN_PATTERNS;
+  var BANKS = (typeof module !== "undefined" && module.exports)
+    ? require("./bank-profiles.js") : global.CBN_BANK_PROFILES;
 
   var r2 = RULES.r2;
   var TOL = 0.015; // one-and-a-half kobo arithmetic tolerance
@@ -60,6 +62,50 @@
     return txn.hasSeparateVat ? cap : r2(cap * (1 + rate));
   }
 
+  function profileFor(ctx) { return BANKS ? BANKS.get((ctx && ctx.bankId) || "other") : null; }
+
+  function bankSourceText(profile) {
+    if (!profile || profile.id === "other") return "";
+    return " Bank source checked: " + profile.name + " — " + profile.sourceLabel + (profile.sourceUrl ? " (" + profile.sourceUrl + ")" : "") + ".";
+  }
+
+  function bankNoteFor(profile, type) {
+    if (!profile || profile.id === "other") return "";
+    var sched = profile.publicBankSchedule || {};
+    var bits = [];
+    if (type === "eft" && (sched.eftFeeFor || sched.eftVatInclusiveFor)) bits.push("bank publishes transfer-fee bands; BSA compares them with the CBN date-aware cap and uses the lower/customer-friendlier ceiling");
+    if (type === "sms_alert" && sched.smsUnitMax) bits.push("bank publishes SMS alert unit cost");
+    if ((type === "card_issuance" || type === "card_maintenance") && (sched.cardIssuanceMax || sched.cardIssuanceVatInclusiveMax || sched.cardMaintenanceMax)) bits.push("bank publishes card-charge figures");
+    if (type === "atm_fee" && (sched.atmOnsitePer20k || sched.atmOnsiteVatInclusivePer20k || sched.atmOffsitePer20k || sched.atmOffsiteVatInclusivePer20k)) bits.push("bank publishes ATM fee figures");
+    if ((type === "cheque_book" || type === "stopped_cheque" || type === "returned_unfunded") && (sched.chequeBook50Max || sched.chequeBook100Max || sched.stoppedChequeMax || sched.returnedUnfunded)) bits.push("bank publishes cheque/returned-item figures");
+    return bits.length ? " Bank comparison: " + bits.join("; ") + "." : "";
+  }
+
+  /** Use the stricter of CBN cap and a captured bank-published cap. A bank's
+   *  tariff can promise a lower price than CBN permits, but a bank page cannot
+   *  raise the legal ceiling above CBN. */
+  function stricterCap(cbnCap, bankCap) {
+    if (bankCap === null || bankCap === undefined || isNaN(bankCap)) return { cap: cbnCap, used: "cbn" };
+    return bankCap < cbnCap ? { cap: bankCap, used: "bank" } : { cap: cbnCap, used: "cbn", bankHigher: bankCap > cbnCap + TOL, bankCap: bankCap };
+  }
+
+  function profileEftCapEx(profile, amount, date, hasSeparateVat, rate) {
+    if (!profile || !profile.publicBankSchedule) return null;
+    var s = profile.publicBankSchedule;
+    if (s.eftFeeFor) return s.eftFeeFor(amount, date);
+    if (s.eftVatInclusiveFor) {
+      var incl = s.eftVatInclusiveFor(amount, date);
+      return hasSeparateVat ? r2(incl / (1 + rate)) : null; // VAT-inclusive source is compared after VAT bundling below
+    }
+    return null;
+  }
+
+  function profileEftCapIncl(profile, amount, date) {
+    if (!profile || !profile.publicBankSchedule) return null;
+    var s = profile.publicBankSchedule;
+    return s.eftVatInclusiveFor ? s.eftVatInclusiveFor(amount, date) : null;
+  }
+
   function mkFinding(txn, verdict, allowed, reason, citation, math) {
     var excess = 0;
     if (verdict === "violation") {
@@ -74,6 +120,16 @@
     };
   }
 
+  function withBankContext(f, profile) {
+    if (!f || !profile || profile.id === "other") return f;
+    f.bankProfile = { id: profile.id, name: profile.name, confidence: profile.confidence, sourceLabel: profile.sourceLabel, sourceUrl: profile.sourceUrl };
+    var note = bankNoteFor(profile, f.type);
+    if (note && f.reason.indexOf("Bank comparison:") === -1) f.reason += note;
+    var src = bankSourceText(profile);
+    if (src && f.citation.indexOf(profile.sourceLabel) === -1) f.citation += src;
+    return f;
+  }
+
   /* =====================================================================
    * MAIN ENTRY
    * txns: [{ index, date: Date, narration, debit, credit }]
@@ -86,6 +142,7 @@
     ctx = ctx || {};
     var overrides = ctx.overrides || {};
     var holderClass = ctx.holderType === "individual" ? "individual" : "business";
+    var bankProfile = profileFor(ctx);
 
     /* ---- 1. classify ---- */
     txns.forEach(function (t) {
@@ -148,7 +205,7 @@
           "CBN Guide to Charges 2020 — effective date"));
         return;
       }
-      findings.push(evaluate(t, txns, ctx, holderClass));
+      findings.push(withBankContext(evaluate(t, txns, ctx, holderClass, bankProfile), bankProfile));
     });
 
     /* ---- 4. aggregate cross-checks ---- */
@@ -187,14 +244,15 @@
         period: { from: minDate, to: maxDate },
         txnCount: txns.length,
         chargeCount: charges.length
-      }
+      },
+      bankProfile: bankProfile ? { id: bankProfile.id, name: bankProfile.name, confidence: bankProfile.confidence, sourceLabel: bankProfile.sourceLabel, sourceUrl: bankProfile.sourceUrl, notes: bankProfile.notes || [] } : null
     };
   }
 
   /* =====================================================================
    * PER-CHARGE EVALUATORS
    * ===================================================================== */
-  function evaluate(t, txns, ctx, holderClass) {
+  function evaluate(t, txns, ctx, holderClass, bankProfile) {
     var rate = RULES.vatRate(t.date);
 
     switch (t.chargeType) {
@@ -304,14 +362,22 @@
       case "card_issuance": {
         var ciMax = RULES.cards.issuanceMaxFor(t.date);
         var ciCite = RULES.cards.citationIssuanceFor(t.date);
-        var ciCap = capWithVat(ciMax, t, rate);
-        if (t.debit <= ciCap + TOL) {
-          return mkFinding(t, "compliant", ciCap, "Within the one-off ₦" + ciMax.toLocaleString() + " (+VAT) cap for card issuance/replacement for this date.",
-            ciCite, "Cap " + fmtN(ciCap) + " • charged " + fmtN(t.debit));
+        var ciCbnCap = capWithVat(ciMax, t, rate);
+        var ciBankCap = null;
+        if (bankProfile && bankProfile.publicBankSchedule) {
+          if (bankProfile.publicBankSchedule.cardIssuanceVatInclusiveMax && !t.hasSeparateVat) ciBankCap = bankProfile.publicBankSchedule.cardIssuanceVatInclusiveMax;
+          else if (bankProfile.publicBankSchedule.cardIssuanceMax) ciBankCap = capWithVat(bankProfile.publicBankSchedule.cardIssuanceMax, t, rate);
         }
-        return mkFinding(t, "violation", ciCap, "Above the ₦" + ciMax.toLocaleString() + " (+VAT) one-off cap for card issuance/replacement for this date.",
+        var ciChoice = stricterCap(ciCbnCap, ciBankCap);
+        var ciCap = ciChoice.cap;
+        var ciBasis = ciChoice.used === "bank" ? " The selected bank publishes a lower card issuance price, so BSA used that lower customer-facing cap." : (ciChoice.bankHigher ? " The selected bank's captured card price appears higher than the current CBN cap, so BSA used the lower CBN cap." : "");
+        if (t.debit <= ciCap + TOL) {
+          return mkFinding(t, "compliant", ciCap, "Within the one-off card issuance/replacement cap for this date." + ciBasis,
+            ciCite, "CBN cap " + fmtN(ciCbnCap) + (ciBankCap !== null ? " • bank-published cap " + fmtN(ciBankCap) : "") + " • allowed " + fmtN(ciCap) + " • charged " + fmtN(t.debit));
+        }
+        return mkFinding(t, "violation", ciCap, "Above the permitted one-off cap for card issuance/replacement for this date." + ciBasis,
           ciCite,
-          "Cap " + fmtN(ciCap) + " • charged " + fmtN(t.debit) + " • excess " + fmtN(r2(t.debit - ciCap)));
+          "CBN cap " + fmtN(ciCbnCap) + (ciBankCap !== null ? " • bank-published cap " + fmtN(ciBankCap) : "") + " • allowed " + fmtN(ciCap) + " • charged " + fmtN(t.debit) + " • excess " + fmtN(r2(t.debit - ciCap)));
       }
 
       /* ---------- possible customer payment, not a bank fee ---------- */
@@ -333,26 +399,41 @@
         }
         var feeCapEx;
         var how;
+        var bankCapEx = null, bankCapIncl = null, bankHigherThanCbn = false;
         if (linked.transfers.length) {
-          feeCapEx = Math.max.apply(null, linked.transfers.map(function (x) { return RULES.eftFeeFor(x.debit, t.date); }));
+          var cbnCaps = linked.transfers.map(function (x) { return RULES.eftFeeFor(x.debit, t.date); });
+          feeCapEx = Math.max.apply(null, cbnCaps);
+          var bankCapsEx = linked.transfers.map(function (x) { return profileEftCapEx(bankProfile, x.debit, t.date, t.hasSeparateVat, rate); }).filter(function (x) { return x !== null; });
+          var bankCapsIncl = linked.transfers.map(function (x) { return profileEftCapIncl(bankProfile, x.debit, t.date); }).filter(function (x) { return x !== null; });
+          if (bankCapsEx.length) bankCapEx = Math.max.apply(null, bankCapsEx);
+          if (bankCapsIncl.length) bankCapIncl = Math.max.apply(null, bankCapsIncl);
           how = linked.transfers.length === 1
             ? "matched to your transfer of " + fmtN(linked.transfers[0].debit) + " on the same day"
             : "checked against the largest of " + linked.transfers.length + " same-day transfers (most generous reading)";
         } else {
           feeCapEx = RULES.eftMaxFee;
+          bankCapEx = profileEftCapEx(bankProfile, 999999999, t.date, t.hasSeparateVat, rate);
+          bankCapIncl = profileEftCapIncl(bankProfile, 999999999, t.date);
           how = "no same-day transfer found on the statement, so the absolute ceiling for any transfer (₦50) was used";
         }
-        var eftCap = capWithVat(feeCapEx, t, rate);
+        var cbnCapIncl = capWithVat(feeCapEx, t, rate);
+        var bankCapComparable = bankCapIncl !== null && !t.hasSeparateVat ? bankCapIncl : (bankCapEx !== null ? capWithVat(bankCapEx, t, rate) : null);
+        var capChoice = stricterCap(cbnCapIncl, bankCapComparable);
+        var eftCap = capChoice.cap;
+        bankHigherThanCbn = !!capChoice.bankHigher;
+        var basis = capChoice.used === "bank"
+          ? "the selected bank's published tariff is lower than the CBN ceiling, so the lower customer-facing bank price was used"
+          : "the CBN legal ceiling was used" + (bankHigherThanCbn ? "; the bank-published figure appears higher than the current CBN cap, so BSA did not allow the higher bank figure" : "");
         if (t.debit <= eftCap + TOL) {
           return mkFinding(t, "compliant", eftCap,
-            "Within the CBN transfer-fee tier for this date (" + how + ").",
+            "Within the transfer-fee cap for this date (" + how + "); " + basis + ".",
             RULES.eftCitationFor(t.date),
-            "Tier cap " + fmtN(feeCapEx) + (t.hasSeparateVat ? " (VAT on separate line)" : " +" + (rate * 100) + "% VAT = " + fmtN(eftCap)) + " • charged " + fmtN(t.debit));
+            "CBN tier cap " + fmtN(cbnCapIncl) + (bankCapComparable !== null ? " • bank-published comparable cap " + fmtN(bankCapComparable) : "") + " • allowed " + fmtN(eftCap) + " • charged " + fmtN(t.debit));
         }
         return mkFinding(t, "violation", eftCap,
-          "Above the CBN cap for electronic transfer fees for this date (" + how + ").",
+          "Above the permitted electronic transfer-fee cap for this date (" + how + "); " + basis + ".",
           RULES.eftCitationFor(t.date),
-          "Cap " + fmtN(eftCap) + " • charged " + fmtN(t.debit) + " • excess " + fmtN(r2(t.debit - eftCap)));
+          "CBN tier cap " + fmtN(cbnCapIncl) + (bankCapComparable !== null ? " • bank-published comparable cap " + fmtN(bankCapComparable) : "") + " • allowed " + fmtN(eftCap) + " • charged " + fmtN(t.debit) + " • excess " + fmtN(r2(t.debit - eftCap)));
       }
 
       /* ---------- USSD session fees ---------- */
@@ -376,11 +457,14 @@
       }
 
       /* ---------- ATM ---------- */
-      case "atm_fee": return evalAtm(t, txns, rate);
+      case "atm_fee": return evalAtm(t, txns, rate, bankProfile);
 
       /* ---------- SMS ---------- */
       case "sms_alert": {
         var unit = RULES.sms.unitMax(t.date);
+        if (bankProfile && bankProfile.publicBankSchedule && bankProfile.publicBankSchedule.smsUnitMax) {
+          unit = Math.min(unit, bankProfile.publicBankSchedule.smsUnitMax(t.date));
+        }
         var unitIncl = r2(unit * (1 + rate));
         if (t.debit <= unitIncl + TOL) {
           return mkFinding(t, "compliant", unitIncl,
@@ -529,7 +613,7 @@
   }
 
   /* ---------------- ATM evaluator ---------------- */
-  function evalAtm(t, txns, rate) {
+  function evalAtm(t, txns, rate, bankProfile) {
     var regime = RULES.atm.regime(t.date);
 
     if (regime.era === "pre2025") {
@@ -547,6 +631,13 @@
     var wdl = nearestAtmWithdrawal(t, txns);
     var onsitePer = capWithVat(regime.onSitePer20k, t, rate);     // 107.50
     var offsitePer = capWithVat(regime.offSiteMaxPer20k, t, rate); // 645.00
+    if (bankProfile && bankProfile.publicBankSchedule) {
+      var bs = bankProfile.publicBankSchedule;
+      if (bs.atmOnsiteVatInclusivePer20k) onsitePer = Math.min(onsitePer, bs.atmOnsiteVatInclusivePer20k);
+      else if (bs.atmOnsitePer20k) onsitePer = Math.min(onsitePer, capWithVat(bs.atmOnsitePer20k, t, rate));
+      if (bs.atmOffsiteVatInclusivePer20k) offsitePer = Math.min(offsitePer, bs.atmOffsiteVatInclusivePer20k);
+      else if (bs.atmOffsitePer20k) offsitePer = Math.min(offsitePer, capWithVat(bs.atmOffsitePer20k, t, rate));
+    }
     if (wdl) {
       var chunks = Math.max(1, Math.ceil(wdl.debit / regime.chunk));
       var offCap = r2(offsitePer * chunks);
