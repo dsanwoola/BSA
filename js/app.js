@@ -6,7 +6,7 @@
 (function () {
   "use strict";
 
-  var APP_BUILD = 71; // shown in the header so stale cached code is obvious
+  var APP_BUILD = 72; // shown in the header so stale cached code is obvious
   window.BSA_BUILD = APP_BUILD;
   var ANALYTICS = window.BSA_ANALYTICS || { track: function () {}, flush: function () {}, fileType: function () { return "unknown"; } };
 

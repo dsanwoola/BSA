@@ -10,6 +10,7 @@ var ENGINE = require("../js/engine.js");
 var RULES = require("../js/rules.js");
 var PATTERNS = require("../js/patterns.js");
 var REPORT = require("../js/report.js");
+var BANKS = require("../js/bank-profiles.js");
 
 var passed = 0, failed = 0, failures = [];
 function check(name, cond, detail) {
@@ -1259,7 +1260,7 @@ var reportJs = readSrc("/../js/report.js");
 var betaGuide = readSrc("/../BETA_TESTING.md");
 check("static: public launch guidance appears in app", indexHtml.indexOf("Before you audit") !== -1 && indexHtml.indexOf("Find excess bank charges") !== -1 && indexHtml.indexOf("Start free audit") !== -1 && indexHtml.indexOf("Scan a Nigerian bank statement") !== -1 && indexHtml.indexOf("Your statement never leaves your browser") !== -1 && indexHtml.indexOf("Beta tester checklist") === -1 && indexHtml.indexOf("beta fixtures") === -1 && indexHtml.indexOf("anonymized parser diagnostic") !== -1 && appCss.indexOf(".launch-guide") !== -1 && appCss.indexOf(".launch-hero") !== -1);
 check("static: BETA_TESTING documents privacy-safe diagnostics", betaGuide.indexOf("anonymized parser diagnostic") !== -1 && betaGuide.indexOf("must not contain names") !== -1);
-check("static: APP_BUILD and cache bust agree on 71", appJs.indexOf("APP_BUILD = 71") !== -1 && (indexHtml.match(/v=71/g) || []).length >= 8);
+check("static: APP_BUILD and cache bust agree on 72", appJs.indexOf("APP_BUILD = 72") !== -1 && (indexHtml.match(/v=72/g) || []).length >= 8);
 check("static: mobile hides stepper, Step 1 intro, and upload guidance", appCss.indexOf(".stepper {\n    display: none;") !== -1 && appCss.indexOf("#step-context .panel > h2") !== -1 && appCss.indexOf("#step-context .panel > .lead") !== -1 && appCss.indexOf("#launch-guide") !== -1 && appCss.indexOf("#launch-guide {\n    display: none;") !== -1);
 check("static: mobile layout safeguards are present", appCss.indexOf("mobile-first polish") !== -1 && appCss.indexOf("Swipe sideways to see all columns") !== -1 && appCss.indexOf(".chips { display: grid; grid-template-columns: 1fr;") !== -1 && appCss.indexOf("input, select, textarea { font-size: 16px;") !== -1);
 check("static: old SME premium surfaces stay disabled", indexHtml.indexOf('id="sme-dashboard-root"') === -1 && appJs.indexOf("bsa-premium-sme") === -1 && appJs.indexOf("btn-premium-unlock") === -1);
@@ -1277,11 +1278,14 @@ check("static: launch monetization surfaces are present and privacy-safe", index
 var analyticsJs = readSrc("/../js/analytics.js");
 var firebaseJson = readSrc("/../firebase.json");
 var functionsIndex = readSrc("/../functions/index.js");
-check("analytics: client is loaded and cache-busted", indexHtml.indexOf('js/analytics.js?v=71') !== -1 && analyticsJs.indexOf('BSA_ANALYTICS') !== -1 && analyticsJs.indexOf('/api/analytics') !== -1);
+check("analytics: client is loaded and cache-busted", indexHtml.indexOf('js/analytics.js?v=72') !== -1 && analyticsJs.indexOf('BSA_ANALYTICS') !== -1 && analyticsJs.indexOf('/api/analytics') !== -1);
 check("analytics: backend route is configured", firebaseJson.indexOf('"source": "/api/analytics"') !== -1 && firebaseJson.indexOf('"function": "analytics"') !== -1 && firebaseJson.indexOf('"source": "functions"') !== -1);
 check("analytics: backend uses aggregate counters only", functionsIndex.indexOf('analytics_daily') !== -1 && functionsIndex.indexOf('FieldValue.increment') !== -1 && functionsIndex.indexOf('raw statement') === -1 && functionsIndex.indexOf('narration') === -1);
 check("analytics: key journey events are instrumented", appJs.indexOf('"app_load"') !== -1 && appJs.indexOf('"file_selected"') !== -1 && appJs.indexOf('"file_read_success"') !== -1 && appJs.indexOf('"audit_completed"') !== -1 && appJs.indexOf('"recovery_pack_request"') !== -1);
 check("analytics: sensitive statement fields are not sent", analyticsJs.indexOf('Never sends statement contents') !== -1 && analyticsJs.indexOf('cleanMeta') !== -1 && appJs.indexOf('ANALYTICS.track("audit_completed"') !== -1 && appJs.indexOf('ANALYTICS.track("file_read_success", { fileType') !== -1 && appJs.indexOf('ANALYTICS.track("file_read_success", { fileName') === -1 && appJs.indexOf('ANALYTICS.track("audit_completed", { narration') === -1 && appJs.indexOf('ANALYTICS.track("audit_completed", { balance') === -1);
+check("bank profiles: deeper crawl promoted core missing banks", BANKS.get("standardchartered").confidence === "strong-current" && BANKS.get("fidelity").confidence === "partial-current" && BANKS.get("fcmb").publicBankSchedule.businessCamfFreeTurnover === 40000000 && BANKS.get("wema").publicBankSchedule.cardIssuanceVatInclusiveMax === 1075 && BANKS.get("providus").publicBankSchedule.cardMaintenanceVatInclusiveMax === 53.75 && BANKS.get("keystone").publicBankSchedule.growBizClassicSmeMonthlyMaintenanceMax === 1700);
+check("bank profiles: Standard Chartered zero-fee overlays beat baseline", BANKS.get("standardchartered").publicBankSchedule.eftFeeFor(100000) === 0 && BANKS.get("standardchartered").publicBankSchedule.smsUnitMax() === 0);
+check("bank profiles: non-interest aliases include Jaiz/TAJ/Lotus/Alternative", !!BANKS.detect("TAJBank customer statement") && BANKS.detect("Lotus Bank statement").id === "noninterest" && BANKS.detect("The Alternative Bank").id === "noninterest");
 var accessMetaRows = [
   ["Account Name:", "SAMPLE BUSINESS"],
   ["Product Name:", "MPOWER BIZ"],
