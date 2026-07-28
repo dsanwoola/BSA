@@ -1,0 +1,25 @@
+name: Bootstrap Pressly Cloudflare secrets
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  transfer:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Copy encrypted Cloudflare credentials to Pressly repository
+        env:
+          GH_TOKEN: ${{ secrets.PRESSLY_BOOTSTRAP_GH_TOKEN }}
+          CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          test -n "$GH_TOKEN"
+          test -n "$CF_API_TOKEN"
+          test -n "$CF_ACCOUNT_ID"
+          printf '%s' "$CF_API_TOKEN" | gh secret set CLOUDFLARE_API_TOKEN --repo dsanwoola/pressly-cleaners
+          printf '%s' "$CF_ACCOUNT_ID" | gh secret set CLOUDFLARE_ACCOUNT_ID --repo dsanwoola/pressly-cleaners
+          echo "Pressly Cloudflare repository secrets were configured securely."
