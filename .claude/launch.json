@@ -12,6 +12,12 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["--prefix", "C:/Users/Deen/Downloads/ClaudeProjects/FoodCard/apps/admin", "run", "dev"],
       "port": 3200
+    },
+    {
+      "name": "giftcash",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "C:/Users/Deen/Downloads/ClaudeProjects/GiftCash", "run", "dev", "--", "--port", "3100"],
+      "port": 3100
     }
   ]
 }
