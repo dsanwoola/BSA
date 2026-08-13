@@ -19,6 +19,16 @@ C:\Users\Deen\Downloads\ClaudeProjects\Bank Charge Auditor
 - **Auth:** pushes work via Windows Credential Manager on the current machine (the `gh` CLI is **not** logged in). A new maintainer must set up their own GitHub auth (`gh auth login` or a credential helper) before they can push.
 - **Auto-sync:** a Claude Code **Stop hook** in `.claude/settings.local.json` runs `node sync-to-github.js` (async) after each session, committing and pushing any changes. That file is git-ignored (machine-specific), so it is **not** in the repo — a new maintainer won't inherit the hook and should re-create it if wanted. Manual sync any time: `node sync-to-github.js`.
 
+## 2.5. Firebase (configured but not integrated)
+- **Firebase Project ID:** `bank-statement-auditor`
+- **Hosting:** configured in `firebase.json` (public root: `.`) but **NOT DEPLOYED**. Hosting config includes no-cache headers for HTML and long-lived cache for JS/CSS, matching the app's versioning strategy.
+- **Cloud Functions:** `functions/index.js` exports an `analytics` Cloud Function that tracks user events (app_load, audit_completed, file_read_error, export_csv, etc.) to Firestore collections (`analytics/summary`, `analytics_daily/`, `analytics_hourly/`). CORS-whitelisted for bank-statement-auditor.web.app, firebaseapp.com, and localhost:8765.
+- **Integration status:** The analytics function is **configured but NOT integrated into the app code** — there are no Firebase SDK imports in `js/`, and the function endpoint is not called anywhere. If you want to enable analytics, you must:
+  1. Deploy with `npx firebase deploy --only hosting,functions`
+  2. Wire the function endpoint into `js/app.js` (would require HTTPS-only and is currently **opt-out** for privacy)
+  3. Update `.firebaserc` to use the correct project ID if deploying to a different project
+- **Data:** no private data in Firestore; this is read-only usage telemetry (only event names and bucketed metrics like refund amount ranges).
+
 ## 3. Tech stack
 - **Pure client-side web app** — no backend, no build step, no framework. Plain HTML + CSS + ES5-style vanilla JavaScript (UMD modules that run in both the browser and Node for tests).
 - **Vendored libraries** (committed in `vendor/`, so the app runs fully offline):
@@ -44,10 +54,12 @@ node tests/run_tests.js
 - **Real-bank fixtures:** if `reference/fixtures/*.json` are present locally, the suite additionally runs full real-statement regressions (100% balance chain + all checksums required). These fixtures are **git-ignored** (they contain real transaction data) — they will NOT exist on a fresh clone, and the suite skips them gracefully (still 100% of the committed tests pass). See §7.
 
 ## 6. Deployment status
-- **Not yet deployed.** No production hosting is set up.
+- **Not yet deployed to production.** No production hosting is set up.
 - `serve.py` (no-cache) and the manual `?v=N` cache-busting are **dev-only**.
-- **Recommended:** any static host — GitHub Pages, Netlify, or Cloudflare Pages (all free). `vendor/` is committed so no install/build is needed.
-- **Pre-deploy checks:** (a) confirm the relative worker path `vendor/pdf.worker.min.js` resolves when served from a subpath (GitHub Pages serves at `/BSA/`); (b) serve over HTTPS; (c) test a large PDF on mobile.
+- **Hosting options:**
+  1. **Firebase Hosting** (ready to deploy): `firebase.json` is configured, just run `npx firebase deploy --only hosting`. Serves at `https://bank-statement-auditor.web.app`. (Cloud Functions are also configured but optional; see §2.5.)
+  2. **GitHub Pages, Netlify, or Cloudflare Pages** (free static hosts): `vendor/` is committed so no install/build is needed. For GitHub Pages, verify the relative worker path `vendor/pdf.worker.min.js` resolves at `/BSA/` (subpath).
+- **Pre-deploy checks:** (a) confirm the relative worker path `vendor/pdf.worker.min.js` resolves when served from a subpath; (b) serve over HTTPS; (c) test a large PDF on mobile; (d) if using Firebase Hosting, decide whether to enable the analytics Cloud Function (currently wired only to config, not app code).
 
 ## 7. Current known blockers / risks
 1. **Production deployment not done** (see §6) — the only hard blocker to a public URL.
@@ -90,6 +102,7 @@ See §5.
 - No `settings.local.json` (git-ignored; contains only the local auto-sync hook).
 - The app makes **zero network requests with user data** (verified: no `fetch`/`XHR`/CDN calls in `js/`). Statements are processed entirely in the browser.
 - The only bundled statement is the **synthetic demo** (`samples/sample_statement.csv` — “CHIOMA OBI / FIRST DEMO BANK”, fabricated).
+- **Firestore:** the Firebase project has no data in it yet (analytics collections are empty). If you deploy the Cloud Functions (see §2.5), ensure Firestore security rules are set to restrict write access to the `analytics` endpoint only (currently no rules are in place). See `firebase.json` for the allowed event types; treat the Firestore collections as internal and never expose them to the frontend for direct reads.
 
 To re-verify at any time:
 ```
