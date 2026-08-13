@@ -33,7 +33,15 @@ const ALLOWED_EVENTS = new Set([
   "premium_unlock_click",
   "sme_report_download",
   "sme_whatsapp_copy",
-  "diagnostic_download"
+  "diagnostic_download",
+  // Enhanced analytics
+  "bank_detected",
+  "parse_completed",
+  "charge_type_found",
+  "violation_detected",
+  "refund_calculated",
+  "user_journey_drop",
+  "performance_metric"
 ]);
 
 const MAX_BATCH = 20;
@@ -92,7 +100,7 @@ function analyticsDimensions(event) {
   const meta = cleanMeta(event.meta || {});
   const dims = {};
 
-  ["step", "source", "fileType", "accountType", "holderType", "theme", "errorType"].forEach((key) => {
+  ["step", "source", "fileType", "accountType", "holderType", "theme", "errorType", "bankName", "chargeTypes"].forEach((key) => {
     if (meta[key]) dims[key] = meta[key];
   });
 
@@ -123,6 +131,57 @@ function analyticsDimensions(event) {
       { max: 25000, label: "5001-25000" },
       { max: 100000, label: "25001-100000" },
       { max: 500000, label: "100001-500000", overflow: "500001+" }
+    ]);
+  }
+
+  // Enhanced: track violations found
+  if (meta.violationCount !== undefined) {
+    dims.violationBucket = bucketNumber(meta.violationCount, [
+      { max: 0, label: "0" },
+      { max: 1, label: "1" },
+      { max: 5, label: "2-5" },
+      { max: 10, label: "6-10" },
+      { max: 25, label: "11-25", overflow: "26+" }
+    ]);
+  }
+
+  // Enhanced: track file size
+  if (meta.fileSizeKB !== undefined) {
+    dims.fileSizeBucket = bucketNumber(meta.fileSizeKB, [
+      { max: 50, label: "<50KB" },
+      { max: 200, label: "50-200KB" },
+      { max: 500, label: "200-500KB" },
+      { max: 1000, label: "500KB-1MB", overflow: ">1MB" }
+    ]);
+  }
+
+  // Enhanced: track parse/audit performance
+  if (meta.parseTimeMs !== undefined) {
+    dims.parseTimeBucket = bucketNumber(meta.parseTimeMs, [
+      { max: 500, label: "<500ms" },
+      { max: 1000, label: "500-1000ms" },
+      { max: 3000, label: "1-3s" },
+      { max: 5000, label: "3-5s", overflow: ">5s" }
+    ]);
+  }
+
+  if (meta.auditTimeMs !== undefined) {
+    dims.auditTimeBucket = bucketNumber(meta.auditTimeMs, [
+      { max: 100, label: "<100ms" },
+      { max: 500, label: "100-500ms" },
+      { max: 1000, label: "500ms-1s" },
+      { max: 2000, label: "1-2s", overflow: ">2s" }
+    ]);
+  }
+
+  // Enhanced: track balance integrity %
+  if (meta.balanceIntegrityPercent !== undefined) {
+    const pct = Math.round(meta.balanceIntegrityPercent);
+    dims.integrityBucket = bucketNumber(pct, [
+      { max: 50, label: "<50%" },
+      { max: 75, label: "50-75%" },
+      { max: 90, label: "75-90%" },
+      { max: 100, label: "90-100%" }
     ]);
   }
 
