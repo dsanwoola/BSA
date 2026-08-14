@@ -6,7 +6,7 @@
 (function () {
   "use strict";
 
-  var APP_BUILD = 72; // shown in the header so stale cached code is obvious
+  var APP_BUILD = 73; // shown in the header so stale cached code is obvious
   window.BSA_BUILD = APP_BUILD;
   var ANALYTICS = window.BSA_ANALYTICS || { track: function () {}, flush: function () {}, fileType: function () { return "unknown"; } };
 
@@ -106,6 +106,7 @@
 
   function gotoStep(id) {
     state.currentStep = id;
+    document.body.classList.toggle("landing-mode", id === "step-context" && !document.body.classList.contains("workflow-open"));
     ANALYTICS.track("step_view", { step: id });
     $all(".step-section").forEach(function (s) { s.classList.toggle("active", s.id === id); });
     $all(".step-dot").forEach(function (d) {
@@ -173,10 +174,13 @@
     var heroStart = $("#btn-hero-start");
     if (heroStart) heroStart.addEventListener("click", function () {
       ANALYTICS.track("context_continue", { source: "hero_start" });
+      document.body.classList.add("workflow-open");
+      document.body.classList.remove("landing-mode");
+      var details = $("#workflow-details");
+      if (details) details.setAttribute("aria-hidden", "false");
       var target = $(".context-title");
       if (target && target.scrollIntoView) target.scrollIntoView({ behavior: "smooth", block: "start" });
-      var first = document.querySelector('input[name="acctType"]');
-      if (first) first.focus();
+      if (target) target.focus({ preventScroll: true });
     });
     var heroDemo = $("#btn-hero-demo");
     if (heroDemo) heroDemo.addEventListener("click", loadDemo);
@@ -218,6 +222,8 @@
 
   /* ---------------- step 2: upload ---------------- */
   function loadDemo() {
+    document.body.classList.add("workflow-open");
+    document.body.classList.remove("landing-mode");
     ANALYTICS.track("demo_started", { source: "demo" });
     state.rows = PARSER.parseCSVText(DEMO_CSV);
     state.source = "demo"; state.fileName = "demo_statement.csv";

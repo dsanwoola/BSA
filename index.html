@@ -3,9 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Bank Charge Auditor — Find Excess Nigerian Bank Charges</title>
-<meta name="description" content="Scan a Nigerian bank statement in your browser and get a privacy-first CBN charge audit, refund estimate, evidence-backed findings, CSV export and demand letter. Your statement never leaves your device.">
-<link rel="stylesheet" href="css/app.css?v=72">
+<title>Checkam — Check Your Bank Statement Privately</title>
+<meta name="description" content="Check your Nigerian bank statement for charges worth reviewing. Checkam works privately in your browser—your statement is never uploaded or stored.">
+<link rel="stylesheet" href="css/app.css?v=73">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Cpath fill='%232ee59d' d='M24 2 6 10v12c0 11 7.6 21.4 18 24 10.4-2.6 18-13 18-24V10L24 2z'/%3E%3Ctext x='24' y='32' font-size='22' font-weight='bold' text-anchor='middle' fill='%230b1210'%3E₦%3C/text%3E%3C/svg%3E">
 <script>
   (function () {
@@ -19,7 +19,7 @@
   })();
 </script>
 </head>
-<body>
+<body class="landing-mode">
 <div class="wrap">
 
   <header class="app-head">
@@ -28,15 +28,15 @@
       <text x="24" y="32" font-size="22" font-weight="bold" text-anchor="middle" fill="#0b1210">₦</text>
     </svg>
     <div class="head-txt">
-      <h1>Bank Charge <em>Auditor</em></h1>
-      <p>Audits major Nigerian bank statements against the official CBN Guide to Bank Charges — with guided import for other layouts, and never guesses.</p>
+      <h1>Checkam<span class="brand-dot">.</span></h1>
+      <p>Private bank statement checker</p>
     </div>
     <button class="btn btn-ghost btn-small top-back no-print" id="btn-global-back" type="button" hidden>← Back</button>
     <button class="theme-toggle no-print" id="theme-toggle" type="button" aria-label="Switch colour theme" aria-pressed="false">
       <span class="theme-icon" aria-hidden="true">🌙</span>
       <span class="theme-label">Dark</span>
     </button>
-    <span class="privacy-pill">🔒 Your statement never leaves your browser</span>
+    <span class="privacy-pill">🔒 Private in your browser</span>
     <span class="build-badge" id="build-badge">build …</span>
   </header>
 
@@ -50,76 +50,35 @@
   <!-- ================= STEP 1: CONTEXT ================= -->
   <section class="step-section" id="step-context">
     <div class="panel">
-      <div class="launch-hero">
+      <div class="launch-hero" id="landing-hero">
         <div class="hero-copy">
-          <span class="eyebrow">CBN charge audit • Private by design</span>
-          <h2>Find excess bank charges before they become lost money.</h2>
-          <p class="lead">Scan a Nigerian bank statement directly in your browser and get a deterministic CBN compliance audit: refund estimates, rule citations, arithmetic proof, CSV export and a ready-to-send demand letter. Your statement never leaves your browser.</p>
+          <span class="eyebrow">Check your statement. Question the charges.</span>
+          <h2>See what your bank may have overcharged.</h2>
+          <p class="lead">Open your statement privately in your browser. Checkam flags charges worth reviewing against documented CBN rules—without uploading your file.</p>
           <div class="hero-actions">
-            <button class="btn btn-primary" id="btn-hero-start" type="button">Start free audit →</button>
-            <button class="btn btn-ghost" id="btn-hero-demo" type="button">Try demo statement</button>
+            <button class="btn btn-primary" id="btn-hero-start" type="button">Check my statement →</button>
+            <button class="btn btn-ghost" id="btn-hero-demo" type="button">Try a sample</button>
           </div>
           <div class="trust-row" aria-label="Product assurances">
-            <span>🔒 Browser-only scan</span>
-            <span>⚖ CBN citations</span>
-            <span>🧮 Balance checks</span>
-            <span>📄 Demand letter</span>
+            <span>🔒 Never uploaded</span>
+            <span>⚖ CBN-rule checks</span>
+            <span>✓ Clear findings</span>
           </div>
         </div>
-        <div class="hero-card" aria-label="Audit preview">
-          <div class="hero-card-top">
-            <span>Estimated refund</span>
-            <strong>₦42,875.00</strong>
-          </div>
-          <div class="hero-bars">
-            <div><span>Transfer fees</span><b style="width:72%"></b></div>
-            <div><span>VAT pairing</span><b style="width:48%"></b></div>
-            <div><span>CAMF check</span><b style="width:63%"></b></div>
-          </div>
-          <ul>
-            <li><strong>Violation</strong> flagged only when provable.</li>
-            <li><strong>Needs review</strong> when statement data is not enough.</li>
-            <li><strong>Compliant</strong> where the bank stayed within the cap.</li>
-          </ul>
+        <div class="hero-card minimal-result" aria-label="How Checkam works">
+          <span class="result-label">Simple. Private. Useful.</span>
+          <ol class="minimal-steps">
+            <li><span>1</span><div><strong>Open</strong><small>Select a statement on your device.</small></div></li>
+            <li><span>2</span><div><strong>Check</strong><small>Checkam reviews charges in your browser.</small></div></li>
+            <li><span>3</span><div><strong>Understand</strong><small>See what is proven and what needs review.</small></div></li>
+          </ol>
+          <p class="local-note">Your statement is never sent, stored or shared.</p>
         </div>
       </div>
 
-      <div class="launch-proof-grid">
-        <div><strong>For individuals</strong><span>Check salary, savings and current account charges.</span></div>
-        <div><strong>For SMEs</strong><span>Audit CAMF, transfer fees, levies and monthly patterns.</span></div>
-        <div><strong>For finance teams</strong><span>Export evidence and escalate with clean documentation.</span></div>
-      </div>
-
-      <section class="launch-pricing" id="launch-pricing" aria-label="Launch pricing">
-        <div class="pricing-head">
-          <span class="eyebrow">Launch monetization plan</span>
-          <h2>Free audit first. Pay when there is recovery value to unlock.</h2>
-          <p>The browser-only audit stays private. Monetization is built around review support, recovery documents and finance-team exports — not selling or storing statement data.</p>
-        </div>
-        <div class="pricing-grid">
-          <article class="price-card">
-            <span class="plan-badge">Free</span>
-            <h3>Quick Audit</h3>
-            <strong>₦0</strong>
-            <p>Scan a statement, verify the read, see proven refunds, review exposure and compliant charges.</p>
-          </article>
-          <article class="price-card featured">
-            <span class="plan-badge">Best for recovery</span>
-            <h3>Recovery Pack</h3>
-            <strong>Pay per statement</strong>
-            <p>Unlock guided review of uncertain refund opportunities, evidence schedules and bank-ready complaint support.</p>
-          </article>
-          <article class="price-card">
-            <span class="plan-badge">For SMEs</span>
-            <h3>Finance Team</h3>
-            <strong>Monthly</strong>
-            <p>Batch-friendly exports, accountant summaries and recurring monitoring for business statements.</p>
-          </article>
-        </div>
-      </section>
-
-      <h2 class="context-title">Tell the auditor about the account</h2>
-      <p class="lead context-lead">CBN rules differ by account type — for example, maintenance fees are only lawful on <strong>current</strong> accounts, while card maintenance fees are only lawful on <strong>savings</strong> accounts. Getting this right is what lets the audit be exact. <strong>Not sure?</strong> Your statement says it at the top — look for "Savings" or "Current" next to the account number.</p>
+      <div class="workflow-details" id="workflow-details" aria-hidden="true">
+      <h2 class="context-title" tabindex="-1">Tell us about the account</h2>
+      <p class="lead context-lead">This helps Checkam apply the right rules. If you are unsure, your statement usually shows the account type near the account number.</p>
 
       <div class="choice-group">
         <div class="lbl">Account type</div>
@@ -161,31 +120,20 @@
       <div class="btn-row">
         <button class="btn btn-primary" id="btn-context-next">Continue →</button>
       </div>
+      </div>
     </div>
   </section>
 
   <!-- ================= STEP 2: UPLOAD ================= -->
   <section class="step-section" id="step-upload">
     <div class="panel">
-      <h2>Add the bank statement</h2>
-      <p class="lead">Supports major Nigerian bank statements, with guided import for other layouts — Wema/ALAT, FCMB, GTBank/GTW, Fidelity, OPay, Pocket and more as parser coverage expands. CSV or Excel exports from internet banking give the most reliable read; text-based PDF statements also work.</p>
+      <h2>Open your bank statement</h2>
+      <p class="lead">Choose a CSV, Excel or text-based PDF statement. CSV and Excel usually give the cleanest result.</p>
 
-
-      <div class="launch-guide" id="launch-guide">
-        <div>
-          <strong>Before you audit</strong>
-          <p>For the cleanest result, export CSV/Excel from internet banking first. If you only have PDF, use a text-based statement rather than a scanned image. After upload, confirm Date, Narration, Debit/Credit/Amount and Balance columns before running the audit.</p>
-        </div>
-        <ul>
-          <li><strong>If the balance checksum passes:</strong> run the audit and export the report.</li>
-          <li><strong>If the read looks wrong:</strong> adjust the header row or column roles.</li>
-          <li><strong>If it still fails:</strong> download the anonymized parser diagnostic on the next screen and share only that JSON file with support.</li>
-        </ul>
-      </div>
 
       <div class="dropzone" id="dropzone" role="button" tabindex="0" aria-label="Select statement file">
         <div class="dz-icon">📄</div>
-        <h3>Drop your statement here, or click to browse</h3>
+        <h3>Select or drop your statement</h3>
         <p>The file is scanned entirely inside your browser. It is never sent, stored or shared — you can even use this app offline.</p>
         <div class="fmt-tags"><span>CSV</span><span>XLSX</span><span>XLS</span><span>PDF</span></div>
       </div>
@@ -327,23 +275,23 @@
   </div>
 
   <footer>
-    <p><strong>How accuracy is protected:</strong> every rule in this auditor is encoded from the CBN <em>Guide to Charges by Banks, Other Financial and Non-Bank Financial Institutions</em> (effective 1 January 2020), the CBN ATM Fee Circular of 10 February 2025, the Finance Act 2020 (EMTL) and the Nigeria Tax Act 2025, and is applied <em>by date</em> — each transaction is judged by the rule in force on its day. A violation is only declared when the charge exceeds the cap under the most generous lawful reading; anything uncertain is marked “needs review”, never guessed.</p>
-    <p class="no-print">⚖ This tool produces a documented audit, not legal advice. Rules current as of June 2026. Your bank's written response and the CBN Consumer Protection Department (cpd@cbn.gov.ng) are the final authorities on any dispute. Privacy: this page makes no network requests with your data — your statement never leaves your browser.</p>
-    <p class="no-print"><strong>Browser support:</strong> best used on current Chrome, Edge, Safari, or Firefox. Large PDFs may be slow on low-end phones; CSV/Excel exports are recommended for very large statements.</p>
+    <p><strong>Checkam</strong> checks selected charges against documented CBN rules and fee guidance. A flagged transaction is not automatically an unlawful charge; confirm findings with your bank and the cited source.</p>
+    <p class="no-print">Independent informational tool—not a bank, financial adviser or law firm. Results do not guarantee errors, refunds or recoveries. Your statement is analysed on your device and is not uploaded or stored.</p>
+    <p class="company-mark no-print">A product of Neighbours NG Technologies Ltd.</p>
   </footer>
 </div>
 
 <script src="vendor/xlsx.full.min.js"></script>
 <script src="vendor/pdf.min.js"></script>
 <script src="vendor/pdf.worker.min.js"></script>
-<script src="js/rules.js?v=72"></script>
-<script src="js/bank-profiles.js?v=72"></script>
-<script src="js/patterns.js?v=72"></script>
-<script src="js/engine.js?v=72"></script>
-<script src="js/parser.js?v=72"></script>
-<script src="js/report.js?v=72"></script>
-<script src="js/analytics.js?v=72"></script>
-<script src="js/analytics-enhanced.js?v=72"></script>
-<script src="js/app.js?v=72"></script>
+<script src="js/rules.js?v=73"></script>
+<script src="js/bank-profiles.js?v=73"></script>
+<script src="js/patterns.js?v=73"></script>
+<script src="js/engine.js?v=73"></script>
+<script src="js/parser.js?v=73"></script>
+<script src="js/report.js?v=73"></script>
+<script src="js/analytics.js?v=73"></script>
+<script src="js/analytics-enhanced.js?v=73"></script>
+<script src="js/app.js?v=73"></script>
 </body>
 </html>
