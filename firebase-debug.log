@@ -1,0 +1,16 @@
+[debug] [2026-08-19T16:52:57.843Z] ----------------------------------------------------------------------
+[debug] [2026-08-19T16:52:57.881Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\Deen\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js deploy --only hosting
+[debug] [2026-08-19T16:52:57.883Z] CLI Version:   15.20.0
+[debug] [2026-08-19T16:52:57.884Z] Platform:      win32
+[debug] [2026-08-19T16:52:57.884Z] Node Version:  v24.14.0
+[debug] [2026-08-19T16:52:57.893Z] Time:          Wed Aug 19 2026 17:52:57 GMT+0100 (West Africa Time)
+[debug] [2026-08-19T16:52:57.894Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-19T16:53:25.172Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-19T16:53:25.174Z] > authorizing via signed-in user (dsanwoola@gmail.com)
+[debug] [2026-08-19T16:53:25.175Z] [iam] checking project bank-statement-auditor for permissions ["firebase.projects.get","firebasehosting.sites.update"]
+[debug] [2026-08-19T16:53:25.194Z] Checked if tokens are valid: true, expires at: 1787160209767
+[debug] [2026-08-19T16:53:25.195Z] Checked if tokens are valid: true, expires at: 1787160209767
+[debug] [2026-08-19T16:53:25.203Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/bank-statement-auditor:testIamPermissions [none]
+[debug] [2026-08-19T16:53:25.205Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/bank-statement-auditor:testIamPermissions  x-goog-user-project=bank-statement-auditor
+[debug] [2026-08-19T16:53:25.206Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/bank-statement-auditor:testIamPermissions {"permissions":["firebase.projects.get","firebasehosting.sites.update"]}
