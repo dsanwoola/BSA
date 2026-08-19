@@ -260,6 +260,19 @@
     </div>
   </div>
 
+  <!-- account type correction modal -->
+  <div class="modal" id="acct-correction-modal" role="dialog" aria-modal="true" aria-label="Account type correction">
+    <div class="modal-box">
+      <h3>⚠️ Account Type Mismatch Detected</h3>
+      <p class="muted" id="acct-correction-msg"></p>
+      <p style="margin-top: 16px; color: var(--txt-dim); font-size: 13px;">Account type affects which charges are flagged as violations (e.g., maintenance fees are illegal on Savings accounts but permitted on Current accounts).</p>
+      <div class="btn-row">
+        <button class="btn btn-ghost" id="btn-acct-keep">Keep my selection</button>
+        <button class="btn btn-primary" id="btn-acct-correct">Use detected type</button>
+      </div>
+    </div>
+  </div>
+
   <!-- letter modal -->
   <div class="modal" id="letter-modal" role="dialog" aria-modal="true" aria-label="Refund demand letter">
     <div class="modal-box">
@@ -290,6 +303,8 @@
 <script src="js/engine.js?v=73"></script>
 <script src="js/parser.js?v=73"></script>
 <script src="js/report.js?v=73"></script>
+<script src="js/account-detector.js?v=73"></script>
+<script src="js/account-detector-integration.js?v=73"></script>
 <script src="js/analytics.js?v=73"></script>
 <script src="js/analytics-enhanced.js?v=73"></script>
 <script src="js/app.js?v=73"></script>
