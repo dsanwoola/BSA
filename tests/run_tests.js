@@ -34,7 +34,7 @@ check("launch: browser-only privacy remains explicit", indexHtml.indexOf("withou
 check("launch: pricing and fake refund preview are removed", indexHtml.indexOf("Launch monetization plan") < 0 && indexHtml.indexOf("₦42,875.00") < 0);
 check("launch: workflow remains behind progressive disclosure", /id="workflow-details"[^>]*aria-hidden="true"/.test(indexHtml) && appJs.indexOf('classList.add("workflow-open")') >= 0);
 check("launch: company attribution is present", indexHtml.indexOf("A product of Neighbours NG Technologies Ltd.") >= 0);
-check("launch: build 73 markers stay aligned", /var APP_BUILD = 73/.test(appJs) && (indexHtml.match(/\?v=73/g) || []).length === 10 && indexHtml.indexOf("?v=72") < 0);
+check("launch: build 74 markers stay aligned", /var APP_BUILD = 74/.test(appJs) && (indexHtml.match(/\?v=74/g) || []).length === 14 && indexHtml.indexOf("?v=73") < 0);
 
 var CTX_SAVINGS = { accountType: "savings", holderType: "individual", salaryAccount: false };
 var CTX_CURRENT = { accountType: "current", holderType: "individual", salaryAccount: false };
@@ -1273,7 +1273,7 @@ var reportJs = readSrc("/../js/report.js");
 var betaGuide = readSrc("/../BETA_TESTING.md");
 check("static: minimalist Checkam launch appears in app", indexHtml.indexOf("See what your bank may have overcharged") !== -1 && indexHtml.indexOf("Check my statement") !== -1 && indexHtml.indexOf("Try a sample") !== -1 && indexHtml.indexOf("without uploading your file") !== -1 && indexHtml.indexOf("Launch monetization plan") === -1 && indexHtml.indexOf("₦42,875.00") === -1 && appCss.indexOf(".launch-hero") !== -1 && appCss.indexOf(".workflow-details") !== -1);
 check("static: BETA_TESTING documents privacy-safe diagnostics", betaGuide.indexOf("anonymized parser diagnostic") !== -1 && betaGuide.indexOf("must not contain names") !== -1);
-check("static: APP_BUILD and cache bust agree on 73", appJs.indexOf("APP_BUILD = 73") !== -1 && (indexHtml.match(/v=73/g) || []).length >= 8 && indexHtml.indexOf("v=72") === -1);
+check("static: APP_BUILD and cache bust agree on 74", appJs.indexOf("APP_BUILD = 74") !== -1 && (indexHtml.match(/v=74/g) || []).length >= 8 && indexHtml.indexOf("v=73") === -1);
 check("static: mobile hides stepper, Step 1 intro, and upload guidance", appCss.indexOf(".stepper {\n    display: none;") !== -1 && appCss.indexOf("#step-context .panel > h2") !== -1 && appCss.indexOf("#step-context .panel > .lead") !== -1 && appCss.indexOf("#launch-guide") !== -1 && appCss.indexOf("#launch-guide {\n    display: none;") !== -1);
 check("static: mobile layout safeguards are present", appCss.indexOf("mobile-first polish") !== -1 && appCss.indexOf("Swipe sideways to see all columns") !== -1 && appCss.indexOf(".chips { display: grid; grid-template-columns: 1fr;") !== -1 && appCss.indexOf("input, select, textarea { font-size: 16px;") !== -1);
 check("static: old SME premium surfaces stay disabled", indexHtml.indexOf('id="sme-dashboard-root"') === -1 && appJs.indexOf("bsa-premium-sme") === -1 && appJs.indexOf("btn-premium-unlock") === -1);
@@ -1291,7 +1291,7 @@ check("static: monetization remains report-level, not landing-page clutter", ind
 var analyticsJs = readSrc("/../js/analytics.js");
 var firebaseJson = readSrc("/../firebase.json");
 var functionsIndex = readSrc("/../functions/index.js");
-check("analytics: client is loaded and cache-busted", indexHtml.indexOf('js/analytics.js?v=73') !== -1 && analyticsJs.indexOf('BSA_ANALYTICS') !== -1 && analyticsJs.indexOf('/api/analytics') !== -1);
+check("analytics: client is loaded and cache-busted", indexHtml.indexOf('js/analytics.js?v=74') !== -1 && analyticsJs.indexOf('BSA_ANALYTICS') !== -1 && analyticsJs.indexOf('/api/analytics') !== -1);
 check("analytics: backend route is configured", firebaseJson.indexOf('"source": "/api/analytics"') !== -1 && firebaseJson.indexOf('"function": "analytics"') !== -1 && firebaseJson.indexOf('"source": "functions"') !== -1);
 check("analytics: backend uses aggregate counters only", functionsIndex.indexOf('analytics_daily') !== -1 && functionsIndex.indexOf('FieldValue.increment') !== -1 && functionsIndex.indexOf('raw statement') === -1 && functionsIndex.indexOf('narration') === -1);
 check("analytics: key journey events are instrumented", appJs.indexOf('"app_load"') !== -1 && appJs.indexOf('"file_selected"') !== -1 && appJs.indexOf('"file_read_success"') !== -1 && appJs.indexOf('"audit_completed"') !== -1 && appJs.indexOf('"recovery_pack_request"') !== -1);
@@ -1348,6 +1348,150 @@ if (fs.existsSync(fixDir)) {
     }
   });
 }
+
+/* =========================================================================
+ * PRICING & PAYWALL
+ * ========================================================================= */
+var PRICING = require("../js/pricing.js");
+var PAYWALL = require("../js/paywall.js");
+
+function q(holder, from, to) { return PRICING.quote({ holderType: holder, from: from, to: to }); }
+
+/* --- the two prices the owner set --- */
+check("pricing: individual, 6-month statement costs N3,000",
+  q("individual", D(2026, 1, 1), D(2026, 6, 30)).amount === 3000);
+check("pricing: business, 6-month statement costs N5,000",
+  q("business", D(2026, 1, 1), D(2026, 6, 30)).amount === 5000);
+check("pricing: a 6-month statement is a single block",
+  q("individual", D(2026, 1, 1), D(2026, 6, 30)).blocks === 1);
+
+/* --- blocks scale past six months --- */
+check("pricing: individual 12-month statement is 2 blocks = N6,000",
+  q("individual", D(2026, 1, 1), D(2026, 12, 31)).amount === 6000);
+check("pricing: business 12-month statement is 2 blocks = N10,000",
+  q("business", D(2026, 1, 1), D(2026, 12, 31)).amount === 10000);
+check("pricing: business 18-month statement is 3 blocks = N15,000",
+  q("business", D(2025, 7, 1), D(2026, 12, 31)).blocks === 3 &&
+  q("business", D(2025, 7, 1), D(2026, 12, 31)).amount === 15000);
+
+/* --- the calendar-month trap: 5 Jan - 1 Jul touches seven calendar months
+ *     but is under six months long, and must bill as one block --- */
+check("pricing: 5 Jan - 1 Jul bills as one block, not two",
+  q("individual", D(2026, 1, 5), D(2026, 7, 1)).blocks === 1);
+check("pricing: 183 days is the last day of a single block",
+  PRICING.blocksForDays(183) === 1 && PRICING.blocksForDays(184) === 2);
+
+/* --- boundaries and bad input --- */
+check("pricing: government accounts price as business",
+  q("government", D(2026, 1, 1), D(2026, 6, 30)).amount === 5000);
+check("pricing: an unknown holder type falls back to individual",
+  q("unknown-type", D(2026, 1, 1), D(2026, 6, 30)).amount === 3000);
+check("pricing: a missing period bills the cheapest single block",
+  q("individual", null, null).amount === 3000 && q("individual", null, null).blocks === 1);
+check("pricing: reversed dates are not free",
+  q("individual", D(2026, 6, 30), D(2026, 1, 1)).amount === 3000);
+check("pricing: a single-day statement still costs one block",
+  q("individual", D(2026, 3, 3), D(2026, 3, 3)).days === 1);
+check("pricing: quotes are always whole naira",
+  [q("individual", D(2026, 1, 1), D(2027, 5, 5)), q("business", D(2026, 1, 1), D(2029, 1, 1))]
+    .every(function (x) { return Number.isInteger(x.amount) && x.amount > 0; }));
+check("pricing: currency is NGN", q("individual", null, null).currency === "NGN");
+
+/* --- client and server must price identically --- */
+var pricingClient = fs.readFileSync(path.join(__dirname, "..", "js", "pricing.js"), "utf8");
+var pricingServer = fs.readFileSync(path.join(__dirname, "..", "functions", "pricing.js"), "utf8");
+check("pricing: js/pricing.js and functions/pricing.js have not drifted",
+  pricingClient === pricingServer,
+  "the shared pricing file differs between client and server");
+
+/* --- the gate itself --- */
+var payCtx = { accountType: "current", holderType: "individual", salaryAccount: false };
+var payTxns = [
+  T(0, D(2026, 1, 5), "SMS ALERT CHARGE", 100, 0, 9900),
+  T(1, D(2026, 2, 5), "ACCOUNT MAINTENANCE FEE", 5000, 0, 4900),
+  T(2, D(2026, 3, 5), "NIP TRANSFER FEE", 100, 0, 4800)
+];
+var payAudit = ENGINE.audit(payTxns, payCtx);
+
+check("paywall: the teaser names charge types without exposing narrations",
+  (function () {
+    var html = PAYWALL.renderTeaser(payAudit);
+    return html.indexOf("SMS ALERT CHARGE") < 0 &&
+           html.indexOf("ACCOUNT MAINTENANCE FEE") < 0 &&
+           html.indexOf("NIP TRANSFER FEE") < 0;
+  })(),
+  "a raw statement narration leaked into the locked teaser");
+
+check("paywall: the teaser carries no CBN citations or arithmetic",
+  (function () {
+    var html = PAYWALL.renderTeaser(payAudit);
+    var leaked = (payAudit.findings || []).some(function (f) {
+      return (f.citation && html.indexOf(f.citation) >= 0) || (f.math && html.indexOf(f.math) >= 0);
+    });
+    return !leaked;
+  })(),
+  "citation or arithmetic leaked into the locked teaser");
+
+check("paywall: locked state is the default for an unseen statement",
+  PAYWALL.isUnlocked("never-seen-fingerprint") === false);
+
+check("paywall: unlocking is scoped to one statement fingerprint",
+  (function () {
+    PAYWALL._setUnlocked("fp-one", true);
+    return PAYWALL.isUnlocked("fp-one") === true && PAYWALL.isUnlocked("fp-two") === false;
+  })());
+
+check("paywall: the panel states the price and the billing period",
+  (function () {
+    var html = PAYWALL.renderPanel(payAudit, payCtx, null);
+    return html.indexOf("3,000") >= 0 && html.indexOf("6-month block") >= 0;
+  })());
+
+check("paywall: a business statement is quoted at N5,000 in the panel",
+  PAYWALL.renderPanel(payAudit, { holderType: "business" }, null).indexOf("5,000") >= 0);
+
+/* --- app wiring: the locked report must not be rendered at all --- */
+check("paywall: app blanks the findings list while locked",
+  appJs.indexOf("function applyGate") >= 0 &&
+  /if \(locked\) \{[\s\S]*?\$\("#findings-list"\)\.innerHTML = "";/.test(appJs),
+  "applyGate must blank the findings list while locked");
+check("paywall: app resolves an existing receipt before unlocking",
+  appJs.indexOf("resolveUnlock") >= 0 && appJs.indexOf("PAYWALL.restore") >= 0);
+check("paywall: index.html loads pricing and paywall before the app",
+  indexHtml.indexOf("js/pricing.js") < indexHtml.indexOf("js/app.js") &&
+  indexHtml.indexOf("js/paywall.js") < indexHtml.indexOf("js/app.js"));
+check("paywall: the Flutterwave script is not loaded with the page",
+  indexHtml.indexOf("checkout.flutterwave.com") < 0,
+  "third-party checkout JS must be lazy-loaded, not present while parsing statements");
+check("paywall: the Flutterwave script is lazy-loaded on demand",
+  fs.readFileSync(path.join(__dirname, "..", "js", "paywall.js"), "utf8")
+    .indexOf("https://checkout.flutterwave.com/v3.js") >= 0);
+
+/* --- server: no secret may ever be committed --- */
+var payServer = fs.readFileSync(path.join(__dirname, "..", "functions", "payments.js"), "utf8");
+var fnIndex = fs.readFileSync(path.join(__dirname, "..", "functions", "index.js"), "utf8");
+check("payments: no Flutterwave key literal is hard-coded",
+  !/FLWSECK[-_]/.test(payServer) && !/FLWPUBK[-_]/.test(payServer),
+  "a Flutterwave key literal is present in functions/payments.js");
+check("payments: secrets are declared through Secret Manager",
+  payServer.indexOf("defineSecret(\"FLW_SECRET_KEY\")") >= 0 &&
+  payServer.indexOf("defineSecret(\"FLW_WEBHOOK_HASH\")") >= 0);
+check("payments: the amount is computed server-side, never taken from the client",
+  payServer.indexOf("PRICING.quote(") >= 0 && !/body\.amount/.test(payServer),
+  "server must not read an amount from the request body");
+check("payments: verification checks status, tx_ref, currency and amount",
+  /status: data\.status === "successful"/.test(payServer) &&
+  /txRef: data\.tx_ref === order\.txRef/.test(payServer) &&
+  /currency: data\.currency === order\.currency/.test(payServer) &&
+  /amount: Number\(data\.amount\) >= Number\(order\.amount\)/.test(payServer));
+check("payments: the webhook rejects a bad verif-hash",
+  payServer.indexOf("req.get(\"verif-hash\")") >= 0 && payServer.indexOf("safeEqual(sent, expected)") >= 0);
+check("payments: unlock tokens are stored hashed",
+  payServer.indexOf("tokenHash: hashToken(token)") >= 0);
+check("payments: an unlock is bound to the statement it was bought for",
+  payServer.indexOf("different_statement") >= 0);
+check("payments: checkam.ng is an allowed origin on both endpoints",
+  payServer.indexOf("\"https://checkam.ng\"") >= 0 && fnIndex.indexOf("\"https://checkam.ng\"") >= 0);
 
 /* ---------------- report ---------------- */
 console.log("==========================================");

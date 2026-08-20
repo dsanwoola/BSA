@@ -20,17 +20,49 @@
       "*.patch"
     ],
     "rewrites": [
-      { "source": "/api/analytics", "function": "analytics" }
+      {
+        "source": "/api/analytics",
+        "function": "analytics"
+      },
+      {
+        "source": "/api/pay/quote",
+        "function": "payQuote"
+      },
+      {
+        "source": "/api/pay/verify",
+        "function": "payVerify"
+      },
+      {
+        "source": "/api/pay/status",
+        "function": "payStatus"
+      },
+      {
+        "source": "/api/pay/webhook",
+        "function": "flwWebhook"
+      }
     ],
     "headers": [
       {
         "source": "**/*.@(html)",
-        "headers": [{ "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }]
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, no-store, must-revalidate"
+          }
+        ]
       },
       {
         "source": "**/*.@(js|css)",
-        "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=31536000, immutable"
+          }
+        ]
       }
     ]
+  },
+  "firestore": {
+    "rules": "firestore.rules"
   }
 }

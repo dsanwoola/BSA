@@ -6,18 +6,20 @@
 (function () {
   "use strict";
 
-  var APP_BUILD = 73; // shown in the header so stale cached code is obvious
+  var APP_BUILD = 74; // shown in the header so stale cached code is obvious
   window.BSA_BUILD = APP_BUILD;
   var ANALYTICS = window.BSA_ANALYTICS || { track: function () {}, flush: function () {}, fileType: function () { return "unknown"; } };
 
   var PARSER = window.CBN_PARSER, ENGINE = window.CBN_ENGINE,
-      REPORT = window.CBN_REPORT, RULES = window.CBN_RULES, BANKS = window.CBN_BANK_PROFILES;
+      REPORT = window.CBN_REPORT, RULES = window.CBN_RULES, BANKS = window.CBN_BANK_PROFILES,
+      PAYWALL = window.CBN_PAYWALL;
 
   var state = {
     ctx: { accountType: "current", holderType: "individual", salaryAccount: false, bankId: "other", overrides: {} },
     rows: null, source: null, fileName: null,
     txns: null, problems: null, integrity: null,
     audit: null, filter: "all",
+    fingerprint: null,
     currentStep: "step-context"
   };
 
@@ -716,17 +718,16 @@
     state.audit = audit;
     state.auditTxns = txns;
 
+    /* Free, always: the verdict and the headline numbers. */
     $("#summary-cards").innerHTML = REPORT.renderSummary(audit);
     $("#report-meta").innerHTML = REPORT.reportMeta(audit, state.ctx, {
       fileName: state.fileName, pageCount: state.pageCount, sheetCount: state.sheetCount
     });
-    $("#monetization-panel").innerHTML = REPORT.renderMonetizationPanel(audit);
-    $("#aggregates").innerHTML = REPORT.renderAggregates(audit);
-    renderFindingsPane();
-    $("#all-txns").innerHTML = REPORT.renderAllTxns(txns, audit, RULES.typeNames);
 
-    var anyViolation = audit.summary.refundDue > 0;
-    $("#btn-letter").style.display = anyViolation ? "" : "none";
+    /* Paid: the evidence. Rendered locked-first, so paid HTML never briefly
+     * exists in the page while we ask the server about a stored receipt. */
+    applyGate();
+    resolveUnlock();
 
     var summary = audit.summary || {};
     ANALYTICS.track("audit_completed", {
@@ -773,6 +774,58 @@
       banner.innerHTML += " The parsed rows also reconcile exactly with the statement's own summary totals.";
       if (banner.className === "integrity warn" && (!ic || !ic.hasBalance)) banner.className = "integrity ok";
     }
+  }
+
+  /* ---------------- paywall gate ----------------
+   * Locked sections are left empty rather than hidden: the detail of the
+   * report is simply not in the document until an unlock is confirmed. */
+  function applyGate() {
+    var audit = state.audit;
+    if (!audit) return;
+    var locked = !(PAYWALL && PAYWALL.isUnlocked(state.fingerprint));
+    var txns = state.auditTxns || [];
+
+    var tabs = $(".tabs"), chips = $(".filter-chips"), paneAll = $("#pane-all");
+    var letterBtn = $("#btn-letter"), csvBtn = $("#btn-export-csv"), printBtn = $("#btn-print");
+
+    if (locked) {
+      $("#aggregates").innerHTML = "";
+      $("#findings-list").innerHTML = "";
+      $("#all-txns").innerHTML = "";
+      if (tabs) tabs.style.display = "none";
+      if (chips) chips.style.display = "none";
+      if (paneAll) paneAll.style.display = "none";
+      [letterBtn, csvBtn, printBtn].forEach(function (b) { if (b) b.style.display = "none"; });
+
+      if (PAYWALL) {
+        PAYWALL.mount($("#monetization-panel"), audit, state.ctx, state.fingerprint, function () {
+          applyGate();
+          $("#monetization-panel").scrollIntoView({ behavior: "smooth", block: "start" });
+        });
+      }
+      return;
+    }
+
+    $("#monetization-panel").innerHTML = '<div class="unlock-receipt no-print">✓ Full report unlocked for this statement.</div>';
+    $("#aggregates").innerHTML = REPORT.renderAggregates(audit);
+    renderFindingsPane();
+    $("#all-txns").innerHTML = REPORT.renderAllTxns(txns, audit, RULES.typeNames);
+    if (tabs) tabs.style.display = "";
+    if (chips) chips.style.display = "";
+    if (letterBtn) letterBtn.style.display = audit.summary.refundDue > 0 ? "" : "none";
+    if (csvBtn) csvBtn.style.display = "";
+    if (printBtn) printBtn.style.display = "";
+  }
+
+  /* Fingerprint this statement, then ask the server whether a receipt we
+   * already hold still covers it. Failure here leaves the report locked. */
+  function resolveUnlock() {
+    if (!PAYWALL) return;
+    PAYWALL.fingerprint(state.audit).then(function (fp) {
+      state.fingerprint = fp;
+      if (PAYWALL.isUnlocked(fp)) { applyGate(); return; }
+      return PAYWALL.restore(fp).then(function (ok) { if (ok) applyGate(); else applyGate(); });
+    }).catch(function () { /* stay locked */ });
   }
 
   function renderFindingsPane() {

@@ -1,0 +1,30 @@
+rules_version = '2';
+
+// =========================================================================
+// Checkam — Firestore access rules
+// =========================================================================
+// Nothing in this database is reachable from a browser.
+//
+// Every legitimate read and write goes through Cloud Functions using the
+// Admin SDK, which bypasses these rules entirely. So the correct rule for
+// client traffic is a flat deny:
+//
+//   analytics, analytics_daily, analytics_hourly
+//       aggregate counters, written only by the analytics function.
+//
+//   orders
+//       payment records holding unlock tokens. A client that could read
+//       this collection could unlock every paid report ever bought, so it
+//       must never be exposed — not even for reads.
+//
+// If a future feature genuinely needs direct client access, add a narrow
+// allow rule for that one path. Never widen this default.
+// =========================================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

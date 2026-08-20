@@ -8,6 +8,8 @@ admin.initializeApp();
 const db = admin.firestore();
 
 const ALLOWED_ORIGINS = new Set([
+  "https://checkam.ng",
+  "https://www.checkam.ng",
   "https://bank-statement-auditor.web.app",
   "https://bank-statement-auditor.firebaseapp.com",
   "http://localhost:8765",
@@ -41,7 +43,15 @@ const ALLOWED_EVENTS = new Set([
   "violation_detected",
   "refund_calculated",
   "user_journey_drop",
-  "performance_metric"
+  "performance_metric",
+  // Paywall / payment funnel
+  "paywall_shown",
+  "pay_quote_requested",
+  "pay_checkout_opened",
+  "pay_checkout_closed",
+  "pay_succeeded",
+  "pay_failed",
+  "unlock_restored"
 ]);
 
 const MAX_BATCH = 20;
@@ -260,3 +270,10 @@ exports.analytics = onRequest({ region: "us-central1", cors: false }, async (req
   await batch.commit();
   res.status(200).json({ ok: true, accepted: events.length });
 });
+
+/* ---------------- payments (Flutterwave) ---------------- */
+const payments = require("./payments.js");
+exports.payQuote = payments.payQuote;
+exports.payVerify = payments.payVerify;
+exports.payStatus = payments.payStatus;
+exports.flwWebhook = payments.flwWebhook;

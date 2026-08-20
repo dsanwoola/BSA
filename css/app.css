@@ -876,3 +876,58 @@ footer strong { color: var(--txt); }
 @media (max-width: 720px) {
   .bank-picker-row { grid-template-columns: 1fr; }
 }
+
+/* ---------------- paywall ---------------- */
+.paywall {
+  border: 1px solid rgba(245, 196, 81, .38);
+  border-radius: var(--radius);
+  padding: 22px;
+  margin: 0 0 26px;
+  background: linear-gradient(135deg, rgba(245, 196, 81, .10), rgba(46, 229, 157, .05));
+}
+.paywall-head { margin-bottom: 18px; }
+.paywall-head h3 { margin: 6px 0 8px; font-size: 21px; }
+.paywall-head p { margin: 0; color: var(--txt-dim); font-size: 14px; max-width: 68ch; }
+
+.paywall-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 320px); gap: 22px; align-items: start; }
+.paywall-get h4, .paywall-preview h4 { margin: 0 0 10px; font-size: 14px; letter-spacing: .02em; }
+.paywall-get ul { margin: 0; padding-left: 18px; display: grid; gap: 7px; }
+.paywall-get li { color: var(--txt-dim); font-size: 13.5px; }
+
+.paywall-buy {
+  background: var(--card); border: 1px solid var(--line);
+  border-radius: 12px; padding: 18px; display: grid; gap: 12px;
+}
+.paywall-price { font-size: 34px; font-weight: 800; color: var(--gold); line-height: 1; }
+.paywall-terms { display: grid; gap: 3px; color: var(--txt-dim); font-size: 12.5px; }
+.paywall-cta { width: 100%; justify-content: center; }
+.paywall-note { margin: 0; color: var(--txt-dim); font-size: 11.5px; }
+.paywall-error {
+  margin: 0; padding: 9px 11px; border-radius: 8px; font-size: 12.5px;
+  background: var(--red-soft); border: 1px solid var(--status-red-border); color: var(--status-red-text);
+}
+
+.paywall-preview { margin-top: 22px; border-top: 1px solid var(--line); padding-top: 18px; }
+.lock-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.lock-row {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto;
+  gap: 12px; align-items: center;
+  background: var(--card); border: 1px solid var(--line);
+  border-radius: 9px; padding: 10px 14px;
+}
+.lock-name { font-weight: 600; font-size: 13.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lock-count { color: var(--txt-dim); font-size: 12.5px; }
+.lock-amt { font-weight: 800; color: var(--gold); font-size: 13.5px; font-variant-numeric: tabular-nums; }
+.lock-foot { margin: 12px 0 0; font-size: 12.5px; }
+
+.unlock-receipt {
+  border: 1px solid var(--status-green-border); background: var(--green-soft);
+  color: var(--status-green-text); border-radius: 10px;
+  padding: 10px 14px; font-size: 13px; font-weight: 600; margin: 0 0 22px;
+}
+
+@media (max-width: 860px) {
+  .paywall-grid { grid-template-columns: 1fr; }
+  .lock-row { grid-template-columns: auto minmax(0, 1fr) auto; }
+  .lock-count { grid-column: 2; }
+}
