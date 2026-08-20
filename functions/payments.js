@@ -30,7 +30,7 @@
 const crypto = require("crypto");
 const admin = require("firebase-admin");
 const { onRequest } = require("firebase-functions/v2/https");
-const { defineSecret, defineString } = require("firebase-functions/params");
+const { defineSecret } = require("firebase-functions/params");
 const { FieldValue } = require("firebase-admin/firestore");
 
 const PRICING = require("./pricing.js");
@@ -39,9 +39,11 @@ const PRICING = require("./pricing.js");
  * `firebase functions:secrets:set` commands that populate these. */
 const FLW_SECRET_KEY = defineSecret("FLW_SECRET_KEY");
 const FLW_WEBHOOK_HASH = defineSecret("FLW_WEBHOOK_HASH");
-/* The public key is safe to expose — it is handed to the browser — but it is
- * still configuration, so it is a param rather than a literal in the JS. */
-const FLW_PUBLIC_KEY = defineString("FLW_PUBLIC_KEY", { default: "" });
+/* The public key is safe to expose — the browser receives it — but it is kept
+ * in Secret Manager alongside the others so that all Flutterwave credentials
+ * are configured the same way, and none of them live in the repo or in a
+ * .env file that has to be remembered at deploy time. */
+const FLW_PUBLIC_KEY = defineSecret("FLW_PUBLIC_KEY");
 
 const FLW_VERIFY_URL = "https://api.flutterwave.com/v3/transactions";
 const ORDERS = "orders";
@@ -120,7 +122,7 @@ function parseDate(value) {
 /* ---------------- 1. quote + open a pending order ---------------- */
 
 const payQuote = onRequest(
-  { region: "us-central1", cors: false, secrets: [FLW_SECRET_KEY] },
+  { region: "us-central1", cors: false, secrets: [FLW_PUBLIC_KEY] },
   async (req, res) => {
     if (!guard(req, res)) return;
 

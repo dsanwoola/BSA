@@ -100,12 +100,119 @@ See §5.
 - No test fixtures with real data — `reference/fixtures/` is git-ignored.
 - No `.env`, API keys, tokens, credentials, or private keys.
 - No `settings.local.json` (git-ignored; contains only the local auto-sync hook).
-- The app makes **zero network requests with user data** (verified: no `fetch`/`XHR`/CDN calls in `js/`). Statements are processed entirely in the browser.
+- **No statement content ever leaves the browser.** The app does make network calls, and this is what each one carries:
+  - `js/analytics.js` → `/api/analytics`: aggregate counters and bucketed metrics only (no narrations, balances, names or account numbers).
+  - `js/paywall.js` → `/api/pay/*`: the account holder type, the statement's **date range**, and a SHA-256 **fingerprint** of `period-from|period-to|txn-count`. The fingerprint is non-reversible and carries no statement content; it exists so one payment unlocks one statement.
+  - `checkout.flutterwave.com/v3.js` is loaded **only when the user clicks to pay**, never while a statement is being parsed.
+  Statements themselves are parsed and audited entirely in the browser.
 - The only bundled statement is the **synthetic demo** (`samples/sample_statement.csv` — “CHIOMA OBI / FIRST DEMO BANK”, fabricated).
-- **Firestore:** the Firebase project has no data in it yet (analytics collections are empty). If you deploy the Cloud Functions (see §2.5), ensure Firestore security rules are set to restrict write access to the `analytics` endpoint only (currently no rules are in place). See `firebase.json` for the allowed event types; treat the Firestore collections as internal and never expose them to the frontend for direct reads.
+- **Firestore:** `firestore.rules` now denies **all** client reads and writes. Every legitimate access goes through Cloud Functions on the Admin SDK, which bypasses rules. This matters most for the `orders` collection, which holds payment unlock tokens. Deploy the rules with `firebase deploy --only firestore:rules`.
 
 To re-verify at any time:
 ```
 git ls-files | grep -iE "user_statement|fixtures|\.env|secret|settings.local"   # expect: no output
 git ls-tree -r --name-only origin/main | grep -iE "user_statement|fixtures"      # expect: no output
 ```
+
+## 10. Payments — Flutterwave paywall
+
+The audit is free; the **report that proves it** is paid. After an audit runs,
+the reader sees the integrity verdict, the summary cards (including the refund
+figure) and a breakdown of *what kinds* of charge were flagged. Everything
+else — per-charge dates, narrations, arithmetic, CBN citations, the transaction
+ledger, the demand letter, CSV export and print — is behind the paywall.
+
+### Price
+
+| Statement holder | Per 6-month block |
+|---|---|
+| Individual | ₦3,000 |
+| Business / Government | ₦5,000 |
+
+A "6-month block" is **183 days**, not six calendar months. This matters: a
+statement running 5 Jan – 1 Jul touches seven calendar months but is under six
+months long, and bills as one block. Statements longer than a block bill one
+unit per block started (a 12-month individual statement is 2 × ₦3,000).
+
+Prices and the block rule live in one place — `js/pricing.js`, copied verbatim
+to `functions/pricing.js`. **Edit both, or the test suite fails.** That guard
+exists because a client that quotes one price while the server charges another
+is a bug that only shows up on a real customer's card.
+
+### How it is enforced
+
+1. `POST /api/pay/quote` — the browser sends the holder type, the statement's
+   date range, and a statement fingerprint. **The server computes the price**;
+   the client never states an amount. It opens a pending order and returns a
+   `tx_ref`, the amount, and the Flutterwave public key.
+2. The browser runs `FlutterwaveCheckout()` with that `tx_ref` and amount.
+3. `POST /api/pay/verify` — the server calls Flutterwave's verify endpoint with
+   the **secret** key and unlocks only if `status`, `tx_ref`, `currency` and
+   `amount` all match the order it opened. It then issues a random unlock token
+   (stored hashed, so a leaked backup cannot be replayed).
+4. `POST /api/pay/webhook` — the same fulfilment path, driven by Flutterwave and
+   authenticated by the `verif-hash` header, so a customer who closes the tab
+   mid-payment still gets what they paid for. Fulfilment is idempotent.
+5. `POST /api/pay/status` — exchanges a stored receipt for the unlock on a later
+   visit. An unlock is **bound to the statement it was bought for**: presenting a
+   valid receipt against a different statement does not unlock it.
+
+Locked report sections are **not rendered into the page at all** while locked —
+they are not rendered-then-hidden, because CSS hiding would put the whole
+report one DevTools click away.
+
+Flutterwave's `checkout.flutterwave.com/v3.js` is **lazy-loaded on click**, never
+with the page, so third-party JS is not present in the document while a bank
+statement is being parsed.
+
+### Known limit — read this before promising anything
+
+The audit runs on the reader's own machine, because their statement never
+leaves it. A developer can therefore still reach the findings by calling the
+engine from the browser console. Closing that hole completely would mean
+uploading statements to a server, which is the one thing this product promises
+never to do. **The gate is built to make paying the easy path and to stop casual
+sharing — not to defeat someone willing to reverse-engineer it.** The same
+tradeoff is recorded in `LAUNCH_MONETIZATION.md`.
+
+Relatedly, the statement's date range is supplied by the client, so a modified
+client could under-declare the period to buy fewer blocks. The floor is still
+one block, so the worst case is an underpayment, never a free report.
+
+### Configuration — required before payments work
+
+Nothing ships with keys. Set all three in Secret Manager, then deploy:
+
+```bash
+firebase functions:secrets:set FLW_PUBLIC_KEY
+firebase functions:secrets:set FLW_SECRET_KEY
+firebase functions:secrets:set FLW_WEBHOOK_HASH
+```
+
+`FLW_WEBHOOK_HASH` must match the secret hash set on the Flutterwave dashboard
+under **Settings → Webhooks**, where the webhook URL is:
+
+```
+https://checkam.ng/api/pay/webhook
+```
+
+Until `FLW_PUBLIC_KEY` is set, `/api/pay/quote` returns `503
+payments_unconfigured` and the unlock button shows "Payments are not switched
+on yet." **Do not deploy the paywall to production before the keys are set** —
+every report would be locked with no way to pay.
+
+Test with Flutterwave's sandbox keys first; the same code path serves both.
+
+### Firestore
+
+`firestore.rules` denies all client access. Every read and write goes through
+Cloud Functions on the Admin SDK, which bypasses rules. The `orders` collection
+holds unlock tokens — a client able to read it could unlock every report ever
+bought, so it must never be exposed, not even for reads.
+
+Deploy rules with:
+
+```bash
+firebase deploy --only firestore:rules
+```
+
