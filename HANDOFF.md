@@ -2,9 +2,9 @@
 
 ## Payment launch update — 27 August 2026
 
-This update supersedes the older deployment notes below. Hosting build **75** is
-deployed at `https://checkam.ng`; checkout is deliberately paused with
-`data-payments-live="false"` until the dashboard webhook cutover is complete.
+This update supersedes the older deployment notes below. Build **76** enables
+checkout at `https://checkam.ng` with `data-payments-live="true"` after the
+approved dashboard webhook cutover. Build 75 was deliberately paused.
 Firebase project `bank-statement-auditor` now has `payQuote`, `payVerify`,
 `payStatus`, `flwWebhook`, and `flwRouter` deployed in `us-central1` (Node 22).
 Analytics was left unchanged. All three `FLW_*` secrets are enabled at version 1.
@@ -15,17 +15,19 @@ The user approved sharing the Neighbours NG Technologies Nigeria Limited
 Flutterwave merchant (100819022), while preserving FoodCard notifications.
 Checkam's live secret key and webhook hash reuse FoodCard's deployed version 3;
 the public key came from the merchant's Live API keys page. No key was rotated.
-**The live Flutterwave dashboard webhook has NOT been changed yet.** Its current
-URL (also the rollback destination) is:
+**The live Flutterwave dashboard webhook was saved with the user's approval**
+on 27 August 2026 and verified to persist after a page reload. The original
+FoodCard URL (also the rollback destination) is:
 `https://europe-west1-foodcard-ng-dev.cloudfunctions.net/handleFlutterwaveWebhook`
-The proposed shared gateway is:
+The saved shared gateway is:
 `https://us-central1-bank-statement-auditor.cloudfunctions.net/flwRouter`
 The gateway authenticates the existing hash, handles Checkam references locally,
 and forwards other events to that fixed FoodCard endpoint with the original
 request bytes, hash, and optional signature. Non-200 downstream responses return
-503. FoodCard would depend on the gateway after cutover. Re-enter the EXISTING
-webhook hash when saving the dashboard form; its password input shows blank.
-Obtain action-time confirmation before submitting this external form.
+503. FoodCard now depends on the gateway. The EXISTING webhook hash was
+re-entered securely when saving; it was not rotated or printed. Existing JSON,
+retry, v3 and dashboard-resend preferences were retained. Obtain action-time
+confirmation before future changes to this external form.
 
 Build 75 includes these payment fixes:
 - Quote creates a random receipt before checkout and stores only its hash.
@@ -44,7 +46,7 @@ hidden-directory contents in deployment manifests. The corrected release has
 `functions/payments.js` were verified to return 404. Avoid rolling Hosting back
 to old releases containing those folders. Firebase cache files are local only.
 
-Verification: `node tests/run_tests.js` passes **388 tests**, including mocked
+Verification: `node tests/run_tests.js` passes **389 tests**, including mocked
 backend/browser recovery and webhook forwarding. Live non-financial probes
 confirmed: Flutterwave key authenticates; quote is NGN 3,000 with a live public
 key and no-store headers; unpaid receipt stays locked; wrong tokens, foreign
@@ -56,11 +58,10 @@ payment change). An earlier custom healthcheck event returned 401 because the
 deployed FoodCard mapper rejects unknown event names, not because of a bad hash.
 **No sandbox or live charge has been made; real payment/unlock is unverified.**
 
-Next: user must sign back into Flutterwave in Chrome (session expired). Confirm
-and save the shared gateway URL with the unchanged hash, verify persisted
-settings, then activate checkout and bump APP_BUILD/cache markers/tests to 76.
-Publish and verify the checkout UI, then have the user perform or explicitly
-authorize a real payment test. Do not claim go-live complete while paused.
+Next: have the user perform or explicitly authorize a real payment test and
+confirm report unlock plus receipt restoration. Existing build75 browser tabs
+must refresh to load build76 and enable the button. Do not describe a real
+charge or paid-report unlock as verified until that test has happened.
 
 **For:** Chineye / Hermes
 **Date:** 13 June 2026
