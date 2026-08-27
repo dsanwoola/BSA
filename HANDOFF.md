@@ -1,5 +1,22 @@
 # Bank Statement Auditor — Handoff
 
+## Word letter download — build 77
+
+Refund Demand Letter now downloads as `refund_demand_letter.docx` instead of
+plain text. The modal retains its editable preview and Copy to clipboard action.
+`js/word-export.js` generates a genuine Word package on-device using vendored
+docx 9.6.1 (`vendor/docx-9.6.1.js`, MIT license alongside it), loaded only when
+requested. It preserves preview edits and Unicode, formats findings as Word
+numbered paragraphs, and keeps the signature block together. No letter content
+is uploaded. Binary Blob downloads bypass the BOM used by CSV/text downloads.
+
+`node tests/run_tests.js` passes 400 tests. The actual generated sample opened
+successfully in Microsoft Word and was exported to PDF for visual inspection;
+the final one-page sample has no clipping or split signature. ZIP CRCs, XML,
+numbering, edited text, Unicode, page geometry, and CSV/BOM regression checks
+passed. LibreOffice was unavailable, so Microsoft Word was used for rendering.
+Build77 keeps live checkout enabled. Refresh existing tabs to load the update.
+
 ## Payment launch update — 27 August 2026
 
 This update supersedes the older deployment notes below. Build **76** enables

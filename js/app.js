@@ -6,7 +6,7 @@
 (function () {
   "use strict";
 
-  var APP_BUILD = 76; // shown in the header so stale cached code is obvious
+  var APP_BUILD = 77; // shown in the header so stale cached code is obvious
   window.BSA_BUILD = APP_BUILD;
   var ANALYTICS = window.BSA_ANALYTICS || { track: function () {}, flush: function () {}, fileType: function () { return "unknown"; } };
 
@@ -903,7 +903,19 @@
       setTimeout(function () { $("#btn-letter-copy").textContent = "Copy to clipboard"; }, 1500);
     });
     $("#btn-letter-download").addEventListener("click", function () {
-      download("refund_demand_letter.txt", $("#letter-text").value, "text/plain");
+      var btn = $("#btn-letter-download"), errorEl = $("#letter-download-error");
+      btn.disabled = true;
+      btn.textContent = "Preparing Word document…";
+      errorEl.hidden = true;
+      window.BSA_WORD_EXPORT.toBlob($("#letter-text").value).then(function (blob) {
+        download("refund_demand_letter.docx", blob);
+      }).catch(function () {
+        errorEl.textContent = "Could not create the Word document. Please try again, or copy the letter into Word.";
+        errorEl.hidden = false;
+      }).finally(function () {
+        btn.disabled = false;
+        btn.textContent = "Download Word (.docx)";
+      });
     });
 
     $("#btn-restart").addEventListener("click", function () {
@@ -960,7 +972,8 @@
   }
 
   function download(name, content, mime) {
-    var blob = new Blob(["﻿" + content], { type: mime + ";charset=utf-8" });
+    // Preserve binary downloads; the UTF-8 BOM is only for existing text exports.
+    var blob = content instanceof Blob ? content : new Blob(["﻿" + content], { type: mime + ";charset=utf-8" });
     var a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
     a.download = name;
