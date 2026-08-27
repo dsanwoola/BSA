@@ -32,12 +32,12 @@
     return '' +
       card("refund", "Refund you can claim", fmtN(s.refundDue), (s.counts.violation + aggViolations) + " proven violation(s) — every kobo backed by CBN arithmetic") +
       card("charges", "Total bank charges found", fmtN(s.totalCharges), s.chargeCount + " charge lines out of " + s.txnCount + " transactions") +
-      card("review", "Potential refund that needs your review", fmtN(s.underReview || 0), (s.counts.review || 0) + " charge line(s) the auditor refuses to guess about") +
+      card("review", "Potential refund — review", fmtN(s.underReview || 0), (s.counts.review || 0) + " charge line(s) the auditor refuses to guess about") +
       card("ok", "Verified compliant", String((s.counts.compliant || 0)), "charges proven within CBN caps");
 
     function card(kind, title, big, sub) {
-      return '<div class="sum-card sum-' + kind + '"><div class="sum-title">' + esc(title) + '</div>' +
-        '<div class="sum-big">' + esc(big) + '</div><div class="sum-sub">' + esc(sub) + '</div></div>';
+      return '<details class="sum-card sum-' + kind + '"><summary><span class="sum-title">' + esc(title) + '</span>' +
+        '<strong class="sum-big">' + esc(big) + '</strong></summary><div class="sum-sub">' + esc(sub) + '</div></details>';
     }
   }
 

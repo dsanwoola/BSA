@@ -1,5 +1,27 @@
 # Bank Statement Auditor — Handoff
 
+## Mobile compact UI — build 78
+
+The scan review is collapsed behind View scanned details, beside Run CBN audit
+on desktop and stacked at 56px tall on phones. Warnings, missing columns,
+account mismatches, excluded rows and incomplete reconciliation automatically
+expose review details; existing audit validation remains enforced. Invalid
+mapping clears stale checksum state and display.
+
+Long guidance is available through native details/summary controls across the
+account, upload, report, payment and letter screens. Summary amounts remain
+visible with tap-to-expand explanations. Prices, billing periods, receipt
+email and payment errors stay visible. Full analysis stays payment-gated;
+print expands report disclosures temporarily and restores their previous state.
+The Word download and live payment configuration are unchanged.
+
+Verified 417 automated tests, JavaScript syntax checks and git diff --check.
+Browser checks used responsive 320px and 390px widths plus a 1280px desktop:
+no page overflow, stacked/side-by-side scan actions, mapping error recovery,
+native disclosure keyboard activation, light/dark themes and locked report gate.
+No real payment was made. Deployment uses the existing main-branch GitHub
+Actions Firebase Hosting workflow. Refresh an existing tab to load build 78.
+
 ## Word letter download — build 77
 
 Refund Demand Letter now downloads as `refund_demand_letter.docx` instead of

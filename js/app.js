@@ -6,7 +6,7 @@
 (function () {
   "use strict";
 
-  var APP_BUILD = 77; // shown in the header so stale cached code is obvious
+  var APP_BUILD = 78; // shown in the header so stale cached code is obvious
   window.BSA_BUILD = APP_BUILD;
   var ANALYTICS = window.BSA_ANALYTICS || { track: function () {}, flush: function () {}, fileType: function () { return "unknown"; } };
 
@@ -358,6 +358,7 @@
     var rows = state.rows;
     var det = PARSER.detectColumns(rows);
     var auto = headerRowOverride === undefined || headerRowOverride === null;
+    if (auto) setScanDetails(false);
     var headerRow = auto ? (det ? det.headerRow : 0) : headerRowOverride;
     var roles = auto ? det : PARSER.detectColumnsAt(rows, headerRow);
 
@@ -387,8 +388,8 @@
       var opts = '<option value="">— not in this statement —</option>' + labels.map(function (lbl, ci) {
         return '<option value="' + ci + '"' + (roleMap[rf.key] === ci ? " selected" : "") + ">" + REPORT.esc(lbl) + "</option>";
       }).join("");
-      return '<div class="role-row"><label>' + rf.name + (rf.req ? " <em>required</em>" : "") + "</label>" +
-        '<select class="role-pick" data-role="' + rf.key + '">' + opts + "</select></div>";
+      return '<div class="role-row"><label for="map-role-' + rf.key + '">' + rf.name + (rf.req ? " <em>required</em>" : "") + "</label>" +
+        '<select id="map-role-' + rf.key + '" class="role-pick" data-role="' + rf.key + '">' + opts + "</select></div>";
     }).join("");
 
     // preview: the bank's header labels on top; the row immediately after
@@ -576,6 +577,24 @@
     });
   }
 
+  function setScanDetails(open) {
+    $("#scan-details").hidden = !open;
+    var toggle = $("#btn-scan-details");
+    toggle.setAttribute("aria-expanded", String(open));
+    toggle.textContent = open ? "Hide scanned details" : "View scanned details";
+  }
+
+  function updateScanSummary(level) {
+    var mismatch = $("#acct-hint").style.display !== "none";
+    var review = level !== "ok" || mismatch;
+    $("#scan-heading").textContent = review ? "Review scan" : "Scan complete";
+    var status = $("#scan-status");
+    status.className = "scan-status " + (level === "bad" ? "bad" : review ? "warn" : "ok");
+    status.textContent = level === "bad" ? "Correct column mapping." : review ? "Review required — check details." :
+      (state.txns || []).length + " transactions · Ready";
+    if (review) setScanDetails(true);
+  }
+
   function refreshMappingStats() {
     var diagBox = $("#diagnostic-box");
     if (diagBox) diagBox.style.display = state.rows ? "" : "none";
@@ -585,13 +604,16 @@
     var problemsEl = $("#mapping-problems");
     problemsEl.innerHTML = "";
     state.txns = null;
+    state.integrity = null; state.reconcile = null; state.lastBuilt = null;
+    $("#reconcile-box").style.display = "none";
+    $("#reconcile-box").innerHTML = "";
 
-    if (mr.dup) { stat.className = "map-stat bad"; stat.textContent = "Two roles point to the same column label — each column can only play one role."; btn.disabled = true; return; }
+    if (mr.dup) { stat.className = "map-stat bad"; stat.textContent = "Two roles point to the same column label — each column can only play one role."; btn.disabled = true; updateScanSummary("bad"); return; }
     var m = mr.map;
     if (m.date === undefined || m.narration === undefined || (m.debit === undefined && m.amount === undefined)) {
       stat.className = "map-stat bad";
       stat.textContent = "Required: a Date column, a Narration column, and a Debit (or signed Amount) column.";
-      btn.disabled = true; return;
+      btn.disabled = true; updateScanSummary("bad"); return;
     }
 
     var headerRow = +$("#mapping-table").dataset.headerRow;
@@ -611,7 +633,7 @@
       stat.textContent = "No transactions could be read with this mapping. The Date column contains: " +
         (samples.length ? samples.join("  ·  ") : "(only empty cells)") +
         " — if these are not dates, pick a different column for Date (or move the 'Transaction table starts at' row). If they ARE dates, this date format is not yet supported — please report it so it can be added.";
-      btn.disabled = true; return;
+      btn.disabled = true; updateScanSummary("bad"); return;
     }
 
     var ic = PARSER.integrityCheck(built.txns);
@@ -629,6 +651,7 @@
       else { msg += " Balance check FAILED (" + pct + "% consistent). The column mapping is probably wrong — fix it before auditing. Auditing a misread statement produces wrong results."; cls = "bad"; }
     } else if (ic.hasBalance) {
       msg += " Balance column found, but too few rows to fully verify the parse arithmetic.";
+      cls = "warn";
     } else {
       msg += " No balance column found, so the parse could not be independently verified — adding the Balance column is recommended.";
       cls = "warn";
@@ -665,6 +688,7 @@
       if (rec.anyFail) {
         if (rec.summaryBoundaryOnly && ic.hasBalance && ic.ratio >= 0.98) {
           msg += " The transaction rows, totals and closing balance reconcile; only the statement's opening/closing summary arithmetic differs, so this looks like a small inconsistency in the bank's own summary rather than a misread table.";
+          if (cls === "ok") cls = "warn";
         } else {
           msg += " The statement's own summary figures do not match the parsed rows — rows may be missing or misread (or the file may be missing pages). Fix this before trusting the audit.";
           if (cls === "ok") cls = "warn";
@@ -677,9 +701,13 @@
     stat.className = "map-stat " + cls;
     stat.textContent = msg;
     btn.disabled = (cls === "bad");
+    updateScanSummary(cls);
   }
 
   function wireMapping() {
+    $("#btn-scan-details").addEventListener("click", function () {
+      setScanDetails($("#scan-details").hidden);
+    });
     $("#btn-run-audit").addEventListener("click", function () {
       if (!state.txns || !state.txns.length) return;
       ANALYTICS.track("audit_started", { source: state.source || "unknown", accountType: state.ctx.accountType, holderType: state.ctx.holderType, txnCount: state.txns.length });
@@ -764,8 +792,8 @@
       banner.className = "integrity warn";
       banner.innerHTML = "⚠ <strong>Partial integrity:</strong> the running balance reconciled on " + Math.round(ic.ratio * 100) + "% of rows. Treat results as indicative and double-check flagged items against the original statement.";
     } else if (ic && ic.hasBalance) {
-      banner.className = "integrity ok";
-      banner.innerHTML = "✓ Statement parsed; too few rows for a full balance reconciliation.";
+      banner.className = "integrity warn";
+      banner.innerHTML = "⚠ Statement parsed; too few rows for a full balance reconciliation.";
     } else {
       banner.className = "integrity warn";
       banner.innerHTML = "⚠ <strong>Unverified parse:</strong> this statement has no balance column, so the read could not be independently confirmed. Double-check flagged items against the original statement.";
@@ -774,6 +802,14 @@
       banner.innerHTML += " The parsed rows also reconcile exactly with the statement's own summary totals.";
       if (banner.className === "integrity warn" && (!ic || !ic.hasBalance)) banner.className = "integrity ok";
     }
+    if ((state.reconcile && state.reconcile.anyFail) || (state.problems && state.problems.length)) {
+      banner.className = "integrity warn";
+      banner.innerHTML += " Some summary checks or excluded rows need review. Check the scanned details against your statement.";
+    }
+    var needsReview = banner.classList.contains("warn");
+    $("#report-read-status").textContent = needsReview ? "Read confidence needs review" : "Read checks complete";
+    $("#report-read-status").className = "scan-status " + (needsReview ? "warn" : "ok");
+    $("#report-read-details").open = needsReview;
   }
 
   /* ---------------- paywall gate ----------------
@@ -783,6 +819,8 @@
     var audit = state.audit;
     if (!audit) return;
     var locked = !(PAYWALL && PAYWALL.isUnlocked(state.fingerprint));
+    $("#paid-analysis").hidden = locked;
+    if (locked) $("#paid-analysis").open = false;
     var txns = state.auditTxns || [];
 
     var tabs = $(".tabs"), chips = $(".filter-chips"), paneAll = $("#pane-all");
@@ -806,7 +844,7 @@
       return;
     }
 
-    $("#monetization-panel").innerHTML = '<div class="unlock-receipt no-print">✓ Full report unlocked for this statement.</div>';
+    $("#monetization-panel").innerHTML = '<div class="unlock-receipt no-print">✓ Full report unlocked</div>';
     $("#aggregates").innerHTML = REPORT.renderAggregates(audit);
     renderFindingsPane();
     $("#all-txns").innerHTML = REPORT.renderAllTxns(txns, audit, RULES.typeNames);
@@ -963,7 +1001,7 @@
     if (e.key !== "Tab") return;
     var modal = $("#letter-modal");
     if (!modal.classList.contains("open")) return;
-    var focusables = Array.prototype.slice.call(modal.querySelectorAll("textarea, button, [href], input, select, [tabindex]:not([tabindex='-1'])"))
+    var focusables = Array.prototype.slice.call(modal.querySelectorAll("textarea, button, summary, [href], input, select, [tabindex]:not([tabindex='-1'])"))
       .filter(function (el) { return !el.disabled && el.offsetParent !== null; });
     if (!focusables.length) return;
     var first = focusables[0], last = focusables[focusables.length - 1];
@@ -994,9 +1032,16 @@
     console.log("Bank Charge Auditor — build " + APP_BUILD);
     wireNavigation(); wireTheme(); wireContext(); wireUpload(); wireMapping(); wireResults();
     gotoStep("step-context");
-    // open every finding before printing so the full evidence appears on paper
+    // Print all available evidence, then restore the reader's disclosure choices.
+    var printDetails = null;
     window.addEventListener("beforeprint", function () {
-      $all("details.finding").forEach(function (d) { d.setAttribute("open", ""); });
+      if (printDetails) return;
+      printDetails = $all("#report-root details, footer details").map(function (d) { return { node: d, open: d.open }; });
+      printDetails.forEach(function (item) { item.node.open = true; });
+    });
+    window.addEventListener("afterprint", function () {
+      (printDetails || []).forEach(function (item) { item.node.open = item.open; });
+      printDetails = null;
     });
   });
 })();

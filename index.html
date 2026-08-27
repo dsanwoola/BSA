@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Checkam — Check Your Bank Statement Privately</title>
 <meta name="description" content="Check your Nigerian bank statement for charges worth reviewing. Checkam works privately in your browser—your statement is never uploaded or stored.">
-<link rel="stylesheet" href="css/app.css?v=77">
+<link rel="stylesheet" href="css/app.css?v=78">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Cpath fill='%232ee59d' d='M24 2 6 10v12c0 11 7.6 21.4 18 24 10.4-2.6 18-13 18-24V10L24 2z'/%3E%3Ctext x='24' y='32' font-size='22' font-weight='bold' text-anchor='middle' fill='%230b1210'%3E₦%3C/text%3E%3C/svg%3E">
 <script>
   (function () {
@@ -52,9 +52,9 @@
     <div class="panel">
       <div class="launch-hero" id="landing-hero">
         <div class="hero-copy">
-          <span class="eyebrow">Check your statement. Question the charges.</span>
-          <h2>See what your bank may have overcharged.</h2>
-          <p class="lead">Open your statement privately in your browser. Checkam flags charges worth reviewing against documented CBN rules—without uploading your file.</p>
+          <span class="eyebrow">Private. Clear. Simple.</span>
+          <h2>Check your bank charges.</h2>
+          <details class="info-disclosure" ><summary>About Checkam</summary><div class="disclosure-body"><p class="lead">Open your statement privately in your browser. Checkam flags charges worth reviewing against documented CBN rules—without uploading your file.</p></div></details>
           <div class="hero-actions">
             <button class="btn btn-primary" id="btn-hero-start" type="button">Check my statement →</button>
             <button class="btn btn-ghost" id="btn-hero-demo" type="button">Try a sample</button>
@@ -65,7 +65,7 @@
             <span>✓ Clear findings</span>
           </div>
         </div>
-        <div class="hero-card minimal-result" aria-label="How Checkam works">
+        <details class="info-disclosure" ><summary>How it works</summary><div class="disclosure-body"><div class="hero-card minimal-result" aria-label="How Checkam works">
           <span class="result-label">Simple. Private. Useful.</span>
           <ol class="minimal-steps">
             <li><span>1</span><div><strong>Open</strong><small>Select a statement on your device.</small></div></li>
@@ -73,47 +73,47 @@
             <li><span>3</span><div><strong>Understand</strong><small>See what is proven and what needs review.</small></div></li>
           </ol>
           <p class="local-note">Your statement is never sent, stored or shared.</p>
-        </div>
+        </div></div></details>
       </div>
 
       <div class="workflow-details" id="workflow-details" aria-hidden="true">
-      <h2 class="context-title" tabindex="-1">Tell us about the account</h2>
-      <p class="lead context-lead">This helps Checkam apply the right rules. If you are unsure, your statement usually shows the account type near the account number.</p>
+      <h2 class="context-title" tabindex="-1">Your account</h2>
+      <details class="info-disclosure" ><summary>Account help</summary><div class="disclosure-body"><p class="lead context-lead">This helps Checkam apply the right rules. If you are unsure, your statement usually shows the account type near the account number.</p><ul><li>Savings: no maintenance fee allowed.</li><li>Current: CAMF capped at ₦1 per ₦1,000.</li><li>Domiciliary: foreign currency account.</li><li>Business and government: corporate cash-handling thresholds.</li></ul></div></details>
 
       <div class="choice-group">
         <div class="lbl">Account type</div>
         <div class="chips">
-          <label><input type="radio" name="acctType" value="savings"> Savings<small>No maintenance fee allowed at all</small></label>
-          <label><input type="radio" name="acctType" value="current" checked> Current<small>CAMF allowed: max ₦1 per ₦1,000</small></label>
-          <label><input type="radio" name="acctType" value="domiciliary"> Domiciliary<small>Foreign currency account</small></label>
+          <label><input type="radio" name="acctType" value="savings"> Savings</label>
+          <label><input type="radio" name="acctType" value="current" checked> Current</label>
+          <label><input type="radio" name="acctType" value="domiciliary"> Domiciliary</label>
         </div>
       </div>
 
       <div class="choice-group">
         <div class="lbl">Bank / tariff profile</div>
-        <p class="choice-help">Pick the bank if you know it. BSA still applies the CBN Guide first, then compares against that bank's captured online tariff presentation where available.</p>
+        <details class="info-disclosure" ><summary>Bank profile help</summary><div class="disclosure-body"><p class="choice-help">Pick the bank if you know it. BSA still applies the CBN Guide first, then compares against that bank's captured online tariff presentation where available.</p></div></details>
         <div class="bank-picker-row">
           <select id="bank-profile" aria-label="Bank tariff profile">
             <option value="other">Other / not sure — use CBN baseline</option>
           </select>
-          <small id="bank-profile-note">CBN baseline only until a bank is selected.</small>
+          <details class="info-disclosure" ><summary>Profile sources</summary><div class="disclosure-body"><small id="bank-profile-note">CBN baseline only until a bank is selected.</small></div></details>
         </div>
       </div>
 
       <div class="choice-group">
         <div class="lbl">Account holder</div>
         <div class="chips">
-          <label><input type="radio" name="holderType" value="individual" checked> Individual<small>Personal account</small></label>
-          <label><input type="radio" name="holderType" value="business"> Business / Corporate<small>Higher cash-handling thresholds</small></label>
-          <label><input type="radio" name="holderType" value="government"> Government / MDA<small>Treated as corporate by CBN</small></label>
+          <label><input type="radio" name="holderType" value="individual" checked> Individual</label>
+          <label><input type="radio" name="holderType" value="business"> Business / Corporate</label>
+          <label><input type="radio" name="holderType" value="government"> Government / MDA</label>
         </div>
       </div>
 
       <div class="toggle-row">
         <input type="checkbox" id="salaryAccount">
         <div class="t-txt">
-          <strong>This is a salary account</strong>
-          <p>Salary accounts are exempt from the ₦50 electronic transfer levy/stamp duty — any levy charged becomes refundable.</p>
+          <label for="salaryAccount"><strong>Salary account</strong></label>
+          <details class="info-disclosure" ><summary>Salary account rules</summary><div class="disclosure-body"><p>Salary accounts are exempt from the ₦50 electronic transfer levy/stamp duty — any levy charged becomes refundable.</p></div></details>
         </div>
       </div>
 
@@ -127,14 +127,14 @@
   <!-- ================= STEP 2: UPLOAD ================= -->
   <section class="step-section" id="step-upload">
     <div class="panel">
-      <h2>Open your bank statement</h2>
-      <p class="lead">Choose a CSV, Excel or text-based PDF statement. CSV and Excel usually give the cleanest result.</p>
+      <h2>Open your statement</h2>
+      <details class="info-disclosure" ><summary>Supported statements</summary><div class="disclosure-body"><p class="lead">Choose a CSV, Excel or text-based PDF statement. CSV and Excel usually give the cleanest result.</p></div></details>
 
 
       <div class="dropzone" id="dropzone" role="button" tabindex="0" aria-label="Select statement file">
         <div class="dz-icon">📄</div>
-        <h3>Select or drop your statement</h3>
-        <p>The file is scanned entirely inside your browser. It is never sent, stored or shared — you can even use this app offline.</p>
+        <h3>Choose statement</h3>
+        <span class="muted">Never uploaded</span>
         <div class="fmt-tags"><span>CSV</span><span>XLSX</span><span>XLS</span><span>PDF</span></div>
       </div>
       <input type="file" id="file-input" accept=".csv,.txt,.xlsx,.xls,.pdf" hidden>
@@ -143,7 +143,7 @@
 
       <div class="btn-row">
         <button class="btn btn-ghost" id="btn-upload-back">← Back</button>
-        <button class="btn btn-ghost" id="btn-demo">▶ Try the demo statement</button>
+        <button class="btn btn-ghost" id="btn-demo">Try a sample</button>
       </div>
     </div>
   </section>
@@ -151,7 +151,14 @@
   <!-- ================= STEP 3: MAPPING ================= -->
   <section class="step-section" id="step-mapping">
     <div class="panel">
-      <h2>Confirm the statement was read correctly</h2>
+      <h2 id="scan-heading">Scan complete</h2>
+      <p id="scan-status" class="scan-status" role="status" aria-live="polite"></p>
+      <div class="scan-actions">
+        <button class="btn btn-ghost" id="btn-scan-details" type="button" aria-expanded="false" aria-controls="scan-details">View scanned details</button>
+        <button class="btn btn-primary" id="btn-run-audit" type="button" aria-describedby="scan-status">Run CBN audit</button>
+      </div>
+      <div id="scan-details" hidden>
+      <h3>Review scanned statement</h3>
       <p class="lead" id="map-note"></p>
 
       <div class="hint-box" id="acct-hint" style="display:none"></div>
@@ -164,15 +171,13 @@
       <div class="meta-card" id="reconcile-box" style="display:none"></div>
       <div id="mapping-problems"></div>
       <div class="privacy-diagnostic" id="diagnostic-box" style="display:none">
-        <strong>Help improve parser support without sharing your statement.</strong>
+        <details class="info-disclosure" ><summary>Parser support</summary><div class="disclosure-body"><strong>Help improve parser support without sharing your statement.</strong>
         <p>If this layout did not parse correctly, download an anonymized diagnostic file. It contains only table structure, column labels, row shapes, and checksum status — no names, account numbers, narrations, amounts, or balances.</p>
-        <button class="btn btn-ghost btn-small" id="btn-download-diagnostic" type="button">Download anonymized parser diagnostic</button>
+        <button class="btn btn-ghost btn-small" id="btn-download-diagnostic" type="button">Download anonymized parser diagnostic</button></div></details>
       </div>
 
-      <div class="btn-row">
-        <button class="btn btn-ghost" id="btn-mapping-back">← Back</button>
-        <button class="btn btn-primary" id="btn-run-audit">Run the CBN audit →</button>
       </div>
+      <div class="btn-row"><button class="btn btn-ghost" id="btn-mapping-back">← Back</button></div>
     </div>
   </section>
 
@@ -180,16 +185,18 @@
   <section class="step-section" id="step-results">
     <div class="panel" id="report-root">
       <h2>Audit report</h2>
-      <p class="lead">Every verdict below carries its arithmetic and the exact CBN provision it rests on. Where the statement alone cannot prove a charge right or wrong, the auditor says so instead of guessing.</p>
+      <details class="info-disclosure" ><summary>How checks work</summary><div class="disclosure-body"><p class="lead">Every verdict below carries its arithmetic and the exact CBN provision it rests on. Where the statement alone cannot prove a charge right or wrong, the auditor says so instead of guessing.</p></div></details>
 
-      <div id="integrity-banner" class="integrity"></div>
+      <p id="report-read-status" class="scan-status" role="status"></p>
+      <details class="info-disclosure" id="report-read-details"><summary>Read confidence</summary><div id="integrity-banner" class="integrity"></div></details>
       <div class="sum-grid" id="summary-cards"></div>
-      <div id="report-meta"></div>
+      <details class="info-disclosure" ><summary>Statement details</summary><div class="disclosure-body"><div id="report-meta"></div></div></details>
       <div id="monetization-panel"></div>
 
-      <h3 class="sec">Smart cross-checks</h3>
+      <details class="info-disclosure" id="paid-analysis"><summary>View full analysis</summary><div class="disclosure-body">
+      <details class="info-disclosure"><summary>View cross-checks</summary>
       <p class="sec-sub">Rules that cannot be judged one charge at a time — recomputed across the whole statement: the ₦1/mille maintenance cap from your actual turnover, levy counts against qualifying transfers, monthly ATM allowances and quarterly card fees.</p>
-      <div id="aggregates"></div>
+      <div id="aggregates"></div></details>
 
       <div class="tabs">
         <button class="tab-btn on" data-tab="findings">Charge findings</button>
@@ -208,15 +215,16 @@
       </div>
 
       <div id="pane-all" style="display:none">
-        <p class="muted" style="font-size:13px">Every transaction the auditor read. If a charge was missed (banks invent creative narrations), reclassify it here and the audit recomputes instantly.</p>
+        <details class="info-disclosure" ><summary>Transaction help</summary><div class="disclosure-body"><p class="muted" style="font-size:13px">Every transaction the auditor read. If a charge was missed (banks invent creative narrations), reclassify it here and the audit recomputes instantly.</p></div></details>
         <div class="map-scroll" id="all-txns"></div>
       </div>
 
-      <div class="btn-row">
+      </div></details>
+      <div class="btn-row report-actions">
         <button class="btn btn-ghost" id="btn-results-back">← Back</button>
-        <button class="btn btn-primary" id="btn-letter">📨 Generate refund demand letter</button>
-        <button class="btn btn-ghost" id="btn-export-csv">⬇ Export findings (CSV)</button>
-        <button class="btn btn-ghost" id="btn-print">🖨 Print / save report as PDF</button>
+        <button class="btn btn-primary" id="btn-letter">Refund demand letter</button>
+        <button class="btn btn-ghost" id="btn-export-csv">Export findings CSV</button>
+        <button class="btn btn-ghost" id="btn-print">Print / save PDF</button>
         <button class="btn btn-ghost" id="btn-restart">Audit another statement</button>
       </div>
     </div>
@@ -241,7 +249,7 @@
       <div class="scan-title" id="scan-title">Scanning your statement</div>
       <div class="scan-sub" id="scan-sub">Reading every transaction<span class="scan-dots"><i>.</i><i>.</i><i>.</i></span></div>
       <div class="scan-bar"><div class="scan-bar-fill" id="scan-bar-fill"></div></div>
-      <div class="scan-note">🔒 Everything happens on your device — nothing is uploaded.</div>
+      <div class="scan-note">🔒 Private on your device</div>
     </div>
   </div>
 
@@ -252,7 +260,7 @@
       <p class="muted" id="pdf-password-msg">This PDF is password-protected. Enter the statement password to unlock it locally on this device.</p>
       <label class="password-label" for="pdf-password-input">PDF password</label>
       <input id="pdf-password-input" class="password-input" type="password" autocomplete="off" inputmode="text" placeholder="Enter statement password">
-      <p class="muted password-note">The password is used only in your browser to open this statement. It is not uploaded, stored, logged, or sent anywhere.</p>
+      <details class="info-disclosure" ><summary>Password privacy</summary><div class="disclosure-body"><p class="muted password-note">The password is used only in your browser to open this statement. It is not uploaded, stored, logged, or sent anywhere.</p></div></details>
       <div class="btn-row">
         <button class="btn btn-primary" id="btn-pdf-password-unlock" type="button">Unlock PDF</button>
         <button class="btn btn-ghost" id="btn-pdf-password-cancel" type="button">Cancel</button>
@@ -263,9 +271,9 @@
   <!-- account type correction modal -->
   <div class="modal" id="acct-correction-modal" role="dialog" aria-modal="true" aria-label="Account type correction">
     <div class="modal-box">
-      <h3>⚠️ Account Type Mismatch Detected</h3>
+      <h3>⚠️ Account type mismatch</h3>
       <p class="muted" id="acct-correction-msg"></p>
-      <p style="margin-top: 16px; color: var(--txt-dim); font-size: 13px;">Account type affects which charges are flagged as violations (e.g., maintenance fees are illegal on Savings accounts but permitted on Current accounts).</p>
+      <details class="info-disclosure" ><summary>Why this matters</summary><div class="disclosure-body"><p style="margin-top: 16px; color: var(--txt-dim); font-size: 13px;">Account type affects which charges are flagged as violations (e.g., maintenance fees are illegal on Savings accounts but permitted on Current accounts).</p></div></details>
       <div class="btn-row">
         <button class="btn btn-ghost" id="btn-acct-keep">Keep my selection</button>
         <button class="btn btn-primary" id="btn-acct-correct">Use detected type</button>
@@ -277,8 +285,8 @@
   <div class="modal" id="letter-modal" role="dialog" aria-modal="true" aria-label="Refund demand letter">
     <div class="modal-box">
       <h3>Refund demand letter</h3>
-      <p class="muted">Pre-filled from your audit findings with the exact CBN citations. Fill in the bracketed details, print it on paper or send by email to your branch. If the bank does not resolve it within 14 days, escalate to the CBN Consumer Protection Department — <strong>cpd@cbn.gov.ng</strong>.</p>
-      <textarea id="letter-text" spellcheck="false"></textarea>
+      <details class="info-disclosure" ><summary>Using your letter</summary><div class="disclosure-body"><p class="muted">Pre-filled from your audit findings with the exact CBN citations. Fill in the bracketed details, print it on paper or send by email to your branch. If the bank does not resolve it within 14 days, escalate to the CBN Consumer Protection Department — <strong>cpd@cbn.gov.ng</strong>.</p></div></details>
+      <textarea id="letter-text" aria-label="Edit demand letter" spellcheck="false"></textarea>
       <div class="btn-row">
         <button class="btn btn-primary" id="btn-letter-copy">Copy to clipboard</button>
         <button class="btn btn-ghost" id="btn-letter-download">Download Word (.docx)</button>
@@ -289,28 +297,28 @@
   </div>
 
   <footer>
-    <p><strong>Checkam</strong> checks selected charges against documented CBN rules and fee guidance. A flagged transaction is not automatically an unlawful charge; confirm findings with your bank and the cited source.</p>
+    <details class="info-disclosure" ><summary>Privacy & limitations</summary><div class="disclosure-body"><p><strong>Checkam</strong> checks selected charges against documented CBN rules and fee guidance. A flagged transaction is not automatically an unlawful charge; confirm findings with your bank and the cited source.</p>
     <p class="no-print">Independent informational tool—not a bank, financial adviser or law firm. Results do not guarantee errors, refunds or recoveries. Your statement is analysed on your device and is not uploaded or stored.</p>
-    <p class="company-mark no-print">A product of Neighbours NG Technologies Ltd.</p>
+    <p class="company-mark no-print">A product of Neighbours NG Technologies Ltd.</p></div></details>
   </footer>
 </div>
 
 <script src="vendor/xlsx.full.min.js"></script>
 <script src="vendor/pdf.min.js"></script>
 <script src="vendor/pdf.worker.min.js"></script>
-<script src="js/rules.js?v=77"></script>
-<script src="js/bank-profiles.js?v=77"></script>
-<script src="js/patterns.js?v=77"></script>
-<script src="js/engine.js?v=77"></script>
-<script src="js/parser.js?v=77"></script>
-<script src="js/report.js?v=77"></script>
-<script src="js/account-detector.js?v=77"></script>
-<script src="js/account-detector-integration.js?v=77"></script>
-<script src="js/analytics.js?v=77"></script>
-<script src="js/analytics-enhanced.js?v=77"></script>
-<script src="js/pricing.js?v=77"></script>
-<script src="js/paywall.js?v=77"></script>
-<script src="js/word-export.js?v=77"></script>
-<script src="js/app.js?v=77"></script>
+<script src="js/rules.js?v=78"></script>
+<script src="js/bank-profiles.js?v=78"></script>
+<script src="js/patterns.js?v=78"></script>
+<script src="js/engine.js?v=78"></script>
+<script src="js/parser.js?v=78"></script>
+<script src="js/report.js?v=78"></script>
+<script src="js/account-detector.js?v=78"></script>
+<script src="js/account-detector-integration.js?v=78"></script>
+<script src="js/analytics.js?v=78"></script>
+<script src="js/analytics-enhanced.js?v=78"></script>
+<script src="js/pricing.js?v=78"></script>
+<script src="js/paywall.js?v=78"></script>
+<script src="js/word-export.js?v=78"></script>
+<script src="js/app.js?v=78"></script>
 </body>
 </html>

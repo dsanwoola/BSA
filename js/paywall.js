@@ -213,28 +213,16 @@
     return '<section class="paywall no-print" aria-labelledby="paywall-title">' +
       '<div class="paywall-head">' +
         '<span class="eyebrow">🔒 Full report locked</span>' +
-        '<h3 id="paywall-title">' + (proven > 0
-          ? "Unlock the evidence behind " + fmtN(proven)
-          : "Unlock the full charge-by-charge report") + "</h3>" +
+        '<h3 id="paywall-title">Unlock full report</h3>' +
+        '<details class="info-disclosure"><summary>Why unlock?</summary>' +
         '<p>' + (proven > 0
           ? "Checkam found " + fmtN(proven) + " in charges it can prove breach CBN rules" +
             (review > 0 ? ", and a further " + fmtN(review) + " that needs review" : "") + "."
           : "Checkam has read and reconciled your statement." ) +
-          " The full report names every charge, shows the arithmetic, and cites the rule it breaks — that is what you need to claim it back.</p>" +
+          " The full report names every charge, shows the arithmetic, and cites the rule it breaks — that is what you need to claim it back.</p></details>" +
       "</div>" +
 
       '<div class="paywall-grid">' +
-        '<div class="paywall-get">' +
-          "<h4>What unlocking gives you</h4>" +
-          "<ul>" +
-            "<li>Every flagged charge with its date, narration and amount</li>" +
-            "<li>The arithmetic proving each excess, and the CBN provision breached</li>" +
-            "<li>The full transaction ledger, with reclassification</li>" +
-            "<li>A refund demand letter addressed to your bank</li>" +
-            "<li>CSV export and printable PDF of the whole report</li>" +
-          "</ul>" +
-        "</div>" +
-
         '<div class="paywall-buy">' +
           '<div class="paywall-price">' + esc(priceLine) + "</div>" +
           '<div class="paywall-terms">' +
@@ -242,20 +230,30 @@
             "<div>" + esc(periodLabel) + "</div>" +
             "<div>" + esc(blockLine) + "</div>" +
           "</div>" +
-          '<label for="payment-email">Email for your payment receipt</label>' +
+          '<label for="payment-email">Receipt email</label>' +
           '<input id="payment-email" type="email" autocomplete="email" required placeholder="you@example.com">' +
           '<button class="btn btn-primary paywall-cta" id="btn-unlock-report" type="button"' + (paymentsLive() ? "" : " disabled") + '>Unlock full report — ' + esc(priceLine) + "</button>" +
           (paymentsLive() ? "" : '<p class="paywall-note" role="status">Payments are being activated. Please check back shortly; no payment will be taken.</p>') +
-          '<p class="paywall-note">One payment unlocks this statement. Paid securely through Flutterwave — card, bank transfer or USSD.</p>' +
-          '<p class="paywall-note privacy-note">🔒 Your statement stays in this browser. Checkam receives the holder type, date range and statement fingerprint; Flutterwave receives your email and payment details. Keep this browser’s site data to restore your receipt.</p>' +
+          '<details class="info-disclosure"><summary>Payment &amp; privacy</summary><p class="paywall-note">One payment unlocks this statement. Paid securely through Flutterwave — card, bank transfer or USSD.</p>' +
+          '<p class="paywall-note privacy-note">🔒 Your statement stays in this browser. Checkam receives the holder type, date range and statement fingerprint; Flutterwave receives your email and payment details. Keep this browser’s site data to restore your receipt.</p></details>' +
           '<p class="paywall-error" id="paywall-error" role="alert" hidden></p>' +
         "</div>" +
+        '<details class="paywall-get info-disclosure"><summary>What’s included</summary>' +
+
+          "<ul>" +
+            "<li>Every flagged charge with its date, narration and amount</li>" +
+            "<li>The arithmetic proving each excess, and the CBN provision breached</li>" +
+            "<li>The full transaction ledger, with reclassification</li>" +
+            "<li>A refund demand letter addressed to your bank</li>" +
+            "<li>CSV export and printable PDF of the whole report</li>" +
+          "</ul>" +
+        "</details>" +
+
       "</div>" +
 
-      '<div class="paywall-preview">' +
-        "<h4>What was found in your statement</h4>" +
+      '<details class="paywall-preview info-disclosure"><summary>View charge preview</summary>' +
         renderTeaser(audit) +
-      "</div>" +
+      "</details>" +
       "</section>";
   }
 
