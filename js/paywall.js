@@ -42,8 +42,13 @@
 
   /* current unlock state, keyed by statement fingerprint */
   var unlocked = {};
-  var lastQuote = null;
   var onUnlockCallback = null;
+
+  // Operational rollout gate: do not accept money during backend/webhook setup.
+  function paymentsLive() {
+    return typeof document !== "undefined" && document.documentElement &&
+      document.documentElement.getAttribute("data-payments-live") === "true";
+  }
 
   function esc(s) { return REPORT() ? REPORT().esc(s) : String(s == null ? "" : s); }
   function fmtN(n) { return REPORT() ? REPORT().fmtN(n) : String(n); }
@@ -60,12 +65,13 @@
     catch (e) { return {}; }
   }
 
-  function saveReceipt(fp, txRef, token) {
-    try {
-      var all = readReceipts();
-      all[fp] = { txRef: txRef, token: token, at: Date.now() };
-      localStorage.setItem(STORE_KEY, JSON.stringify(all));
-    } catch (e) { /* private-mode browsers simply lose the receipt on reload */ }
+  function saveReceipt(fp, receipt) {
+    var all = readReceipts();
+    all[fp] = receipt;
+    localStorage.setItem(STORE_KEY, JSON.stringify(all));
+    if (!readReceipts()[fp] || readReceipts()[fp].token !== receipt.token) {
+      throw new Error("Allow browser storage before paying so your receipt can be restored.");
+    }
   }
 
   /* ---------------- statement fingerprint ----------------
@@ -120,7 +126,15 @@
   function restore(fp) {
     var rec = readReceipts()[fp];
     if (!rec || !rec.txRef || !rec.token) return Promise.resolve(false);
-    return post(API.status, { txRef: rec.txRef, token: rec.token, fingerprint: fp })
+    var payload = { txRef: rec.txRef, token: rec.token, fingerprint: fp };
+    return post(API.status, payload)
+      .then(function (r) {
+        if (r.status === 200 && r.body && !r.body.paid && rec.transactionId) {
+          payload.transactionId = rec.transactionId;
+          return post(API.verify, payload);
+        }
+        return r;
+      })
       .then(function (r) {
         var ok = r.status === 200 && r.body && r.body.paid === true;
         if (ok) { unlocked[fp] = true; track("unlock_restored", {}); }
@@ -228,9 +242,12 @@
             "<div>" + esc(periodLabel) + "</div>" +
             "<div>" + esc(blockLine) + "</div>" +
           "</div>" +
-          '<button class="btn btn-primary paywall-cta" id="btn-unlock-report" type="button">Unlock full report — ' + esc(priceLine) + "</button>" +
+          '<label for="payment-email">Email for your payment receipt</label>' +
+          '<input id="payment-email" type="email" autocomplete="email" required placeholder="you@example.com">' +
+          '<button class="btn btn-primary paywall-cta" id="btn-unlock-report" type="button"' + (paymentsLive() ? "" : " disabled") + '>Unlock full report — ' + esc(priceLine) + "</button>" +
+          (paymentsLive() ? "" : '<p class="paywall-note" role="status">Payments are being activated. Please check back shortly; no payment will be taken.</p>') +
           '<p class="paywall-note">One payment unlocks this statement. Paid securely through Flutterwave — card, bank transfer or USSD.</p>' +
-          '<p class="paywall-note privacy-note">🔒 Your statement stays in this browser. Only the amount and the statement’s date range are sent to take payment.</p>' +
+          '<p class="paywall-note privacy-note">🔒 Your statement stays in this browser. Checkam receives the holder type, date range and statement fingerprint; Flutterwave receives your email and payment details. Keep this browser’s site data to restore your receipt.</p>' +
           '<p class="paywall-error" id="paywall-error" role="alert" hidden></p>' +
         "</div>" +
       "</div>" +
@@ -280,7 +297,20 @@
   }
 
   function startCheckout(audit, ctx, fp) {
+    if (!paymentsLive()) { showError("Payments are being activated. Please check back shortly."); return; }
     var btn = document.getElementById("btn-unlock-report");
+    var receipt = readReceipts()[fp];
+    // A retry must confirm the existing payment, never start another charge.
+    if (receipt && receipt.transactionId) {
+      confirmPayment(receipt.txRef, receipt.transactionId, audit, ctx, fp);
+      return;
+    }
+    var emailInput = document.getElementById("payment-email");
+    if (!emailInput || !emailInput.checkValidity()) {
+      if (emailInput) emailInput.reportValidity();
+      return;
+    }
+    var email = emailInput.value.trim();
     var period = (audit.summary && audit.summary.period) || {};
     var errEl = document.getElementById("paywall-error");
     if (errEl) errEl.hidden = true;
@@ -288,22 +318,36 @@
 
     track("pay_quote_requested", { holderType: ctx.holderType });
 
-    loadFlutterwave().then(function () {
+    restore(fp).then(function (paid) {
+      if (paid) {
+        if (onUnlockCallback) onUnlockCallback();
+        return null;
+      }
+      // Reopening a cancelled checkout reuses the same order and receipt.
+      if (receipt && receipt.quote && receipt.token) {
+        return { status: 200, body: receipt.quote };
+      }
       return post(API.quote, {
-      holderType: ctx.holderType,
-      from: period.from ? new Date(period.from).toISOString() : null,
-      to: period.to ? new Date(period.to).toISOString() : null,
-      fingerprint: fp
+        holderType: ctx.holderType,
+        from: period.from ? new Date(period.from).toISOString() : null,
+        to: period.to ? new Date(period.to).toISOString() : null,
+        fingerprint: fp
       });
     }).then(function (r) {
+      if (!r) return;
       if (r.status !== 200 || !r.body || !r.body.ok) {
         var reason = r.body && r.body.error === "payments_unconfigured"
           ? "Payments are not switched on yet. Please try again shortly."
           : "Could not start checkout. Please check your connection and try again.";
         throw new Error(reason);
       }
-      lastQuote = r.body;
+      if (!receipt || !receipt.quote) {
+        receipt = { txRef: r.body.txRef, token: r.body.token, quote: r.body, at: Date.now() };
+        // Refuse to open checkout if recovery cannot be saved first.
+        saveReceipt(fp, receipt);
+      }
 
+      return loadFlutterwave().then(function () {
       track("pay_checkout_opened", { amount: r.body.amount, blocks: r.body.blocks, holderType: r.body.holderType });
 
       global.FlutterwaveCheckout({
@@ -312,7 +356,7 @@
         amount: r.body.amount,
         currency: r.body.currency,
         payment_options: "card,banktransfer,ussd",
-        customer: { email: "receipts@checkam.ng", name: "Checkam customer" },
+        customer: { email: email },
         customizations: {
           title: "Checkam",
           description: "Full bank charge audit report — " + r.body.description
@@ -322,8 +366,12 @@
         },
         onclose: function () {
           track("pay_checkout_closed", {});
-          if (btn) { btn.disabled = false; btn.textContent = "Unlock full report — " + PRICING().formatNaira(r.body.amount); }
+          restore(fp).then(function (paid) {
+            if (paid && onUnlockCallback) onUnlockCallback();
+            else if (btn) { btn.disabled = false; btn.textContent = "Continue / check payment"; }
+          });
         }
+      });
       });
     }).catch(function (err) {
       showError(err.message || "Something went wrong starting checkout.");
@@ -334,18 +382,24 @@
 
   function confirmPayment(txRef, transactionId, audit, ctx, fp) {
     var btn = document.getElementById("btn-unlock-report");
+    var receipt = readReceipts()[fp];
+    if (!receipt || receipt.txRef !== txRef || !receipt.token) {
+      showError("Your payment receipt is missing. Do not pay again; contact support with your Flutterwave receipt.");
+      return;
+    }
+    receipt.transactionId = transactionId;
+    try { saveReceipt(fp, receipt); } catch (err) { showError("Keep this tab open until payment is confirmed; browser storage is unavailable."); }
     if (btn) { btn.disabled = true; btn.textContent = "Confirming payment…"; }
 
-    post(API.verify, { txRef: txRef, transactionId: transactionId })
+    post(API.verify, { txRef: txRef, transactionId: transactionId, token: receipt.token, fingerprint: fp })
       .then(function (r) {
         if (r.status === 200 && r.body && r.body.paid) {
-          saveReceipt(fp, txRef, r.body.token);
           unlocked[fp] = true;
           track("pay_succeeded", { txRef: txRef });
           if (onUnlockCallback) onUnlockCallback();
           return;
         }
-        throw new Error("We could not confirm that payment. If you were charged, nothing is lost — reload this page and your unlock will be restored.");
+        throw new Error("Payment is not confirmed yet. Use Retry confirmation or reload and re-audit this statement. Do not pay again if you were charged.");
       })
       .catch(function (err) {
         showError(err.message || "Payment confirmation failed.");
@@ -367,7 +421,8 @@
     /** Called by the app once the results view is built. */
     mount: function (mountEl, audit, ctx, fp, onUnlock) {
       onUnlockCallback = onUnlock;
-      mountEl.innerHTML = renderPanel(audit, ctx, lastQuote);
+      var receipt = readReceipts()[fp];
+      mountEl.innerHTML = renderPanel(audit, ctx, receipt && receipt.quote);
       var btn = document.getElementById("btn-unlock-report");
       if (btn) {
         btn.addEventListener("click", function () { startCheckout(audit, ctx, fp); });

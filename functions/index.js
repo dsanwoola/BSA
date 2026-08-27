@@ -277,3 +277,4 @@ exports.payQuote = payments.payQuote;
 exports.payVerify = payments.payVerify;
 exports.payStatus = payments.payStatus;
 exports.flwWebhook = payments.flwWebhook;
+exports.flwRouter = payments.flwRouter;

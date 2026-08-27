@@ -1,5 +1,67 @@
 # Bank Statement Auditor — Handoff
 
+## Payment launch update — 27 August 2026
+
+This update supersedes the older deployment notes below. Hosting build **75** is
+deployed at `https://checkam.ng`; checkout is deliberately paused with
+`data-payments-live="false"` until the dashboard webhook cutover is complete.
+Firebase project `bank-statement-auditor` now has `payQuote`, `payVerify`,
+`payStatus`, `flwWebhook`, and `flwRouter` deployed in `us-central1` (Node 22).
+Analytics was left unchanged. All three `FLW_*` secrets are enabled at version 1.
+The existing deny-all Firestore rules were compiled and deployed to the
+Standard `(default)` database in `europe-west2`.
+
+The user approved sharing the Neighbours NG Technologies Nigeria Limited
+Flutterwave merchant (100819022), while preserving FoodCard notifications.
+Checkam's live secret key and webhook hash reuse FoodCard's deployed version 3;
+the public key came from the merchant's Live API keys page. No key was rotated.
+**The live Flutterwave dashboard webhook has NOT been changed yet.** Its current
+URL (also the rollback destination) is:
+`https://europe-west1-foodcard-ng-dev.cloudfunctions.net/handleFlutterwaveWebhook`
+The proposed shared gateway is:
+`https://us-central1-bank-statement-auditor.cloudfunctions.net/flwRouter`
+The gateway authenticates the existing hash, handles Checkam references locally,
+and forwards other events to that fixed FoodCard endpoint with the original
+request bytes, hash, and optional signature. Non-200 downstream responses return
+503. FoodCard would depend on the gateway after cutover. Re-enter the EXISTING
+webhook hash when saving the dashboard form; its password input shows blank.
+Obtain action-time confirmation before submitting this external form.
+
+Build 75 includes these payment fixes:
+- Quote creates a random receipt before checkout and stores only its hash.
+- Browser saves the receipt before accepting payment and can recover a
+  webhook-confirmed payment after a lost callback.
+- Verification requires that receipt and its statement fingerprint.
+- Concurrent confirmations use a database transaction and do not rotate tokens.
+- Retry confirmation verifies the same payment; cancelled checkout reuses its order.
+- Temporary webhook verification failures return 503 so Flutterwave can retry.
+- Customer enters their own receipt email; no fixed merchant email is supplied.
+
+Hosting now explicitly excludes hidden folder descendants, backend source,
+rules, package manifests and deployment logs. The old `**/.*` pattern included
+hidden-directory contents in deployment manifests. The corrected release has
+24 public files; `.git/HEAD`, `.claude/settings.local.json` and
+`functions/payments.js` were verified to return 404. Avoid rolling Hosting back
+to old releases containing those folders. Firebase cache files are local only.
+
+Verification: `node tests/run_tests.js` passes **388 tests**, including mocked
+backend/browser recovery and webhook forwarding. Live non-financial probes
+confirmed: Flutterwave key authenticates; quote is NGN 3,000 with a live public
+key and no-store headers; unpaid receipt stays locked; wrong tokens, foreign
+origins, unsigned webhooks and anonymous Firestore access are rejected.
+One synthetic unpaid order was created; no customer statement was used.
+FoodCard and the router both reject bad hashes (401) and accept an authenticated
+PENDING transfer probe for a random nonexistent reference (200, no balance or
+payment change). An earlier custom healthcheck event returned 401 because the
+deployed FoodCard mapper rejects unknown event names, not because of a bad hash.
+**No sandbox or live charge has been made; real payment/unlock is unverified.**
+
+Next: user must sign back into Flutterwave in Chrome (session expired). Confirm
+and save the shared gateway URL with the unchanged hash, verify persisted
+settings, then activate checkout and bump APP_BUILD/cache markers/tests to 76.
+Publish and verify the checkout UI, then have the user perform or explicitly
+authorize a real payment test. Do not claim go-live complete while paused.
+
 **For:** Chineye / Hermes
 **Date:** 13 June 2026
 **Build:** 19 (shown in the app header as `build 19`; bump `APP_BUILD` in `js/app.js` **and** the `?v=N` query strings in `index.html` together on every change — stale browser cache has bitten us before)

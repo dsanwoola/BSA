@@ -11,3 +11,11 @@ Thumbs.db
 
 # Local-only Claude Code settings (machine-specific)
 .claude/settings.local.json
+
+# Local dependencies, deployment logs, and credentials must never be published.
+**/node_modules/
+.firebase/
+*-debug.log
+**/.env
+**/.env.*
+!**/.env.example

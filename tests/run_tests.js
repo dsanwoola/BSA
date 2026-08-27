@@ -34,7 +34,7 @@ check("launch: browser-only privacy remains explicit", indexHtml.indexOf("withou
 check("launch: pricing and fake refund preview are removed", indexHtml.indexOf("Launch monetization plan") < 0 && indexHtml.indexOf("₦42,875.00") < 0);
 check("launch: workflow remains behind progressive disclosure", /id="workflow-details"[^>]*aria-hidden="true"/.test(indexHtml) && appJs.indexOf('classList.add("workflow-open")') >= 0);
 check("launch: company attribution is present", indexHtml.indexOf("A product of Neighbours NG Technologies Ltd.") >= 0);
-check("launch: build 74 markers stay aligned", /var APP_BUILD = 74/.test(appJs) && (indexHtml.match(/\?v=74/g) || []).length === 14 && indexHtml.indexOf("?v=73") < 0);
+check("launch: build 75 markers stay aligned", /var APP_BUILD = 75/.test(appJs) && (indexHtml.match(/\?v=75/g) || []).length === 14 && indexHtml.indexOf("?v=74") < 0);
 
 var CTX_SAVINGS = { accountType: "savings", holderType: "individual", salaryAccount: false };
 var CTX_CURRENT = { accountType: "current", holderType: "individual", salaryAccount: false };
@@ -1273,7 +1273,7 @@ var reportJs = readSrc("/../js/report.js");
 var betaGuide = readSrc("/../BETA_TESTING.md");
 check("static: minimalist Checkam launch appears in app", indexHtml.indexOf("See what your bank may have overcharged") !== -1 && indexHtml.indexOf("Check my statement") !== -1 && indexHtml.indexOf("Try a sample") !== -1 && indexHtml.indexOf("without uploading your file") !== -1 && indexHtml.indexOf("Launch monetization plan") === -1 && indexHtml.indexOf("₦42,875.00") === -1 && appCss.indexOf(".launch-hero") !== -1 && appCss.indexOf(".workflow-details") !== -1);
 check("static: BETA_TESTING documents privacy-safe diagnostics", betaGuide.indexOf("anonymized parser diagnostic") !== -1 && betaGuide.indexOf("must not contain names") !== -1);
-check("static: APP_BUILD and cache bust agree on 74", appJs.indexOf("APP_BUILD = 74") !== -1 && (indexHtml.match(/v=74/g) || []).length >= 8 && indexHtml.indexOf("v=73") === -1);
+check("static: APP_BUILD and cache bust agree on 75", appJs.indexOf("APP_BUILD = 75") !== -1 && (indexHtml.match(/v=75/g) || []).length >= 8 && indexHtml.indexOf("v=74") === -1);
 check("static: mobile hides stepper, Step 1 intro, and upload guidance", appCss.indexOf(".stepper {\n    display: none;") !== -1 && appCss.indexOf("#step-context .panel > h2") !== -1 && appCss.indexOf("#step-context .panel > .lead") !== -1 && appCss.indexOf("#launch-guide") !== -1 && appCss.indexOf("#launch-guide {\n    display: none;") !== -1);
 check("static: mobile layout safeguards are present", appCss.indexOf("mobile-first polish") !== -1 && appCss.indexOf("Swipe sideways to see all columns") !== -1 && appCss.indexOf(".chips { display: grid; grid-template-columns: 1fr;") !== -1 && appCss.indexOf("input, select, textarea { font-size: 16px;") !== -1);
 check("static: old SME premium surfaces stay disabled", indexHtml.indexOf('id="sme-dashboard-root"') === -1 && appJs.indexOf("bsa-premium-sme") === -1 && appJs.indexOf("btn-premium-unlock") === -1);
@@ -1290,8 +1290,11 @@ check("static: review summary card leads with review amount", reportJs.indexOf('
 check("static: monetization remains report-level, not landing-page clutter", indexHtml.indexOf("Launch monetization plan") === -1 && indexHtml.indexOf("Recovery Pack") === -1 && indexHtml.indexOf("monetization-panel") !== -1 && reportJs.indexOf("renderMonetizationPanel") !== -1 && reportJs.indexOf("The statement itself stays in this browser") !== -1);
 var analyticsJs = readSrc("/../js/analytics.js");
 var firebaseJson = readSrc("/../firebase.json");
+var hostingIgnores = JSON.parse(firebaseJson).hosting.ignore;
+check("hosting: exclude hidden directory descendants", hostingIgnores.indexOf("**/.*/**") !== -1 && [".git/**", ".claude/**", ".agents/**", ".github/**", ".firebase/**"].every(function(pattern) { return hostingIgnores.indexOf(pattern) !== -1; }));
+check("hosting: exclude backend source and deployment logs", ["functions/**", "firestore.rules", "package.json", "package-lock.json", "*-debug.log"].every(function(pattern) { return hostingIgnores.indexOf(pattern) !== -1; }));
 var functionsIndex = readSrc("/../functions/index.js");
-check("analytics: client is loaded and cache-busted", indexHtml.indexOf('js/analytics.js?v=74') !== -1 && analyticsJs.indexOf('BSA_ANALYTICS') !== -1 && analyticsJs.indexOf('/api/analytics') !== -1);
+check("analytics: client is loaded and cache-busted", indexHtml.indexOf('js/analytics.js?v=75') !== -1 && analyticsJs.indexOf('BSA_ANALYTICS') !== -1 && analyticsJs.indexOf('/api/analytics') !== -1);
 check("analytics: backend route is configured", firebaseJson.indexOf('"source": "/api/analytics"') !== -1 && firebaseJson.indexOf('"function": "analytics"') !== -1 && firebaseJson.indexOf('"source": "functions"') !== -1);
 check("analytics: backend uses aggregate counters only", functionsIndex.indexOf('analytics_daily') !== -1 && functionsIndex.indexOf('FieldValue.increment') !== -1 && functionsIndex.indexOf('raw statement') === -1 && functionsIndex.indexOf('narration') === -1);
 check("analytics: key journey events are instrumented", appJs.indexOf('"app_load"') !== -1 && appJs.indexOf('"file_selected"') !== -1 && appJs.indexOf('"file_read_success"') !== -1 && appJs.indexOf('"audit_completed"') !== -1 && appJs.indexOf('"recovery_pack_request"') !== -1);
@@ -1493,6 +1496,166 @@ check("payments: an unlock is bound to the statement it was bought for",
 check("payments: checkam.ng is an allowed origin on both endpoints",
   payServer.indexOf("\"https://checkam.ng\"") >= 0 && fnIndex.indexOf("\"https://checkam.ng\"") >= 0);
 
+/* Exercise handlers and browser recovery without credentials or live charges. */
+async function paymentFlowTests() {
+  var vm = require("vm");
+  var crypto = require("crypto");
+  var records = new Map();
+  var txQueue = Promise.resolve();
+  function doc(id) {
+    return {
+      id: id,
+      get: async function () { var data = records.get(id); return { exists: !!data, data: function () { return data && Object.assign({}, data); } }; },
+      set: async function (data, options) { records.set(id, Object.assign({}, options && options.merge ? records.get(id) : {}, data)); }
+    };
+  }
+  var db = {
+    collection: function () { return { doc: doc }; },
+    runTransaction: function (fn) {
+      var result = txQueue.then(function () {
+        return fn({ get: function (ref) { return ref.get(); }, set: function (ref, data, opts) { return ref.set(data, opts); } });
+      });
+      txQueue = result.catch(function () {});
+      return result;
+    }
+  };
+  var verifiedData, verifyFailure = false, verifyCalls = 0;
+  var deliveries = [], deliveryStatus = 200, deliveryFailure = false;
+  var serverContext = {
+    module: { exports: {} }, Buffer: Buffer, AbortSignal: AbortSignal, console: { error: function () {} },
+    require: function (name) {
+      if (name === "crypto") return crypto;
+      if (name === "firebase-admin") return { firestore: function () { return db; } };
+      if (name === "firebase-functions/v2/https") return { onRequest: function (opts, handler) { return handler; } };
+      if (name === "firebase-functions/params") return { defineSecret: function (name) { return { value: function () { return name === "FLW_WEBHOOK_HASH" ? "test-webhook-hash" : "test-credential"; } }; } };
+      if (name === "firebase-admin/firestore") return { FieldValue: { serverTimestamp: function () { return { toMillis: function () { return Date.now(); } }; } } };
+      if (name === "./pricing.js") return require("../functions/pricing.js");
+      throw new Error("Unexpected module " + name);
+    },
+    fetch: async function (url, options) {
+      if (url === "https://europe-west1-foodcard-ng-dev.cloudfunctions.net/handleFlutterwaveWebhook") {
+        deliveries.push({ url: url, options: options });
+        if (deliveryFailure) throw new Error("delivery unavailable");
+        return { status: deliveryStatus };
+      }
+      verifyCalls++;
+      if (verifyFailure) throw new Error("upstream unavailable");
+      return { ok: true, json: async function () { return { data: verifiedData }; } };
+    }
+  };
+  vm.runInNewContext(payServer, serverContext);
+  var api = serverContext.module.exports;
+  async function call(handler, body, headers, rawBody) {
+    var response = { code: 200, body: null, set: function () {}, status: function (code) { this.code = code; return this; }, json: function (value) { this.body = value; }, send: function (value) { this.body = value; } };
+    await handler({ method: "POST", body: body || {}, rawBody: rawBody, get: function (name) { return (headers || {})[name]; } }, response);
+    return response;
+  }
+  var fp = "a".repeat(64);
+  var quote = (await call(api.payQuote, { holderType: "individual", fingerprint: fp })).body;
+  var receipt = { txRef: quote.txRef, token: quote.token, fingerprint: fp };
+  var stored = records.get(quote.txRef);
+  check("payment flow: quote issues receipt and stores only its hash", quote.amount === 3000 && quote.token.length === 64 && !stored.token && stored.tokenHash === crypto.createHash("sha256").update(quote.token).digest("hex"));
+  check("payment flow: pending receipt cannot unlock", (await call(api.payStatus, receipt)).body.paid === false);
+  check("payment flow: invalid fingerprint refused", (await call(api.payQuote, { fingerprint: "bad" })).code === 400);
+  check("payment flow: foreign origin refused", (await call(api.payQuote, { fingerprint: fp }, { origin: "https://unrelated.example" })).code === 403);
+  var invalid = Object.assign({}, receipt, { token: "b".repeat(64), transactionId: 123 });
+  check("payment flow: reference alone cannot retrieve a paid receipt", (await call(api.payVerify, invalid)).code === 403 && verifyCalls === 0);
+  verifiedData = { status: "successful", tx_ref: quote.txRef, currency: "NGN", amount: 2999 };
+  check("payment flow: underpayment stays locked", (await call(api.payVerify, Object.assign({}, receipt, { transactionId: 123 }))).code === 402 && records.get(quote.txRef).status === "pending");
+  verifiedData.amount = 3000;
+  await Promise.all([api.fulfil(quote.txRef, 123, "test"), api.fulfil(quote.txRef, 123, "test")]);
+  stored = records.get(quote.txRef);
+  check("payment flow: concurrent confirmations preserve original receipt", stored.status === "paid" && !stored.token && stored.tokenHash === crypto.createHash("sha256").update(quote.token).digest("hex"));
+  check("payment flow: webhook-paid receipt restores without browser callback", (await call(api.payStatus, receipt)).body.paid === true);
+  check("payment flow: receipt cannot unlock a different statement", (await call(api.payStatus, Object.assign({}, receipt, { fingerprint: "c".repeat(64) }))).code === 403);
+  var again = await call(api.payVerify, Object.assign({}, receipt, { transactionId: 123 }));
+  check("payment flow: duplicate verification is idempotent and reveals no token", again.body.paid && !again.body.token);
+  stored.paidAt = { toMillis: function () { return Date.now() - 401 * 86400000; } };
+  records.set(quote.txRef, stored);
+  check("payment flow: verification cannot bypass receipt expiry", (await call(api.payVerify, Object.assign({}, receipt, { transactionId: 123 }))).body.error === "receipt_expired" && (await call(api.payStatus, receipt)).body.error === "receipt_expired");
+  var second = (await call(api.payQuote, { fingerprint: fp })).body;
+  verifyFailure = true;
+  var event = { event: "charge.completed", data: { status: "successful", tx_ref: second.txRef, id: 124 } };
+  check("payment flow: bad webhook hash is rejected", (await call(api.flwWebhook, event, { "verif-hash": "wrong" })).code === 401);
+  check("payment flow: temporary webhook verification failure requests retry", (await call(api.flwWebhook, event, { "verif-hash": "test-webhook-hash" })).code === 503);
+  verifyFailure = false;
+
+  var foodcardBody = { event: "charge.completed", data: { tx_ref: "foodcard-payment", status: "successful", id: 999 } };
+  var rawBody = Buffer.from(JSON.stringify(foodcardBody, null, 2));
+  var routingHeaders = { "verif-hash": "test-webhook-hash", "flutterwave-signature": "test-signature" };
+  check("payment router: invalid hash never reaches FoodCard", (await call(api.flwRouter, foodcardBody, {}, rawBody)).code === 401 && deliveries.length === 0);
+  var routed = await call(api.flwRouter, foodcardBody, routingHeaders, rawBody);
+  check("payment router: FoodCard gets original bytes and authentication", routed.code === 200 && deliveries.length === 1 && deliveries[0].options.body.equals(rawBody) && deliveries[0].options.headers["verif-hash"] === routingHeaders["verif-hash"] && deliveries[0].options.headers["flutterwave-signature"] === routingHeaders["flutterwave-signature"]);
+  deliveryStatus = 500;
+  check("payment router: downstream failure requests retry", (await call(api.flwRouter, foodcardBody, routingHeaders, rawBody)).code === 503);
+  deliveryStatus = 302;
+  check("payment router: redirects never forward merchant secrets elsewhere", (await call(api.flwRouter, foodcardBody, routingHeaders, rawBody)).code === 503 && deliveries[deliveries.length - 1].options.redirect === "manual");
+  deliveryFailure = true;
+  check("payment router: network failures request retry", (await call(api.flwRouter, foodcardBody, routingHeaders, rawBody)).code === 503);
+  deliveryFailure = false; deliveryStatus = 200;
+  check("payment router: missing raw body fails without re-encoding", (await call(api.flwRouter, foodcardBody, routingHeaders)).code === 503);
+  var deliveryCount = deliveries.length;
+  verifiedData = { status: "successful", tx_ref: second.txRef, currency: "NGN", amount: 3000 };
+  check("payment router: Checkam events are fulfilled locally, not sent to FoodCard", (await call(api.flwRouter, event, routingHeaders, Buffer.from(JSON.stringify(event)))).code === 200 && deliveries.length === deliveryCount && records.get(second.txRef).status === "paid");
+
+  // Browser tests use the actual handlers above and a minimal DOM/storage.
+  var storage = {}, checkout, click, quoteCalls = 0, unlockCount = 0, failBrowserVerify = false;
+  var errorEl = { hidden: true, textContent: "" };
+  var button = { disabled: false, textContent: "", addEventListener: function (name, fn) { click = fn; } };
+  var emailInput = { value: "customer@example.com", checkValidity: function () { return true; }, reportValidity: function () {} };
+  var browserContext = {
+    console: console, require: require, CBN_REPORT: REPORT, CBN_PRICING: require("../js/pricing.js"),
+    localStorage: { getItem: function (key) { return storage[key] || null; }, setItem: function (key, value) { storage[key] = value; } },
+    document: { documentElement: { getAttribute: function () { return "true"; } }, getElementById: function (id) { return id === "btn-unlock-report" ? button : id === "payment-email" ? emailInput : errorEl; } },
+    FlutterwaveCheckout: function (options) { checkout = options; },
+    fetch: async function (url, options) {
+      if (url === "/api/pay/quote") quoteCalls++;
+      if (url === "/api/pay/verify" && failBrowserVerify) throw new Error("offline");
+      var handler = url === "/api/pay/quote" ? api.payQuote : url === "/api/pay/verify" ? api.payVerify : api.payStatus;
+      var response = await call(handler, JSON.parse(options.body));
+      return { status: response.code, json: async function () { return response.body; } };
+    }
+  };
+  function loadPaywall() {
+    vm.runInNewContext(fs.readFileSync(path.join(__dirname, "..", "js", "paywall.js"), "utf8"), browserContext);
+    var wall = browserContext.CBN_PAYWALL;
+    wall.mount({ innerHTML: "" }, payAudit, payCtx, fp, function () { unlockCount++; });
+    return wall;
+  }
+  async function settle() { await new Promise(function (resolve) { setImmediate(resolve); }); }
+  var wall = loadPaywall();
+  browserContext.document.documentElement.getAttribute = function () { return "false"; };
+  click(); await settle();
+  check("payment browser: rollout gate prevents checkout before activation", checkout === undefined && quoteCalls === 0);
+  browserContext.document.documentElement.getAttribute = function () { return "true"; };
+  click(); await settle();
+  var saved = JSON.parse(storage["checkam-receipts-v1"])[fp];
+  check("payment browser: receipt saved before checkout, customer email supplied", !!checkout && saved.token && saved.txRef === checkout.tx_ref && checkout.customer.email === emailInput.value);
+  var firstRef = checkout.tx_ref;
+  checkout.onclose(); await settle(); click(); await settle();
+  check("payment browser: cancelled checkout reuses the same order", checkout.tx_ref === firstRef && quoteCalls === 1);
+  failBrowserVerify = true;
+  checkout.callback({ transaction_id: 125 }); await settle();
+  saved = JSON.parse(storage["checkam-receipts-v1"])[fp];
+  check("payment browser: failed verification saves transaction for retry", saved.transactionId === 125 && !wall.isUnlocked(fp));
+  failBrowserVerify = false;
+  verifiedData = { status: "successful", tx_ref: firstRef, currency: "NGN", amount: 3000 };
+  click(); await settle();
+  check("payment browser: retry confirms payment without another quote", wall.isUnlocked(fp) && quoteCalls === 1 && unlockCount === 1);
+  wall = loadPaywall();
+  check("payment browser: reload restores paid receipt", await wall.restore(fp));
+  // A different statement must never display the previous statement's quote.
+  wall.mount({ innerHTML: "" }, payAudit, { holderType: "business" }, "d".repeat(64), function () {});
+  storage = {};
+  browserContext.localStorage.setItem = function () { throw new Error("storage blocked"); };
+  checkout = null;
+  click(); await settle();
+  check("payment browser: blocked storage prevents taking payment", checkout === null && !button.disabled);
+}
+
+paymentFlowTests().catch(function (error) {
+  check("payment flow tests completed", false, error.stack);
+}).then(function () {
 /* ---------------- report ---------------- */
 console.log("==========================================");
 console.log("  PASSED: " + passed + "   FAILED: " + failed);
@@ -1501,3 +1664,4 @@ if (failed) {
   failures.forEach(function (f) { console.log("  ✗ " + f); });
   process.exit(1);
 }
+});
