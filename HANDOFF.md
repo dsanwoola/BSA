@@ -1,5 +1,26 @@
 # Bank Statement Auditor — Handoff
 
+## Calendar pricing — build 79
+
+The owner confirmed that each additional six-month block adds the base price:
+individual N3,000 / N6,000 / N9,000 and business N5,000 / N10,000 / N15,000
+for up to 6 / 12 / 18 months, continuing in further blocks. This purchases one
+statement report, not a subscription or multiple statements.
+
+Shared browser/server pricing now uses calendar months instead of 183-day
+blocks. July–December (184 days) is one block; January 1–July 1 starts the
+second. Both endpoints count, and boundaries remain anchored to the original
+start. When the start day is absent from a target month, its final day remains
+included (August 31–February 28/29). The browser sends civil YYYY-MM-DD dates
+for quotes so time zones cannot shift the billing boundary. The fingerprint,
+existing orders/receipts, verification, payment recovery and 400-day receipt
+expiry are unchanged. Email-based recovery is still not implemented.
+
+428 tests pass, including server quote boundaries, leap years and existing
+payment recovery tests. Browser/server quote parity was checked under UTC,
+Africa/Lagos and America/Los_Angeles. Deploy payQuote first via Firebase CLI;
+the existing main-branch workflow deploys only Hosting, not backend functions.
+
 ## Mobile compact UI — build 78
 
 The scan review is collapsed behind View scanned details, beside Run CBN audit

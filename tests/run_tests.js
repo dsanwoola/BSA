@@ -34,11 +34,11 @@ check("launch: browser-only privacy remains explicit", indexHtml.indexOf("withou
 check("launch: pricing and fake refund preview are removed", indexHtml.indexOf("Launch monetization plan") < 0 && indexHtml.indexOf("₦42,875.00") < 0);
 check("launch: workflow remains behind progressive disclosure", /id="workflow-details"[^>]*aria-hidden="true"/.test(indexHtml) && appJs.indexOf('classList.add("workflow-open")') >= 0);
 check("launch: company attribution is present", indexHtml.indexOf("A product of Neighbours NG Technologies Ltd.") >= 0);
-check("launch: build 78 markers stay aligned", /var APP_BUILD = 78/.test(appJs) && (indexHtml.match(/\?v=78/g) || []).length === 15 && indexHtml.indexOf("?v=77") < 0);
+check("launch: build 79 markers stay aligned", /var APP_BUILD = 79/.test(appJs) && (indexHtml.match(/\?v=79/g) || []).length === 15 && indexHtml.indexOf("?v=78") < 0);
 
 check("launch: live checkout is enabled", indexHtml.indexOf('data-payments-live="true"') !== -1);
 
-check("word: UI downloads DOCX from edited preview", indexHtml.includes("Download Word (.docx)") && indexHtml.includes("js/word-export.js?v=78") && appJs.includes('window.BSA_WORD_EXPORT.toBlob($("#letter-text").value)') && appJs.includes("refund_demand_letter.docx") && !appJs.includes("refund_demand_letter.txt") && appJs.includes("content instanceof Blob ? content"));
+check("word: UI downloads DOCX from edited preview", indexHtml.includes("Download Word (.docx)") && indexHtml.includes("js/word-export.js?v=79") && appJs.includes('window.BSA_WORD_EXPORT.toBlob($("#letter-text").value)') && appJs.includes("refund_demand_letter.docx") && !appJs.includes("refund_demand_letter.txt") && appJs.includes("content instanceof Blob ? content"));
 
 var CTX_SAVINGS = { accountType: "savings", holderType: "individual", salaryAccount: false };
 var CTX_CURRENT = { accountType: "current", holderType: "individual", salaryAccount: false };
@@ -1277,7 +1277,7 @@ var reportJs = readSrc("/../js/report.js");
 var betaGuide = readSrc("/../BETA_TESTING.md");
 check("static: minimalist Checkam launch appears in app", indexHtml.indexOf("Check your bank charges") !== -1 && indexHtml.indexOf("Check my statement") !== -1 && indexHtml.indexOf("Try a sample") !== -1 && indexHtml.indexOf("without uploading your file") !== -1 && indexHtml.indexOf("Launch monetization plan") === -1 && indexHtml.indexOf("₦42,875.00") === -1 && appCss.indexOf(".launch-hero") !== -1 && appCss.indexOf(".workflow-details") !== -1);
 check("static: BETA_TESTING documents privacy-safe diagnostics", betaGuide.indexOf("anonymized parser diagnostic") !== -1 && betaGuide.indexOf("must not contain names") !== -1);
-check("static: APP_BUILD and cache bust agree on 78", appJs.indexOf("APP_BUILD = 78") !== -1 && (indexHtml.match(/v=78/g) || []).length >= 8 && indexHtml.indexOf("v=77") === -1);
+check("static: APP_BUILD and cache bust agree on 79", appJs.indexOf("APP_BUILD = 79") !== -1 && (indexHtml.match(/v=79/g) || []).length >= 8 && indexHtml.indexOf("v=78") === -1);
 check("static: mobile hides stepper, Step 1 intro, and upload guidance", appCss.indexOf(".stepper {\n    display: none;") !== -1 && appCss.indexOf("#step-context .panel > h2") !== -1 && appCss.indexOf("#step-context .panel > .lead") !== -1 && appCss.indexOf("#launch-guide") !== -1 && appCss.indexOf("#launch-guide {\n    display: none;") !== -1);
 check("static: mobile layout safeguards are present", appCss.indexOf("mobile-first polish") !== -1 && appCss.indexOf("Swipe sideways to see all columns") !== -1 && appCss.indexOf(".chips { display: grid; grid-template-columns: 1fr;") !== -1 && appCss.indexOf("input, select, textarea { font-size: 16px;") !== -1);
 check("static: old SME premium surfaces stay disabled", indexHtml.indexOf('id="sme-dashboard-root"') === -1 && appJs.indexOf("bsa-premium-sme") === -1 && appJs.indexOf("btn-premium-unlock") === -1);
@@ -1298,7 +1298,7 @@ var hostingIgnores = JSON.parse(firebaseJson).hosting.ignore;
 check("hosting: exclude hidden directory descendants", hostingIgnores.indexOf("**/.*/**") !== -1 && [".git/**", ".claude/**", ".agents/**", ".github/**", ".firebase/**"].every(function(pattern) { return hostingIgnores.indexOf(pattern) !== -1; }));
 check("hosting: exclude backend source and deployment logs", ["functions/**", "firestore.rules", "package.json", "package-lock.json", "*-debug.log"].every(function(pattern) { return hostingIgnores.indexOf(pattern) !== -1; }));
 var functionsIndex = readSrc("/../functions/index.js");
-check("analytics: client is loaded and cache-busted", indexHtml.indexOf('js/analytics.js?v=78') !== -1 && analyticsJs.indexOf('BSA_ANALYTICS') !== -1 && analyticsJs.indexOf('/api/analytics') !== -1);
+check("analytics: client is loaded and cache-busted", indexHtml.indexOf('js/analytics.js?v=79') !== -1 && analyticsJs.indexOf('BSA_ANALYTICS') !== -1 && analyticsJs.indexOf('/api/analytics') !== -1);
 check("analytics: backend route is configured", firebaseJson.indexOf('"source": "/api/analytics"') !== -1 && firebaseJson.indexOf('"function": "analytics"') !== -1 && firebaseJson.indexOf('"source": "functions"') !== -1);
 check("analytics: backend uses aggregate counters only", functionsIndex.indexOf('analytics_daily') !== -1 && functionsIndex.indexOf('FieldValue.increment') !== -1 && functionsIndex.indexOf('raw statement') === -1 && functionsIndex.indexOf('narration') === -1);
 check("analytics: key journey events are instrumented", appJs.indexOf('"app_load"') !== -1 && appJs.indexOf('"file_selected"') !== -1 && appJs.indexOf('"file_read_success"') !== -1 && appJs.indexOf('"audit_completed"') !== -1 && appJs.indexOf('"recovery_pack_request"') !== -1);
@@ -1385,8 +1385,36 @@ check("pricing: business 18-month statement is 3 blocks = N15,000",
  *     but is under six months long, and must bill as one block --- */
 check("pricing: 5 Jan - 1 Jul bills as one block, not two",
   q("individual", D(2026, 1, 5), D(2026, 7, 1)).blocks === 1);
-check("pricing: 183 days is the last day of a single block",
-  PRICING.blocksForDays(183) === 1 && PRICING.blocksForDays(184) === 2);
+check("pricing: July to December is one block despite covering 184 days",
+  q("individual", D(2026, 7, 1), D(2026, 12, 31)).amount === 3000);
+check("pricing: day after six calendar months starts the next block",
+  q("business", D(2026, 1, 1), D(2026, 7, 1)).amount === 10000);
+check("pricing: arbitrary start dates use elapsed months, not month names",
+  q("individual", "2026-01-05", "2026-07-04").blocks === 1 &&
+  q("individual", "2026-01-05", "2026-07-05").blocks === 2);
+check("pricing: leap-year six months remains one block",
+  q("business", "2024-01-01", "2024-06-30").blocks === 1);
+check("pricing: short target month includes its last date",
+  q("individual", "2025-08-31", "2026-02-28").blocks === 1 &&
+  q("individual", "2025-08-31", "2026-03-01").blocks === 2);
+check("pricing: leap-day month end does not spill into another block",
+  q("individual", "2023-08-31", "2024-02-29").blocks === 1 &&
+  q("individual", "2023-08-31", "2024-03-01").blocks === 2);
+check("pricing: every six calendar months adds one base price",
+  [1, 2, 3, 4, 5].every(function (blocks) {
+    var end = new Date(2026, blocks * 6, 0);
+    return q("individual", D(2026, 1, 1), end).amount === blocks * 3000 &&
+      q("business", D(2026, 1, 1), end).amount === blocks * 5000;
+  }));
+check("pricing: all six-month windows within a year cost one block",
+  Array.from({length:12}, function (_, m) { return m; }).every(function (m) {
+    return q("individual", new Date(2026, m, 1), new Date(2026, m + 6, 0)).blocks === 1;
+  }));
+check("pricing: browser civil dates survive transport to server",
+  PRICING.dateKey(D(2026, 7, 1)) === "2026-07-01" &&
+  q("individual", PRICING.dateKey(D(2026, 7, 1)), PRICING.dateKey(D(2026, 12, 31))).amount === 3000);
+check("pricing: invalid calendar dates use the existing minimum-price fallback",
+  q("individual", "2026-02-30", "2026-12-31").periodKnown === false);
 
 /* --- boundaries and bad input --- */
 check("pricing: government accounts price as business",
@@ -1555,6 +1583,10 @@ async function paymentFlowTests() {
     return response;
   }
   var fp = "a".repeat(64);
+  var calendarQuote = (await call(api.payQuote, { holderType: "individual", fingerprint: fp, from: "2026-07-01", to: "2026-12-31" })).body;
+  check("payment flow: server charges one block for July through December", calendarQuote.amount === 3000 && calendarQuote.blocks === 1);
+  calendarQuote = (await call(api.payQuote, { holderType: "business", fingerprint: fp, from: "2026-01-01", to: "2027-01-01" })).body;
+  check("payment flow: server charges three blocks after twelve calendar months", calendarQuote.amount === 15000 && calendarQuote.blocks === 3);
   var quote = (await call(api.payQuote, { holderType: "individual", fingerprint: fp })).body;
   var receipt = { txRef: quote.txRef, token: quote.token, fingerprint: fp };
   var stored = records.get(quote.txRef);

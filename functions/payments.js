@@ -160,7 +160,7 @@ const payQuote = onRequest(
 
     /* The client's claimed period only ever decides how many 6-month blocks
      * are billed; it can never set the price directly. */
-    const quote = PRICING.quote({ holderType: body.holderType, from, to });
+    const quote = PRICING.quote({ holderType: body.holderType, from: body.from, to: body.to });
 
     const publicKey = (FLW_PUBLIC_KEY.value() || "").trim();
     if (!publicKey) {

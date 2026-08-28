@@ -11,17 +11,16 @@
  *   business statement,   per 6 months       →  ₦5,000
  *
  * "Per 6 months" is charged in whole blocks: a statement covering more than
- * one block costs one unit per block started. A 6-month block is defined as
- * 183 days (365.25 / 2) rather than as calendar months, so that a statement
- * running 5 Jan – 1 Jul — which touches seven calendar months but is really
- * under six months long — is billed as one block and not two.
+ * one block costs one unit per block started. Blocks span six calendar months
+ * from the first covered date, with both statement endpoints included.
+ * Jan 1–Jun 30 and Jul 1–Dec 31 each cost one block despite differing lengths.
  * ========================================================================= */
 
 (function (global) {
   "use strict";
 
   var CURRENCY = "NGN";
-  var BLOCK_DAYS = 183;           // one "6-month" billing block
+  var BLOCK_MONTHS = 6;
   var MS_PER_DAY = 86400000;
 
   /* Naira per block, by who owns the account. CBN treats government/MDA
@@ -33,17 +32,23 @@
     government: 5000
   };
 
-  function toDate(value) {
-    if (value instanceof Date) return isNaN(value.getTime()) ? null : value;
-    if (typeof value === "number") {
-      var fromNum = new Date(value);
-      return isNaN(fromNum.getTime()) ? null : fromNum;
+  // Statements contain civil dates, not instants. Preserve the date shown
+  // locally when serializing a parser Date; never shift it through UTC first.
+  function dateKey(value) {
+    if (value instanceof Date || typeof value === "number") {
+      var d = value instanceof Date ? value : new Date(value);
+      if (isNaN(d.getTime())) return null;
+      return d.getFullYear() + "-" + ("0" + (d.getMonth() + 1)).slice(-2) + "-" + ("0" + d.getDate()).slice(-2);
     }
-    if (typeof value === "string" && value) {
-      var fromStr = new Date(value);
-      return isNaN(fromStr.getTime()) ? null : fromStr;
-    }
+    if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}(?:$|T)/.test(value)) return value.slice(0, 10);
     return null;
+  }
+
+  function toDate(value) {
+    var key = dateKey(value);
+    if (!key) return null;
+    var d = new Date(key + "T00:00:00.000Z");
+    return !isNaN(d.getTime()) && d.toISOString().slice(0, 10) === key ? d : null;
   }
 
   /* Whole days between two dates, inclusive of both endpoints: a statement
@@ -62,9 +67,19 @@
     return Math.round((days / 30.4375) * 10) / 10;
   }
 
-  function blocksForDays(days) {
-    if (days === null || !isFinite(days) || days <= 0) return 1;
-    return Math.max(1, Math.ceil(days / BLOCK_DAYS));
+  function blocksForPeriod(from, to) {
+    var a = toDate(from), b = toDate(to);
+    if (!a || !b) return 1;
+    if (b < a) { var swap = a; a = b; b = swap; }
+    var months = (b.getUTCFullYear() - a.getUTCFullYear()) * 12 + b.getUTCMonth() - a.getUTCMonth();
+    var blocks = Math.max(1, Math.floor(months / BLOCK_MONTHS));
+    // Use the original start for every boundary to avoid month-end drift.
+    // If its day does not exist in the target month, include that whole month
+    // (Aug 31–Feb 28 is one block; Mar 1 starts the next).
+    var targetMonth = a.getUTCMonth() + blocks * BLOCK_MONTHS;
+    var lastDay = new Date(Date.UTC(a.getUTCFullYear(), targetMonth + 1, 0)).getUTCDate();
+    var boundary = new Date(Date.UTC(a.getUTCFullYear(), targetMonth, Math.min(a.getUTCDate(), lastDay + 1)));
+    return b >= boundary ? blocks + 1 : blocks;
   }
 
   function normaliseHolder(holderType) {
@@ -85,7 +100,7 @@
     var holderType = normaliseHolder(input.holderType);
     var unitAmount = RATE_BY_HOLDER[holderType];
     var days = daysCovered(input.from, input.to);
-    var blocks = blocksForDays(days);
+    var blocks = blocksForPeriod(input.from, input.to);
 
     return {
       holderType: holderType,
@@ -93,7 +108,7 @@
       days: days,
       months: monthsCovered(input.from, input.to),
       blocks: blocks,
-      blockDays: BLOCK_DAYS,
+      blockMonths: BLOCK_MONTHS,
       unitAmount: unitAmount,
       amount: unitAmount * blocks,
       periodKnown: days !== null
@@ -115,12 +130,13 @@
 
   var API = {
     CURRENCY: CURRENCY,
-    BLOCK_DAYS: BLOCK_DAYS,
+    BLOCK_MONTHS: BLOCK_MONTHS,
     RATE_BY_HOLDER: RATE_BY_HOLDER,
     quote: quote,
     daysCovered: daysCovered,
     monthsCovered: monthsCovered,
-    blocksForDays: blocksForDays,
+    blocksForPeriod: blocksForPeriod,
+    dateKey: dateKey,
     normaliseHolder: normaliseHolder,
     formatNaira: formatNaira,
     describe: describe

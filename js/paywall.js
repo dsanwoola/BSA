@@ -327,8 +327,8 @@
       }
       return post(API.quote, {
         holderType: ctx.holderType,
-        from: period.from ? new Date(period.from).toISOString() : null,
-        to: period.to ? new Date(period.to).toISOString() : null,
+        from: PRICING().dateKey(period.from),
+        to: PRICING().dateKey(period.to),
         fingerprint: fp
       });
     }).then(function (r) {
