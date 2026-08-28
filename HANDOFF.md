@@ -1,5 +1,24 @@
 # Bank Statement Auditor — Handoff
 
+## Restore access button — build 80
+
+The paywall now has an "Already paid? Restore access" button above the receipt
+email field. It checks the saved browser receipt against payStatus and, when
+necessary, retries payVerify for the existing transaction. It never creates a
+quote, opens Flutterwave or requires an email address. Automatic restore remains.
+
+Visible feedback distinguishes a missing receipt, pending confirmation, expired
+access, invalid/mismatched receipt and network failure. Customers who were charged
+are told not to pay again. Restore help explains that the original browser and
+statement file are required; cross-device/email recovery is NOT implemented.
+No backend, receipt expiry or calendar pricing changes were made.
+
+440 tests pass, including duplicate taps, paused checkout, interrupted payment
+confirmation and stale responses after changing reports. Browser checks at 390px
+and 320px verified visible feedback, keyboard activation, no page overflow, empty
+email support and no Flutterwave script load. Publish through the main-branch
+GitHub Hosting workflow; no customer payment was taken for testing.
+
 ## Calendar pricing — build 79
 
 The owner confirmed that each additional six-month block adds the base price:

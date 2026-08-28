@@ -43,6 +43,7 @@
   /* current unlock state, keyed by statement fingerprint */
   var unlocked = {};
   var onUnlockCallback = null;
+  var mountVersion = 0;
 
   // Operational rollout gate: do not accept money during backend/webhook setup.
   function paymentsLive() {
@@ -123,9 +124,9 @@
   }
 
   /** Ask the server whether a stored receipt still unlocks this statement. */
-  function restore(fp) {
+  function checkReceipt(fp) {
     var rec = readReceipts()[fp];
-    if (!rec || !rec.txRef || !rec.token) return Promise.resolve(false);
+    if (!rec || !rec.txRef || !rec.token) return Promise.resolve({ paid: false, reason: "missing" });
     var payload = { txRef: rec.txRef, token: rec.token, fingerprint: fp };
     return post(API.status, payload)
       .then(function (r) {
@@ -138,9 +139,52 @@
       .then(function (r) {
         var ok = r.status === 200 && r.body && r.body.paid === true;
         if (ok) { unlocked[fp] = true; track("unlock_restored", {}); }
-        return ok;
+        var reason = r.body && r.body.error;
+        if (!reason) reason = r.status === 200 ? "pending" : "unavailable";
+        return { paid: ok, reason: reason };
       })
-      .catch(function () { return false; });
+      .catch(function () { return { paid: false, reason: "unavailable" }; });
+  }
+
+  function restore(fp) {
+    return checkReceipt(fp).then(function (result) { return result.paid; });
+  }
+
+  function restoreAccess(fp, onUnlock, version) {
+    var btn = document.getElementById("btn-restore-access");
+    var payBtn = document.getElementById("btn-unlock-report");
+    var status = document.getElementById("restore-status");
+    if (!btn || !status || btn.disabled || (payBtn && payBtn.disabled && paymentsLive())) return;
+    var wasPayDisabled = payBtn && payBtn.disabled;
+    btn.disabled = true;
+    btn.textContent = "Checking payment…";
+    if (payBtn) payBtn.disabled = true;
+    status.hidden = false;
+    status.textContent = "Checking saved receipt…";
+
+    return checkReceipt(fp).then(function (result) {
+      // A result from an older report must not update the newly opened one.
+      if (version !== mountVersion) return;
+      btn.disabled = false;
+      btn.textContent = "Already paid? Restore access";
+      if (payBtn) payBtn.disabled = wasPayDisabled;
+      if (result.paid) {
+        status.textContent = "Access restored. No payment needed.";
+        if (onUnlock) onUnlock();
+        return;
+      }
+      if (result.reason === "missing") {
+        status.textContent = "No saved receipt for this statement. Use the original browser and statement file. If you were charged, do not pay again; keep your Flutterwave receipt for support.";
+      } else if (result.reason === "receipt_expired") {
+        status.textContent = "Your saved access has expired. Keep your Flutterwave receipt and contact support before paying again.";
+      } else if (["invalid_token", "invalid_receipt", "different_statement", "unknown_order"].indexOf(result.reason) !== -1) {
+        status.textContent = "This receipt could not restore this statement. Check the original file and browser. Do not pay again if charged; keep your Flutterwave receipt for support.";
+      } else if (result.reason === "pending") {
+        status.textContent = "Payment is not confirmed yet. Try restoring again shortly. If you were charged, do not pay again.";
+      } else {
+        status.textContent = "Could not confirm payment. Check your connection and try restoring again. Do not pay again if charged.";
+      }
+    });
   }
 
   function isUnlocked(fp) { return !!unlocked[fp]; }
@@ -230,6 +274,9 @@
             "<div>" + esc(periodLabel) + "</div>" +
             "<div>" + esc(blockLine) + "</div>" +
           "</div>" +
+          '<button class="btn btn-ghost paywall-cta" id="btn-restore-access" type="button" aria-describedby="restore-status">Already paid? Restore access</button>' +
+          '<p class="paywall-restore-status" id="restore-status" role="status" aria-live="polite" hidden></p>' +
+          '<details class="info-disclosure"><summary>Restore help</summary><p class="paywall-note">Reopen the same original statement in the same browser, then run the audit. This checks your saved receipt without starting a payment. Recovery on another device or after clearing browser data is not available yet.</p></details>' +
           '<label for="payment-email">Receipt email</label>' +
           '<input id="payment-email" type="email" autocomplete="email" required placeholder="you@example.com">' +
           '<button class="btn btn-primary paywall-cta" id="btn-unlock-report" type="button"' + (paymentsLive() ? "" : " disabled") + '>Unlock full report — ' + esc(priceLine) + "</button>" +
@@ -418,6 +465,7 @@
 
     /** Called by the app once the results view is built. */
     mount: function (mountEl, audit, ctx, fp, onUnlock) {
+      var version = ++mountVersion;
       onUnlockCallback = onUnlock;
       var receipt = readReceipts()[fp];
       mountEl.innerHTML = renderPanel(audit, ctx, receipt && receipt.quote);
@@ -425,6 +473,8 @@
       if (btn) {
         btn.addEventListener("click", function () { startCheckout(audit, ctx, fp); });
       }
+      var restoreBtn = document.getElementById("btn-restore-access");
+      if (restoreBtn) restoreBtn.addEventListener("click", function () { restoreAccess(fp, onUnlock, version); });
       track("paywall_shown", {
         holderType: ctx.holderType,
         refundDue: (audit.summary && audit.summary.refundDue) || 0
