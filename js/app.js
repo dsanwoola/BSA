@@ -6,7 +6,7 @@
 (function () {
   "use strict";
 
-  var APP_BUILD = 80; // shown in the header so stale cached code is obvious
+  var APP_BUILD = 81; // shown in the header so stale cached code is obvious
   window.BSA_BUILD = APP_BUILD;
   var ANALYTICS = window.BSA_ANALYTICS || { track: function () {}, flush: function () {}, fileType: function () { return "unknown"; } };
 
@@ -194,7 +194,17 @@
       });
     });
     var bankSel = $("#bank-profile");
-    if (bankSel) bankSel.addEventListener("change", function () { setBankProfile(bankSel.value, true); });
+    var bankSearch = $("#bank-search");
+    if (bankSel) bankSel.addEventListener("change", function () {
+      if (!bankSel.value) return;
+      setBankProfile(bankSel.value, true);
+      if (bankSearch) bankSearch.value = "";
+      renderBankOptions("");
+    });
+    if (bankSearch) {
+      bankSearch.addEventListener("input", function () { renderBankOptions(bankSearch.value); });
+      bankSearch.addEventListener("search", function () { renderBankOptions(bankSearch.value); });
+    }
     $("#salaryAccount").addEventListener("change", function (e) {
       state.ctx.salaryAccount = e.target.checked;
     });
@@ -207,11 +217,36 @@
   function populateBankProfiles() {
     var sel = $("#bank-profile");
     if (!sel || !BANKS) return;
+    renderBankOptions("");
+    setBankProfile(state.ctx.bankId || "other", false);
+  }
+
+  function filterBankProfiles(query) {
+    if (!BANKS) return [];
+    var q = String(query || "").trim().toUpperCase();
+    return BANKS.list().filter(function (p) {
+      if (!q) return true;
+      return [p.name, p.id].concat(p.aliases || []).join(" ").toUpperCase().indexOf(q) !== -1;
+    });
+  }
+
+  function renderBankOptions(query) {
+    var sel = $("#bank-profile");
+    if (!sel || !BANKS) return;
     var current = state.ctx.bankId || "other";
-    sel.innerHTML = BANKS.list().map(function (p) {
+    var q = String(query || "").trim();
+    var profiles = filterBankProfiles(q);
+    var currentVisible = profiles.some(function (p) { return p.id === current; });
+    var prompt = q && !currentVisible
+      ? '<option value="" selected disabled>' + (profiles.length ? "Choose a matching bank" : "No matching bank") + "</option>"
+      : "";
+    sel.innerHTML = prompt + profiles.map(function (p) {
       return '<option value="' + p.id + '"' + (p.id === current ? " selected" : "") + '>' + REPORT.esc(p.name) + (p.confidence && p.id !== "other" ? " — " + REPORT.esc(p.confidence) : "") + '</option>';
     }).join("");
-    setBankProfile(current, false);
+    var status = $("#bank-search-status");
+    if (status) status.textContent = q
+      ? profiles.length + (profiles.length === 1 ? " bank found" : " banks found")
+      : profiles.length + " banks listed alphabetically";
   }
 
   function setBankProfile(id, track) {

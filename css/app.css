@@ -887,6 +887,14 @@ footer strong { color: var(--txt); }
   margin: 0 0 26px;
   background: linear-gradient(135deg, rgba(245, 196, 81, .10), rgba(46, 229, 157, .05));
 }
+.bank-search-wrap { display: grid; gap: 7px; max-width: 420px; margin: 0 0 10px; }
+.bank-search-wrap label { font-size: 13px; font-weight: 700; }
+.bank-search-wrap input {
+  width: 100%; min-height: 48px; border: 1px solid var(--line); border-radius: 12px;
+  background: var(--card-2); color: var(--txt); padding: 12px 13px;
+  font: 600 16px var(--font);
+}
+.bank-search-wrap small { min-height: 18px; color: var(--txt-dim); font-size: 12px; }
 .paywall-head { margin-bottom: 18px; }
 .paywall-head h3 { margin: 6px 0 8px; font-size: 21px; }
 .paywall-head p { margin: 0; color: var(--txt-dim); font-size: 14px; max-width: 68ch; }

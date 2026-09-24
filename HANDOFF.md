@@ -1,5 +1,17 @@
 # Bank Statement Auditor — Handoff
 
+## Searchable alphabetical bank picker — build 81
+
+The Bank / tariff profile list now displays all 19 profiles alphabetically.
+A mobile-friendly search field filters by bank name, profile ID and common
+aliases such as GTB and ALAT, so customers do not need to scroll through the
+full list. Selecting a result clears the search and restores the complete
+alphabetical list; filtering never silently changes the selected bank.
+
+449 tests pass, including ordering, alias searches, empty results, clearing the
+filter and the search field's accessibility attributes. A browser check at
+390px confirmed the search, result count and bank selector fit without overflow.
+
 ## Restore access button — build 80
 
 The paywall now has an "Already paid? Restore access" button above the receipt

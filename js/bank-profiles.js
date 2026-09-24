@@ -143,7 +143,12 @@
   var ORDER = ["other", "access", "uba", "stanbic", "sterling", "firstbank", "gtbank", "zenith", "polaris", "ecobank", "fcmb", "fidelity", "wema", "union_titan", "providus", "keystone", "standardchartered", "citibank", "noninterest"];
 
   function get(id) { return PROFILES[id] || PROFILES.other; }
-  function list() { return ORDER.map(get); }
+  function list() {
+    return ORDER.map(get).slice().sort(function (a, b) {
+      var an = a.name.toUpperCase(), bn = b.name.toUpperCase();
+      return an < bn ? -1 : an > bn ? 1 : 0;
+    });
+  }
   function detect(text) {
     var n = String(text || "").toUpperCase();
     var best = null;
