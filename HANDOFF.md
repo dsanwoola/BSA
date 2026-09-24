@@ -1,5 +1,17 @@
 # Bank Statement Auditor — Handoff
 
+## Visible bank autocomplete — build 82
+
+Bank search suggestions now appear directly below the search field after the
+customer types three characters. Matches use bank-name words, profile IDs and
+aliases, so searches such as ACC, FIR, GTB and ALAT work without opening the
+native bank dropdown. Suggestions are large tap targets; choosing one updates
+the bank profile, clears the search and hides the results. The complete
+alphabetical selector remains available as a fallback.
+
+453 tests pass, including the three-character threshold, multi-bank prefixes,
+aliases, empty results, preserved selection and autocomplete accessibility.
+
 ## Searchable alphabetical bank picker — build 81
 
 The Bank / tariff profile list now displays all 19 profiles alphabetically.

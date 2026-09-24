@@ -15,6 +15,8 @@ module.exports = function (check) {
   var nodes = {
     "#bank-profile": {innerHTML:"",value:""},
     "#bank-search-status": {textContent:""},
+    "#bank-search-results": {innerHTML:"",hidden:true},
+    "#bank-search": {attributes:{},value:"",setAttribute:function (name, value) { this.attributes[name] = value; }},
     "#bank-profile-note": {textContent:""}
   };
   var context = {
@@ -28,16 +30,26 @@ module.exports = function (check) {
   check("bank picker: rendered full list follows alphabetical API order", values.join("|") === BANKS.list().map(function (p) { return p.id; }).join("|"));
   check("bank picker: initial status explains alphabetical list", /banks listed alphabetically/.test(nodes["#bank-search-status"].textContent));
 
+  context.renderBankOptions("GT");
+  check("bank picker: suggestions wait for three characters", nodes["#bank-search-results"].hidden && nodes["#bank-search-results"].innerHTML === "" && nodes["#bank-search-status"].textContent === "Type 1 more letter to see matches");
+
   context.renderBankOptions("GTB");
-  check("bank picker: aliases find the corresponding bank", nodes["#bank-profile"].innerHTML.includes('value="gtbank"') && !nodes["#bank-profile"].innerHTML.includes('value="zenith"') && nodes["#bank-search-status"].textContent === "1 bank found");
-  check("bank picker: filtering never silently changes the selected profile", context.state.ctx.bankId === "other" && nodes["#bank-profile"].innerHTML.includes("Choose a matching bank"));
+  check("bank picker: aliases reveal the corresponding bank immediately", !nodes["#bank-search-results"].hidden && nodes["#bank-search-results"].innerHTML.includes('data-bank-id="gtbank"') && !nodes["#bank-search-results"].innerHTML.includes('data-bank-id="zenith"') && nodes["#bank-search-status"].textContent === "1 bank found");
+  check("bank picker: suggestions never silently change the selected profile", context.state.ctx.bankId === "other" && /value="other" selected/.test(nodes["#bank-profile"].innerHTML));
+  check("bank picker: the alphabetical selector remains complete while searching", (nodes["#bank-profile"].innerHTML.match(/<option /g) || []).length === BANKS.list().length);
+
+  context.renderBankOptions("Fir");
+  check("bank picker: three-letter prefixes can reveal multiple banks", nodes["#bank-search-results"].innerHTML.includes('data-bank-id="firstbank"') && nodes["#bank-search-results"].innerHTML.includes('data-bank-id="fcmb"'));
 
   context.renderBankOptions("ALAT");
-  check("bank picker: digital bank aliases are searchable", nodes["#bank-profile"].innerHTML.includes('value="wema"'));
+  check("bank picker: digital bank aliases are searchable", nodes["#bank-search-results"].innerHTML.includes('data-bank-id="wema"'));
+  nodes["#bank-search"].value = "ALAT";
+  context.chooseBankSearchResult("wema");
+  check("bank picker: choosing a visible suggestion selects it and closes search", context.state.ctx.bankId === "wema" && nodes["#bank-search"].value === "" && nodes["#bank-search-results"].hidden);
   context.renderBankOptions("no such bank");
-  check("bank picker: empty results are clear and safe", nodes["#bank-profile"].innerHTML.includes("No matching bank") && nodes["#bank-search-status"].textContent === "0 banks found");
+  check("bank picker: empty results are clear and safe", nodes["#bank-search-results"].innerHTML.includes("No matching bank found") && nodes["#bank-search-status"].textContent === "0 banks found");
   context.renderBankOptions("");
-  check("bank picker: clearing search restores the full list", (nodes["#bank-profile"].innerHTML.match(/<option /g) || []).length === BANKS.list().length);
+  check("bank picker: clearing search hides suggestions and restores the full status", nodes["#bank-search-results"].hidden && nodes["#bank-search-status"].textContent === "19 banks listed alphabetically");
 
-  check("bank picker: search field has mobile and assistive attributes", html.includes('id="bank-search" type="search" inputmode="search"') && html.includes('aria-controls="bank-profile"') && html.includes('id="bank-search-status" role="status"'));
+  check("bank picker: search field exposes an accessible autocomplete", html.includes('id="bank-search" type="search" inputmode="search"') && html.includes('role="combobox" aria-autocomplete="list"') && html.includes('aria-controls="bank-search-results"') && html.includes('id="bank-search-results" class="bank-search-results" role="listbox"'));
 };

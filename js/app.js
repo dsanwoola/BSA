@@ -6,7 +6,7 @@
 (function () {
   "use strict";
 
-  var APP_BUILD = 81; // shown in the header so stale cached code is obvious
+  var APP_BUILD = 82; // shown in the header so stale cached code is obvious
   window.BSA_BUILD = APP_BUILD;
   var ANALYTICS = window.BSA_ANALYTICS || { track: function () {}, flush: function () {}, fileType: function () { return "unknown"; } };
 
@@ -195,6 +195,7 @@
     });
     var bankSel = $("#bank-profile");
     var bankSearch = $("#bank-search");
+    var bankResults = $("#bank-search-results");
     if (bankSel) bankSel.addEventListener("change", function () {
       if (!bankSel.value) return;
       setBankProfile(bankSel.value, true);
@@ -205,6 +206,11 @@
       bankSearch.addEventListener("input", function () { renderBankOptions(bankSearch.value); });
       bankSearch.addEventListener("search", function () { renderBankOptions(bankSearch.value); });
     }
+    if (bankResults) bankResults.addEventListener("click", function (e) {
+      var result = e.target.closest("[data-bank-id]");
+      if (!result) return;
+      chooseBankSearchResult(result.getAttribute("data-bank-id"));
+    });
     $("#salaryAccount").addEventListener("change", function (e) {
       state.ctx.salaryAccount = e.target.checked;
     });
@@ -223,11 +229,22 @@
 
   function filterBankProfiles(query) {
     if (!BANKS) return [];
-    var q = String(query || "").trim().toUpperCase();
+    var q = String(query || "").trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
     return BANKS.list().filter(function (p) {
       if (!q) return true;
-      return [p.name, p.id].concat(p.aliases || []).join(" ").toUpperCase().indexOf(q) !== -1;
+      return [p.name, p.id].concat(p.aliases || []).some(function (term) {
+        var value = String(term || "").toUpperCase();
+        if (value.replace(/[^A-Z0-9]/g, "").indexOf(q) === 0) return true;
+        return value.split(/[^A-Z0-9]+/).some(function (word) { return word.indexOf(q) === 0; });
+      });
     });
+  }
+
+  function chooseBankSearchResult(id) {
+    setBankProfile(id, true);
+    var search = $("#bank-search");
+    if (search) search.value = "";
+    renderBankOptions("");
   }
 
   function renderBankOptions(query) {
@@ -235,18 +252,26 @@
     if (!sel || !BANKS) return;
     var current = state.ctx.bankId || "other";
     var q = String(query || "").trim();
-    var profiles = filterBankProfiles(q);
-    var currentVisible = profiles.some(function (p) { return p.id === current; });
-    var prompt = q && !currentVisible
-      ? '<option value="" selected disabled>' + (profiles.length ? "Choose a matching bank" : "No matching bank") + "</option>"
-      : "";
-    sel.innerHTML = prompt + profiles.map(function (p) {
+    var allProfiles = BANKS.list();
+    var profiles = q.length >= 3 ? filterBankProfiles(q) : [];
+    sel.innerHTML = allProfiles.map(function (p) {
       return '<option value="' + p.id + '"' + (p.id === current ? " selected" : "") + '>' + REPORT.esc(p.name) + (p.confidence && p.id !== "other" ? " — " + REPORT.esc(p.confidence) : "") + '</option>';
     }).join("");
+    var results = $("#bank-search-results");
+    if (results) {
+      results.hidden = q.length < 3;
+      results.innerHTML = q.length < 3 ? "" : profiles.length ? profiles.map(function (p) {
+        return '<button type="button" role="option" class="bank-search-result" data-bank-id="' + REPORT.esc(p.id) + '"><strong>' + REPORT.esc(p.name) + '</strong><span>Select bank</span></button>';
+      }).join("") : '<p class="bank-search-empty">No matching bank found</p>';
+    }
+    var search = $("#bank-search");
+    if (search) search.setAttribute("aria-expanded", q.length >= 3 ? "true" : "false");
     var status = $("#bank-search-status");
-    if (status) status.textContent = q
-      ? profiles.length + (profiles.length === 1 ? " bank found" : " banks found")
-      : profiles.length + " banks listed alphabetically";
+    if (status) status.textContent = !q
+      ? allProfiles.length + " banks listed alphabetically"
+      : q.length < 3
+        ? "Type " + (3 - q.length) + " more " + (3 - q.length === 1 ? "letter" : "letters") + " to see matches"
+        : profiles.length + (profiles.length === 1 ? " bank found" : " banks found");
   }
 
   function setBankProfile(id, track) {

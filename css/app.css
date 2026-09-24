@@ -895,6 +895,17 @@ footer strong { color: var(--txt); }
   font: 600 16px var(--font);
 }
 .bank-search-wrap small { min-height: 18px; color: var(--txt-dim); font-size: 12px; }
+.bank-search-results { display: grid; gap: 7px; }
+.bank-search-results[hidden] { display: none; }
+.bank-search-result {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  width: 100%; min-height: 52px; padding: 11px 13px; text-align: left;
+  border: 1px solid var(--line); border-radius: 12px; background: var(--card-2); color: var(--txt);
+}
+.bank-search-result:hover, .bank-search-result:focus-visible { border-color: var(--accent); }
+.bank-search-result strong { font-size: 14px; }
+.bank-search-result span { flex: 0 0 auto; color: var(--accent); font-size: 12px; font-weight: 800; }
+.bank-search-empty { margin: 0; padding: 12px 13px; border: 1px dashed var(--line); border-radius: 12px; color: var(--txt-dim); font-size: 13px; }
 .paywall-head { margin-bottom: 18px; }
 .paywall-head h3 { margin: 6px 0 8px; font-size: 21px; }
 .paywall-head p { margin: 0; color: var(--txt-dim); font-size: 14px; max-width: 68ch; }
