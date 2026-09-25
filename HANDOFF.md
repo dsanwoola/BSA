@@ -1,5 +1,18 @@
 # Bank Statement Auditor — Handoff
 
+## Mobile audit table — build 84
+
+Paid charge findings now render as a compact mobile table with Result, Charge
+and Amount columns. Each native details/summary row remains keyboard and screen
+reader accessible; tapping it reveals labeled Why flagged, Calculation and CBN
+basis sections. Verdict colour/icon, narration, date, charge type, charged
+amount and refundable excess remain visible in the collapsed row. Filters,
+payment gating, CSV, print and saved paid reports are unchanged.
+
+475 tests pass, including table structure, filtering, escaping, collapsed-row
+content, disclosure semantics and mobile CSS. Browser checks at 390px and 320px
+verified 64px tap rows, correct expansion and no horizontal overflow.
+
 ## Returning paid reports — build 83
 
 After a report is unlocked, Checkam automatically saves a bounded local copy

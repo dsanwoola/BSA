@@ -513,23 +513,25 @@
   function renderFindings(audit, filter) {
     var rows = audit.findings.filter(function (f) { return filter === "all" || f.verdict === filter; });
     if (!rows.length) return '<p class="muted empty-row">No findings in this category.</p>';
-    return rows.map(function (f, i) {
+    return '<div class="findings-table">' +
+      '<div class="findings-table-head" aria-hidden="true"><span>Result</span><span>Charge</span><span>Amount</span><span></span></div>' +
+      rows.map(function (f, i) {
       var m = VERDICT_META[f.verdict];
       return '<details class="finding ' + m.cls + '">' +
         '<summary>' +
-        '<span class="badge ' + m.cls + '">' + m.icon + " " + m.label + '</span>' +
-        '<span class="f-date">' + fmtDate(f.txn.date) + '</span>' +
-        '<span class="f-narr" title="' + esc(f.txn.narration) + '">' + esc(f.txn.narration) + '</span>' +
-        '<span class="f-type">' + esc(f.typeName) + '</span>' +
-        '<span class="f-amt">' + fmtN(f.charged) + '</span>' +
-        (f.excess ? '<span class="f-excess">+' + fmtN(f.excess) + ' over</span>' : '<span class="f-excess"></span>') +
+        '<span class="f-result"><span class="badge ' + m.cls + '"><span class="badge-icon" aria-hidden="true">' + m.icon + '</span><span class="badge-label">' + m.label + '</span></span></span>' +
+        '<span class="f-main"><span class="f-narr" title="' + esc(f.txn.narration) + '">' + esc(f.txn.narration) + '</span>' +
+        '<span class="f-meta"><span class="f-date">' + fmtDate(f.txn.date) + '</span><span class="f-type">' + esc(f.typeName) + '</span></span></span>' +
+        '<span class="f-money"><span class="f-amt">' + fmtN(f.charged) + '</span>' +
+        (f.excess ? '<span class="f-excess">+' + fmtN(f.excess) + '</span>' : '<span class="f-excess"></span>') + '</span>' +
+        '<span class="f-toggle" aria-hidden="true"></span>' +
         '</summary>' +
         '<div class="f-body">' +
-        '<p class="f-reason">' + esc(f.reason) + '</p>' +
-        (f.math ? '<p class="f-math"><strong>The arithmetic:</strong> ' + esc(f.math) + '</p>' : "") +
-        '<p class="cite"><strong>Legal basis:</strong> ' + esc(f.citation) + '</p>' +
+        '<div class="f-detail-row"><span class="f-detail-label">Why flagged</span><p class="f-reason">' + esc(f.reason) + '</p></div>' +
+        (f.math ? '<div class="f-detail-row"><span class="f-detail-label">Calculation</span><p class="f-math">' + esc(f.math) + '</p></div>' : "") +
+        '<div class="f-detail-row"><span class="f-detail-label">CBN basis</span><p class="cite">' + esc(f.citation) + '</p></div>' +
         '</div></details>';
-    }).join("");
+    }).join("") + '</div>';
   }
 
   /* ---------------- all-transactions tab (with reclassify) ---------------- */
