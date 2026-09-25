@@ -6,7 +6,7 @@
 (function () {
   "use strict";
 
-  var APP_BUILD = 84; // shown in the header so stale cached code is obvious
+  var APP_BUILD = 85; // shown in the header so stale cached code is obvious
   window.BSA_BUILD = APP_BUILD;
   var ANALYTICS = window.BSA_ANALYTICS || { track: function () {}, flush: function () {}, fileType: function () { return "unknown"; } };
 
@@ -390,11 +390,52 @@
     gotoStep("step-mapping");
   }
 
+  function statementPickerOptions() {
+    return {
+      id: "checkam-bank-statement",
+      multiple: false,
+      excludeAcceptAllOption: true,
+      types: [{
+        description: "Bank statements",
+        accept: {
+          "application/pdf": [".pdf"],
+          "text/csv": [".csv"],
+          "text/plain": [".txt"],
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"],
+          "application/vnd.ms-excel": [".xls"]
+        }
+      }]
+    };
+  }
+
+  function chooseStatementFile(fileInput) {
+    // A typed document picker avoids Android offering camera apps for a bank
+    // statement. Browsers without this API use the MIME-restricted input.
+    if (typeof window.showOpenFilePicker !== "function") {
+      fileInput.click();
+      return Promise.resolve(false);
+    }
+    var picker;
+    try { picker = window.showOpenFilePicker(statementPickerOptions()); }
+    catch (err) { fileInput.click(); return Promise.resolve(false); }
+    return picker.then(function (handles) {
+      if (!handles || !handles[0]) return false;
+      return handles[0].getFile().then(function (file) {
+        if (!file) return false;
+        handleFile(file);
+        return true;
+      });
+    }).catch(function (err) {
+      if (!err || err.name !== "AbortError") showError("Could not open the file picker. Please tap Choose statement and try again.");
+      return false;
+    });
+  }
+
   function wireUpload() {
     var dz = $("#dropzone"), fi = $("#file-input");
-    dz.addEventListener("click", function () { fi.click(); });
+    dz.addEventListener("click", function () { chooseStatementFile(fi); });
     dz.addEventListener("keydown", function (e) {
-      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fi.click(); }
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); chooseStatementFile(fi); }
     });
     dz.addEventListener("dragover", function (e) { e.preventDefault(); dz.classList.add("over"); });
     dz.addEventListener("dragleave", function () { dz.classList.remove("over"); });

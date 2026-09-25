@@ -1,5 +1,19 @@
 # Bank Statement Auditor — Handoff
 
+## Document-only statement chooser — build 85
+
+The statement upload now requests one document file only: PDF, CSV, TXT, XLSX
+or XLS. Where supported, Checkam uses the browser's document picker with the
+generic "all files" option excluded; other browsers use an explicitly typed
+file input with no camera capture or image, video or audio types. The upload
+card keeps its single file icon and the existing drag-and-drop path.
+
+483 tests pass, including picker restrictions, fallback behaviour, selection,
+cancel handling and the existing audit/payment suite. A mobile browser check
+confirmed one document icon, no capture attribute and no media MIME types. The
+phone operating system still controls the final appearance of its native file
+chooser.
+
 ## Mobile audit table — build 84
 
 Paid charge findings now render as a compact mobile table with Result, Charge
