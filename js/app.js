@@ -6,20 +6,20 @@
 (function () {
   "use strict";
 
-  var APP_BUILD = 82; // shown in the header so stale cached code is obvious
+  var APP_BUILD = 83; // shown in the header so stale cached code is obvious
   window.BSA_BUILD = APP_BUILD;
   var ANALYTICS = window.BSA_ANALYTICS || { track: function () {}, flush: function () {}, fileType: function () { return "unknown"; } };
 
   var PARSER = window.CBN_PARSER, ENGINE = window.CBN_ENGINE,
       REPORT = window.CBN_REPORT, RULES = window.CBN_RULES, BANKS = window.CBN_BANK_PROFILES,
-      PAYWALL = window.CBN_PAYWALL;
+      PAYWALL = window.CBN_PAYWALL, PAID_REPORTS = window.CBN_PAID_REPORTS;
 
   var state = {
     ctx: { accountType: "current", holderType: "individual", salaryAccount: false, bankId: "other", overrides: {} },
     rows: null, source: null, fileName: null,
     txns: null, problems: null, integrity: null,
     audit: null, filter: "all",
-    fingerprint: null,
+    fingerprint: null, restoredReport: false,
     currentStep: "step-context"
   };
 
@@ -119,6 +119,11 @@
   }
 
   function goBack() {
+    if (state.currentStep === "step-results" && state.restoredReport) {
+      state.restoredReport = false;
+      gotoStep("step-context");
+      return;
+    }
     gotoStep(PREV_STEP[state.currentStep] || "step-context");
   }
 
@@ -186,6 +191,19 @@
     });
     var heroDemo = $("#btn-hero-demo");
     if (heroDemo) heroDemo.addEventListener("click", loadDemo);
+    var savedBtn = $("#btn-saved-reports");
+    var savedClose = $("#btn-saved-reports-close");
+    var savedList = $("#saved-reports-list");
+    if (savedBtn) savedBtn.addEventListener("click", function () {
+      renderSavedReportsList();
+      var panel = $("#saved-reports-panel");
+      if (panel) { panel.hidden = false; panel.scrollIntoView({ behavior: "smooth", block: "nearest" }); }
+    });
+    if (savedClose) savedClose.addEventListener("click", function () { $("#saved-reports-panel").hidden = true; });
+    if (savedList) savedList.addEventListener("click", function (e) {
+      var button = e.target.closest("[data-paid-report]");
+      if (button) openSavedReport(button.getAttribute("data-paid-report"), button);
+    });
 
     $all('input[name="acctType"], input[name="holderType"]').forEach(function (r) {
       r.addEventListener("change", function () {
@@ -245,6 +263,84 @@
     var search = $("#bank-search");
     if (search) search.value = "";
     renderBankOptions("");
+  }
+
+  /* ---------------- locally saved paid reports ---------------- */
+  function savedReportItems() {
+    try { return PAID_REPORTS ? PAID_REPORTS.list() : []; } catch (e) { return []; }
+  }
+
+  function refreshSavedReportsButton() {
+    var button = $("#btn-saved-reports");
+    if (!button) return;
+    var count = savedReportItems().length;
+    button.hidden = count === 0;
+    button.textContent = count === 1 ? "View paid report" : "View paid reports (" + count + ")";
+  }
+
+  function renderSavedReportsList() {
+    var list = $("#saved-reports-list"), items = savedReportItems();
+    if (!list) return;
+    list.innerHTML = items.map(function (item) {
+      var from = item.periodFrom ? REPORT.fmtDate(new Date(item.periodFrom)) : "Unknown date";
+      var to = item.periodTo ? REPORT.fmtDate(new Date(item.periodTo)) : "Unknown date";
+      var saved = item.savedAt ? new Date(item.savedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "";
+      return '<button class="saved-report-item" type="button" data-paid-report="' + REPORT.esc(item.fingerprint) + '">' +
+        '<strong>' + REPORT.esc(item.bankName) + '</strong>' +
+        '<span>' + REPORT.esc(from + " – " + to) + '</span>' +
+        '<small>Refund ' + REPORT.esc(REPORT.fmtN(item.refundDue)) + ' · Saved ' + REPORT.esc(saved) + '</small>' +
+        '</button>';
+    }).join("");
+  }
+
+  function openSavedReport(fingerprint, button) {
+    var status = $("#saved-reports-status");
+    if (!PAYWALL || !PAID_REPORTS || !fingerprint) return;
+    if (button) button.disabled = true;
+    if (status) { status.className = "scan-status"; status.textContent = "Checking saved payment…"; }
+    var confirmation = PAYWALL.isUnlocked(fingerprint) ? Promise.resolve(true) : PAYWALL.restore(fingerprint);
+    confirmation.then(function (paid) {
+      if (!paid) throw new Error("Payment could not be confirmed. Keep your Flutterwave receipt and do not pay again.");
+      var saved = PAID_REPORTS.load(fingerprint);
+      if (!saved) throw new Error("This saved report is unavailable in this browser. Do not pay again; re-scan the original statement to restore access.");
+      state.audit = saved.audit;
+      state.auditTxns = [];
+      state.ctx = Object.assign({ accountType: "current", holderType: "individual", salaryAccount: false, bankId: "other", overrides: {} }, saved.ctx || {});
+      state.ctx.overrides = {};
+      state.fingerprint = fingerprint;
+      state.fileName = saved.source && saved.source.fileName;
+      state.pageCount = saved.source && saved.source.pageCount;
+      state.sheetCount = saved.source && saved.source.sheetCount;
+      state.source = "saved_paid_report";
+      state.restoredReport = true;
+      state.filter = "all";
+      $("#summary-cards").innerHTML = REPORT.renderSummary(state.audit);
+      $("#report-meta").innerHTML = REPORT.reportMeta(state.audit, state.ctx, saved.source || {});
+      $("#report-read-status").textContent = "Saved paid report restored";
+      $("#report-read-status").className = "scan-status ok";
+      $("#integrity-banner").className = "integrity ok";
+      $("#integrity-banner").innerHTML = "✓ <strong>Saved audit copy:</strong> the paid findings and cross-checks were restored from this browser. Re-scan the original statement only if you need the complete transaction ledger or want to change classifications.";
+      $("#report-read-details").open = false;
+      $all(".tab-btn").forEach(function (tab) { tab.classList.toggle("on", tab.getAttribute("data-tab") === "findings"); });
+      $("#pane-findings").style.display = "";
+      $("#pane-all").style.display = "none";
+      applyGate();
+      $("#saved-reports-panel").hidden = true;
+      gotoStep("step-results");
+      ANALYTICS.track("saved_paid_report_opened", {});
+    }).catch(function (err) {
+      if (status) { status.className = "scan-status warn"; status.textContent = err.message || "Could not open this saved report."; }
+      if (button) button.disabled = false;
+    });
+  }
+
+  function saveCurrentPaidReport() {
+    if (!PAID_REPORTS || !state.fingerprint || !state.audit || state.restoredReport) return false;
+    var saved = PAID_REPORTS.save(state.fingerprint, state.audit, state.ctx, {
+      fileName: state.fileName, pageCount: state.pageCount, sheetCount: state.sheetCount
+    });
+    refreshSavedReportsButton();
+    return saved;
   }
 
   function renderBankOptions(query) {
@@ -794,6 +890,10 @@
 
   /* ---------------- step 4: results ---------------- */
   function runAudit() {
+    state.restoredReport = false;
+    // A new or re-run audit must prove its own fingerprint before any prior
+    // in-memory unlock can expose paid details.
+    state.fingerprint = null;
     // engine annotates txns in place; give it fresh shallow copies
     var txns = state.txns.map(function (t, i) {
       return { index: i, date: t.date, narration: t.narration, debit: t.debit, credit: t.credit, balance: t.balance };
@@ -904,12 +1004,19 @@
       return;
     }
 
-    $("#monetization-panel").innerHTML = '<div class="unlock-receipt no-print">✓ Full report unlocked</div>';
+    var savedLocally = saveCurrentPaidReport();
+    $("#monetization-panel").innerHTML = '<div class="unlock-receipt no-print">✓ ' + (state.restoredReport ? "Saved paid report reopened" : "Full report unlocked") + '</div>' +
+      '<p class="saved-report-note no-print">' + (state.restoredReport
+        ? "This copy is stored only in this browser."
+        : savedLocally ? "Paid findings saved in this browser for your next visit." : "This browser could not save a return copy. Download or print the report before leaving.") + '</p>';
     $("#aggregates").innerHTML = REPORT.renderAggregates(audit);
     renderFindingsPane();
-    $("#all-txns").innerHTML = REPORT.renderAllTxns(txns, audit, RULES.typeNames);
+    $("#all-txns").innerHTML = state.restoredReport ? "" : REPORT.renderAllTxns(txns, audit, RULES.typeNames);
+    var allTab = $('.tab-btn[data-tab="all"]');
+    if (allTab) allTab.style.display = state.restoredReport ? "none" : "";
     if (tabs) tabs.style.display = "";
     if (chips) chips.style.display = "";
+    if (paneAll && state.restoredReport) paneAll.style.display = "none";
     if (letterBtn) letterBtn.style.display = audit.summary.refundDue > 0 ? "" : "none";
     if (csvBtn) csvBtn.style.display = "";
     if (printBtn) printBtn.style.display = "";
@@ -1091,6 +1198,7 @@
     ANALYTICS.track("app_load", { build: APP_BUILD, theme: getTheme() });
     console.log("Bank Charge Auditor — build " + APP_BUILD);
     wireNavigation(); wireTheme(); wireContext(); wireUpload(); wireMapping(); wireResults();
+    refreshSavedReportsButton();
     gotoStep("step-context");
     // Print all available evidence, then restore the reader's disclosure choices.
     var printDetails = null;

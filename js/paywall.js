@@ -276,13 +276,13 @@
           "</div>" +
           '<button class="btn btn-ghost paywall-cta" id="btn-restore-access" type="button" aria-describedby="restore-status">Already paid? Restore access</button>' +
           '<p class="paywall-restore-status" id="restore-status" role="status" aria-live="polite" hidden></p>' +
-          '<details class="info-disclosure"><summary>Restore help</summary><p class="paywall-note">Reopen the same original statement in the same browser, then run the audit. This checks your saved receipt without starting a payment. Recovery on another device or after clearing browser data is not available yet.</p></details>' +
+          '<details class="info-disclosure"><summary>Restore help</summary><p class="paywall-note">After payment, Checkam saves the audit findings in this browser and adds View paid reports to the opening screen. If that local copy is unavailable, re-scan the original statement and use this receipt check. Another device or cleared browser data cannot restore the local copy yet.</p></details>' +
           '<label for="payment-email">Receipt email</label>' +
           '<input id="payment-email" type="email" autocomplete="email" required placeholder="you@example.com">' +
           '<button class="btn btn-primary paywall-cta" id="btn-unlock-report" type="button"' + (paymentsLive() ? "" : " disabled") + '>Unlock full report — ' + esc(priceLine) + "</button>" +
           (paymentsLive() ? "" : '<p class="paywall-note" role="status">Payments are being activated. Please check back shortly; no payment will be taken.</p>') +
           '<details class="info-disclosure"><summary>Payment &amp; privacy</summary><p class="paywall-note">One payment unlocks this statement. Paid securely through Flutterwave — card, bank transfer or USSD.</p>' +
-          '<p class="paywall-note privacy-note">🔒 Your statement stays in this browser. Checkam receives the holder type, date range and statement fingerprint; Flutterwave receives your email and payment details. Keep this browser’s site data to restore your receipt.</p></details>' +
+          '<p class="paywall-note privacy-note">🔒 Your statement file is never uploaded. After payment, the audit findings are saved only in this browser so you can reopen them without rescanning; the original file and full transaction ledger are not saved. Checkam receives the holder type, date range and statement fingerprint; Flutterwave receives your email and payment details. Keep this browser’s site data to retain the report and receipt.</p></details>' +
           '<p class="paywall-error" id="paywall-error" role="alert" hidden></p>' +
         "</div>" +
         '<details class="paywall-get info-disclosure"><summary>What’s included</summary>' +

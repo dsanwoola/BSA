@@ -30,15 +30,15 @@ var appJs = fs.readFileSync(path.join(__dirname, "..", "js", "app.js"), "utf8");
 check("launch: Checkam is the public brand", /<h1>Checkam<span class="brand-dot">\.<\/span><\/h1>/.test(indexHtml));
 check("launch: minimalist headline is present", indexHtml.indexOf("Check your bank charges.") >= 0);
 check("launch: primary CTA uses statement-first language", indexHtml.indexOf("Check my statement") >= 0);
-check("launch: browser-only privacy remains explicit", indexHtml.indexOf("without uploading your file") >= 0 && indexHtml.indexOf("never sent, stored or shared") >= 0);
+check("launch: browser-only privacy remains explicit", indexHtml.indexOf("without uploading your file") >= 0 && indexHtml.indexOf("statement file is never uploaded or shared") >= 0);
 check("launch: pricing and fake refund preview are removed", indexHtml.indexOf("Launch monetization plan") < 0 && indexHtml.indexOf("₦42,875.00") < 0);
 check("launch: workflow remains behind progressive disclosure", /id="workflow-details"[^>]*aria-hidden="true"/.test(indexHtml) && appJs.indexOf('classList.add("workflow-open")') >= 0);
 check("launch: company attribution is present", indexHtml.indexOf("A product of Neighbours NG Technologies Ltd.") >= 0);
-check("launch: build 82 markers stay aligned", /var APP_BUILD = 82/.test(appJs) && (indexHtml.match(/\?v=82/g) || []).length === 15 && indexHtml.indexOf("?v=81") < 0);
+check("launch: build 83 markers stay aligned", /var APP_BUILD = 83/.test(appJs) && (indexHtml.match(/\?v=83/g) || []).length === 16 && indexHtml.indexOf("?v=82") < 0);
 
 check("launch: live checkout is enabled", indexHtml.indexOf('data-payments-live="true"') !== -1);
 
-check("word: UI downloads DOCX from edited preview", indexHtml.includes("Download Word (.docx)") && indexHtml.includes("js/word-export.js?v=82") && appJs.includes('window.BSA_WORD_EXPORT.toBlob($("#letter-text").value)') && appJs.includes("refund_demand_letter.docx") && !appJs.includes("refund_demand_letter.txt") && appJs.includes("content instanceof Blob ? content"));
+check("word: UI downloads DOCX from edited preview", indexHtml.includes("Download Word (.docx)") && indexHtml.includes("js/word-export.js?v=83") && appJs.includes('window.BSA_WORD_EXPORT.toBlob($("#letter-text").value)') && appJs.includes("refund_demand_letter.docx") && !appJs.includes("refund_demand_letter.txt") && appJs.includes("content instanceof Blob ? content"));
 
 var CTX_SAVINGS = { accountType: "savings", holderType: "individual", salaryAccount: false };
 var CTX_CURRENT = { accountType: "current", holderType: "individual", salaryAccount: false };
@@ -1277,7 +1277,7 @@ var reportJs = readSrc("/../js/report.js");
 var betaGuide = readSrc("/../BETA_TESTING.md");
 check("static: minimalist Checkam launch appears in app", indexHtml.indexOf("Check your bank charges") !== -1 && indexHtml.indexOf("Check my statement") !== -1 && indexHtml.indexOf("Try a sample") !== -1 && indexHtml.indexOf("without uploading your file") !== -1 && indexHtml.indexOf("Launch monetization plan") === -1 && indexHtml.indexOf("₦42,875.00") === -1 && appCss.indexOf(".launch-hero") !== -1 && appCss.indexOf(".workflow-details") !== -1);
 check("static: BETA_TESTING documents privacy-safe diagnostics", betaGuide.indexOf("anonymized parser diagnostic") !== -1 && betaGuide.indexOf("must not contain names") !== -1);
-check("static: APP_BUILD and cache bust agree on 82", appJs.indexOf("APP_BUILD = 82") !== -1 && (indexHtml.match(/v=82/g) || []).length >= 8 && indexHtml.indexOf("v=81") === -1);
+check("static: APP_BUILD and cache bust agree on 83", appJs.indexOf("APP_BUILD = 83") !== -1 && (indexHtml.match(/v=83/g) || []).length >= 8 && indexHtml.indexOf("v=82") === -1);
 check("static: mobile hides stepper, Step 1 intro, and upload guidance", appCss.indexOf(".stepper {\n    display: none;") !== -1 && appCss.indexOf("#step-context .panel > h2") !== -1 && appCss.indexOf("#step-context .panel > .lead") !== -1 && appCss.indexOf("#launch-guide") !== -1 && appCss.indexOf("#launch-guide {\n    display: none;") !== -1);
 check("static: mobile layout safeguards are present", appCss.indexOf("mobile-first polish") !== -1 && appCss.indexOf("Swipe sideways to see all columns") !== -1 && appCss.indexOf(".chips { display: grid; grid-template-columns: 1fr;") !== -1 && appCss.indexOf("input, select, textarea { font-size: 16px;") !== -1);
 check("static: old SME premium surfaces stay disabled", indexHtml.indexOf('id="sme-dashboard-root"') === -1 && appJs.indexOf("bsa-premium-sme") === -1 && appJs.indexOf("btn-premium-unlock") === -1);
@@ -1298,7 +1298,7 @@ var hostingIgnores = JSON.parse(firebaseJson).hosting.ignore;
 check("hosting: exclude hidden directory descendants", hostingIgnores.indexOf("**/.*/**") !== -1 && [".git/**", ".claude/**", ".agents/**", ".github/**", ".firebase/**"].every(function(pattern) { return hostingIgnores.indexOf(pattern) !== -1; }));
 check("hosting: exclude backend source and deployment logs", ["functions/**", "firestore.rules", "package.json", "package-lock.json", "*-debug.log"].every(function(pattern) { return hostingIgnores.indexOf(pattern) !== -1; }));
 var functionsIndex = readSrc("/../functions/index.js");
-check("analytics: client is loaded and cache-busted", indexHtml.indexOf('js/analytics.js?v=82') !== -1 && analyticsJs.indexOf('BSA_ANALYTICS') !== -1 && analyticsJs.indexOf('/api/analytics') !== -1);
+check("analytics: client is loaded and cache-busted", indexHtml.indexOf('js/analytics.js?v=83') !== -1 && analyticsJs.indexOf('BSA_ANALYTICS') !== -1 && analyticsJs.indexOf('/api/analytics') !== -1);
 check("analytics: backend route is configured", firebaseJson.indexOf('"source": "/api/analytics"') !== -1 && firebaseJson.indexOf('"function": "analytics"') !== -1 && firebaseJson.indexOf('"source": "functions"') !== -1);
 check("analytics: backend uses aggregate counters only", functionsIndex.indexOf('analytics_daily') !== -1 && functionsIndex.indexOf('FieldValue.increment') !== -1 && functionsIndex.indexOf('raw statement') === -1 && functionsIndex.indexOf('narration') === -1);
 check("analytics: key journey events are instrumented", appJs.indexOf('"app_load"') !== -1 && appJs.indexOf('"file_selected"') !== -1 && appJs.indexOf('"file_read_success"') !== -1 && appJs.indexOf('"audit_completed"') !== -1 && appJs.indexOf('"recovery_pack_request"') !== -1);
@@ -1692,6 +1692,7 @@ async function paymentFlowTests() {
 paymentFlowTests().then(function () {
   require("./mobile_ui_tests.js")(check);
   require("./bank_picker_tests.js")(check);
+  require("./paid_reports_tests.js")(check);
   return require("./restore_access_tests.js")(check);
 }).then(function () {
   return require("./word_export_tests.js")(check);

@@ -1,5 +1,24 @@
 # Bank Statement Auditor — Handoff
 
+## Returning paid reports — build 83
+
+After a report is unlocked, Checkam automatically saves a bounded local copy
+of its paid findings, calculations, aggregate cross-checks and report metadata.
+Returning customers on the same browser see View paid report(s) on the opening
+screen. Opening a saved report revalidates its existing server receipt before
+showing anything, so the local copy cannot bypass payment expiry or receipt
+validation and never starts a second checkout.
+
+The original statement file and full ordinary-transaction ledger are not saved.
+Restored reports retain findings, CSV export, printing and the demand letter;
+customers re-scan only to revisit every transaction or change classifications.
+Another device, private browsing, or cleared site data still requires the
+original statement. Storage is capped at the eight most recent paid reports.
+
+465 tests pass, including local persistence, date revival for rendering and
+exports, receipt-first reopening, bounded history and privacy copy. A 390px
+browser check completed the sample audit/paywall flow with no console errors.
+
 ## Visible bank autocomplete — build 82
 
 Bank search suggestions now appear directly below the search field after the

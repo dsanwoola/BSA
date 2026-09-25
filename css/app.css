@@ -906,6 +906,23 @@ footer strong { color: var(--txt); }
 .bank-search-result strong { font-size: 14px; }
 .bank-search-result span { flex: 0 0 auto; color: var(--accent); font-size: 12px; font-weight: 800; }
 .bank-search-empty { margin: 0; padding: 12px 13px; border: 1px dashed var(--line); border-radius: 12px; color: var(--txt-dim); font-size: 13px; }
+.saved-reports-panel {
+  margin-top: 16px; padding: 16px; max-width: 620px;
+  border: 1px solid var(--line); border-radius: 16px; background: var(--card);
+}
+.saved-reports-panel[hidden] { display: none; }
+.saved-reports-panel > p { margin: 8px 0 14px; color: var(--txt-dim); font-size: 13px; }
+.saved-reports-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.saved-reports-head h3 { margin: 0; font-size: 18px; }
+.saved-reports-list { display: grid; gap: 9px; }
+.saved-report-item {
+  display: grid; gap: 4px; width: 100%; min-height: 70px; padding: 12px 14px;
+  border: 1px solid var(--line); border-radius: 12px; background: var(--card-2); color: var(--txt); text-align: left;
+}
+.saved-report-item:hover, .saved-report-item:focus-visible { border-color: var(--accent); }
+.saved-report-item strong { font-size: 14px; }
+.saved-report-item span, .saved-report-item small { color: var(--txt-dim); }
+.saved-report-note { margin: 8px 0 14px; color: var(--txt-dim); font-size: 13px; }
 .paywall-head { margin-bottom: 18px; }
 .paywall-head h3 { margin: 6px 0 8px; font-size: 21px; }
 .paywall-head p { margin: 0; color: var(--txt-dim); font-size: 14px; max-width: 68ch; }
