@@ -203,7 +203,7 @@
     getMismatchWarning: function (detection) {
       if (!detection.shouldWarn) return null;
 
-      return "⚠️ Account type mismatch detected!\n\n" +
+      return "Account type mismatch detected.\n\n" +
         "You selected: " + (detection.userSelected || "unknown").toUpperCase() + "\n" +
         "Statement appears to be: " + detection.detected.toUpperCase() + "\n" +
         "Confidence: " + detection.confidence + "%\n\n" +

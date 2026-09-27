@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Checkam — Check Your Bank Statement Privately</title>
 <meta name="description" content="Check your Nigerian bank statement for charges worth reviewing. Checkam works privately in your browser—your statement is never uploaded or stored.">
-<link rel="stylesheet" href="css/app.css?v=85">
+<link rel="stylesheet" href="css/app.css?v=86">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Cpath fill='%232ee59d' d='M24 2 6 10v12c0 11 7.6 21.4 18 24 10.4-2.6 18-13 18-24V10L24 2z'/%3E%3Ctext x='24' y='32' font-size='22' font-weight='bold' text-anchor='middle' fill='%230b1210'%3E₦%3C/text%3E%3C/svg%3E">
 <script>
   (function () {
@@ -20,6 +20,7 @@
 </script>
 </head>
 <body class="landing-mode">
+<a class="skip-link" href="#main-content">Skip to main content</a>
 <div class="wrap">
 
   <header class="app-head">
@@ -32,21 +33,30 @@
       <p>Private bank statement checker</p>
     </div>
     <button class="btn btn-ghost btn-small top-back no-print" id="btn-global-back" type="button" hidden>← Back</button>
-    <button class="theme-toggle no-print" id="theme-toggle" type="button" aria-label="Switch colour theme" aria-pressed="false">
-      <span class="theme-icon" aria-hidden="true">🌙</span>
+    <button class="theme-toggle no-print" id="theme-toggle" type="button" aria-label="Switch to light mode" aria-pressed="false">
+      <span class="theme-icon" aria-hidden="true">
+        <svg class="icon-moon" viewBox="0 0 24 24"><path d="M20.4 15.2A8.5 8.5 0 0 1 8.8 3.6 8.5 8.5 0 1 0 20.4 15.2Z"/></svg>
+        <svg class="icon-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.5"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+      </span>
       <span class="theme-label">Dark</span>
     </button>
-    <span class="privacy-pill">🔒 Private in your browser</span>
+    <span class="privacy-pill"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>Private in your browser</span>
     <span class="build-badge" id="build-badge">build …</span>
   </header>
 
   <nav class="stepper" aria-label="Progress">
+    <div class="mobile-step-summary" aria-live="polite" aria-atomic="true">
+      <span id="mobile-step-count">Step 1 of 4</span>
+      <strong id="mobile-step-name">Your account</strong>
+      <span class="mobile-step-track" aria-hidden="true"><i id="mobile-step-fill"></i></span>
+    </div>
     <span class="step-dot" data-step="step-context"><span class="n">1</span> Your account</span>
     <span class="step-dot" data-step="step-upload"><span class="n">2</span> Statement</span>
     <span class="step-dot" data-step="step-mapping"><span class="n">3</span> Verify the read</span>
     <span class="step-dot" data-step="step-results"><span class="n">4</span> Audit report</span>
   </nav>
 
+  <main id="main-content" tabindex="-1">
   <!-- ================= STEP 1: CONTEXT ================= -->
   <section class="step-section" id="step-context">
     <div class="panel">
@@ -70,9 +80,9 @@
             <p class="scan-status" id="saved-reports-status" role="status" aria-live="polite"></p>
           </section>
           <div class="trust-row" aria-label="Product assurances">
-            <span>🔒 Never uploaded</span>
-            <span>⚖ CBN-rule checks</span>
-            <span>✓ Clear findings</span>
+            <span><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>Never uploaded</span>
+            <span><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M5 6h14M7 6l-4 7h8L7 6Zm10 0-4 7h8l-4-7ZM8 21h8"/></svg>CBN-rule checks</span>
+            <span><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8 12 2.5 2.5L16 9"/></svg>Clear findings</span>
           </div>
         </div>
         <details class="info-disclosure" ><summary>How it works</summary><div class="disclosure-body"><div class="hero-card minimal-result" aria-label="How Checkam works">
@@ -88,7 +98,7 @@
 
       <div class="workflow-details" id="workflow-details" aria-hidden="true">
       <h2 class="context-title" tabindex="-1">Your account</h2>
-      <details class="info-disclosure" ><summary>Account help</summary><div class="disclosure-body"><p class="lead context-lead">This helps Checkam apply the right rules. If you are unsure, your statement usually shows the account type near the account number.</p><ul><li>Savings: no maintenance fee allowed.</li><li>Current: CAMF capped at ₦1 per ₦1,000.</li><li>Domiciliary: foreign currency account.</li><li>Business and government: corporate cash-handling thresholds.</li></ul></div></details>
+      <details class="info-disclosure help-link"><summary>Account help</summary><div class="disclosure-body"><p class="lead context-lead">This helps Checkam apply the right rules. If you are unsure, your statement usually shows the account type near the account number.</p><ul><li>Savings: no maintenance fee allowed.</li><li>Current: CAMF capped at ₦1 per ₦1,000.</li><li>Domiciliary: foreign currency account.</li><li>Business and government: corporate cash-handling thresholds.</li></ul></div></details>
 
       <div class="choice-group">
         <div class="lbl">Account type</div>
@@ -101,7 +111,7 @@
 
       <div class="choice-group">
         <div class="lbl">Bank / tariff profile</div>
-        <details class="info-disclosure" ><summary>Bank profile help</summary><div class="disclosure-body"><p class="choice-help">Pick the bank if you know it. BSA still applies the CBN Guide first, then compares against that bank's captured online tariff presentation where available.</p></div></details>
+        <details class="info-disclosure help-link"><summary>Bank profile help</summary><div class="disclosure-body"><p class="choice-help">Pick the bank if you know it. Checkam still applies the CBN Guide first, then compares against that bank's captured online tariff presentation where available.</p></div></details>
         <div class="bank-search-wrap">
           <label for="bank-search">Search banks</label>
           <input id="bank-search" type="search" inputmode="search" autocomplete="off" spellcheck="false" placeholder="Type at least 3 letters, e.g. GTB" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="bank-search-results" aria-describedby="bank-search-status">
@@ -112,7 +122,7 @@
           <select id="bank-profile" aria-label="Bank tariff profile">
             <option value="other">Other / not sure — use CBN baseline</option>
           </select>
-          <details class="info-disclosure" ><summary>Profile sources</summary><div class="disclosure-body"><small id="bank-profile-note">CBN baseline only until a bank is selected.</small></div></details>
+          <details class="info-disclosure help-link"><summary>Profile sources</summary><div class="disclosure-body"><small id="bank-profile-note">CBN baseline only until a bank is selected.</small></div></details>
         </div>
       </div>
 
@@ -129,7 +139,7 @@
         <input type="checkbox" id="salaryAccount">
         <div class="t-txt">
           <label for="salaryAccount"><strong>Salary account</strong></label>
-          <details class="info-disclosure" ><summary>Salary account rules</summary><div class="disclosure-body"><p>Salary accounts are exempt from the ₦50 electronic transfer levy/stamp duty — any levy charged becomes refundable.</p></div></details>
+          <details class="info-disclosure help-link"><summary>Salary account rules</summary><div class="disclosure-body"><p>Salary accounts are exempt from the ₦50 electronic transfer levy/stamp duty — any levy charged becomes refundable.</p></div></details>
         </div>
       </div>
 
@@ -144,18 +154,18 @@
   <section class="step-section" id="step-upload">
     <div class="panel">
       <h2>Open your statement</h2>
-      <details class="info-disclosure" ><summary>Supported statements</summary><div class="disclosure-body"><p class="lead">Choose a CSV, Excel or text-based PDF statement. CSV and Excel usually give the cleanest result.</p></div></details>
+      <details class="info-disclosure help-link"><summary>Supported statements</summary><div class="disclosure-body"><p class="lead">Choose a CSV, Excel or text-based PDF statement. CSV and Excel usually give the cleanest result.</p></div></details>
 
 
       <div class="dropzone" id="dropzone" role="button" tabindex="0" aria-label="Select statement file">
-        <div class="dz-icon">📄</div>
+        <div class="dz-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v5h5M10 12h5M10 16h5"/></svg></div>
         <h3>Choose statement</h3>
         <span class="muted">Never uploaded</span>
         <div class="fmt-tags"><span>CSV</span><span>XLSX</span><span>XLS</span><span>PDF</span></div>
       </div>
       <input type="file" id="file-input" accept=".csv,text/csv,.txt,text/plain,.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,.xls,application/vnd.ms-excel,.pdf,application/pdf" hidden>
 
-      <div class="err-box" id="upload-error"></div>
+      <div class="err-box" id="upload-error" role="alert" aria-live="assertive"></div>
 
       <div class="btn-row">
         <button class="btn btn-ghost" id="btn-upload-back">← Back</button>
@@ -222,10 +232,10 @@
       <div id="pane-findings">
         <div class="filter-chips">
           <button class="filter-chip on" data-filter="all">All <span class="chip-count">0</span></button>
-          <button class="filter-chip" data-filter="violation">⛔ Violations <span class="chip-count">0</span></button>
-          <button class="filter-chip" data-filter="review">❓ Needs review <span class="chip-count">0</span></button>
-          <button class="filter-chip" data-filter="advisory">ℹ Advisory <span class="chip-count">0</span></button>
-          <button class="filter-chip" data-filter="compliant">✓ Compliant <span class="chip-count">0</span></button>
+          <button class="filter-chip" data-filter="violation"><span class="status-symbol" aria-hidden="true">!</span> Violations <span class="chip-count">0</span></button>
+          <button class="filter-chip" data-filter="review"><span class="status-symbol" aria-hidden="true">?</span> Needs review <span class="chip-count">0</span></button>
+          <button class="filter-chip" data-filter="advisory"><span class="status-symbol" aria-hidden="true">i</span> Advisory <span class="chip-count">0</span></button>
+          <button class="filter-chip" data-filter="compliant"><span class="status-symbol" aria-hidden="true">✓</span> Compliant <span class="chip-count">0</span></button>
         </div>
         <div id="findings-list"></div>
       </div>
@@ -245,6 +255,7 @@
       </div>
     </div>
   </section>
+  </main>
 
   <!-- scanning overlay -->
   <div class="scan-overlay" id="scan-overlay" aria-live="polite" aria-hidden="true">
@@ -265,7 +276,7 @@
       <div class="scan-title" id="scan-title">Scanning your statement</div>
       <div class="scan-sub" id="scan-sub">Reading every transaction<span class="scan-dots"><i>.</i><i>.</i><i>.</i></span></div>
       <div class="scan-bar"><div class="scan-bar-fill" id="scan-bar-fill"></div></div>
-      <div class="scan-note">🔒 Private on your device</div>
+      <div class="scan-note"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>Private on your device</div>
     </div>
   </div>
 
@@ -287,7 +298,7 @@
   <!-- account type correction modal -->
   <div class="modal" id="acct-correction-modal" role="dialog" aria-modal="true" aria-label="Account type correction">
     <div class="modal-box">
-      <h3>⚠️ Account type mismatch</h3>
+      <h3><span class="status-symbol status-warning" aria-hidden="true">!</span> Account type mismatch</h3>
       <p class="muted" id="acct-correction-msg"></p>
       <details class="info-disclosure" ><summary>Why this matters</summary><div class="disclosure-body"><p style="margin-top: 16px; color: var(--txt-dim); font-size: 13px;">Account type affects which charges are flagged as violations (e.g., maintenance fees are illegal on Savings accounts but permitted on Current accounts).</p></div></details>
       <div class="btn-row">
@@ -322,20 +333,20 @@
 <script src="vendor/xlsx.full.min.js"></script>
 <script src="vendor/pdf.min.js"></script>
 <script src="vendor/pdf.worker.min.js"></script>
-<script src="js/rules.js?v=85"></script>
-<script src="js/bank-profiles.js?v=85"></script>
-<script src="js/patterns.js?v=85"></script>
-<script src="js/engine.js?v=85"></script>
-<script src="js/parser.js?v=85"></script>
-<script src="js/report.js?v=85"></script>
-<script src="js/account-detector.js?v=85"></script>
-<script src="js/account-detector-integration.js?v=85"></script>
-<script src="js/analytics.js?v=85"></script>
-<script src="js/analytics-enhanced.js?v=85"></script>
-<script src="js/pricing.js?v=85"></script>
-<script src="js/paywall.js?v=85"></script>
-<script src="js/paid-reports.js?v=85"></script>
-<script src="js/word-export.js?v=85"></script>
-<script src="js/app.js?v=85"></script>
+<script src="js/rules.js?v=86"></script>
+<script src="js/bank-profiles.js?v=86"></script>
+<script src="js/patterns.js?v=86"></script>
+<script src="js/engine.js?v=86"></script>
+<script src="js/parser.js?v=86"></script>
+<script src="js/report.js?v=86"></script>
+<script src="js/account-detector.js?v=86"></script>
+<script src="js/account-detector-integration.js?v=86"></script>
+<script src="js/analytics.js?v=86"></script>
+<script src="js/analytics-enhanced.js?v=86"></script>
+<script src="js/pricing.js?v=86"></script>
+<script src="js/paywall.js?v=86"></script>
+<script src="js/paid-reports.js?v=86"></script>
+<script src="js/word-export.js?v=86"></script>
+<script src="js/app.js?v=86"></script>
 </body>
 </html>

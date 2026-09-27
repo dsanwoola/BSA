@@ -3,6 +3,7 @@ var fs = require("fs"), path = require("path"), vm = require("vm");
 module.exports = function (check) {
   var app = fs.readFileSync(path.join(__dirname, "../js/app.js"), "utf8");
   var html = fs.readFileSync(path.join(__dirname, "../index.html"), "utf8");
+  var css = fs.readFileSync(path.join(__dirname, "../css/app.css"), "utf8");
   var nodes = {};
   ["scan-details", "btn-scan-details", "scan-heading", "scan-status", "acct-hint", "diagnostic-box", "mapping-stats", "btn-run-audit", "mapping-problems", "mapping-table", "reconcile-box"].forEach(function (id) {
     nodes["#" + id] = { hidden: false, style: { display: "none" }, dataset: { headerRow: "0" }, setAttribute: function (k, v) { this[k] = v; } };
@@ -43,6 +44,12 @@ module.exports = function (check) {
   check("mobile: invalid mapping clears stale checksum", nodes['#reconcile-box'].innerHTML === '' && nodes['#reconcile-box'].style.display === 'none');
   check("mobile: scan controls stay outside collapsed content", html.indexOf('id="btn-run-audit"') < html.indexOf('id="scan-details"') && html.includes('aria-controls="scan-details"'));
   check("mobile: paid analysis remains gated and letter focus includes summaries", app.includes('$("#paid-analysis").hidden = locked') && app.includes('textarea, button, summary,'));
+  check("ux: keyboard users can skip directly to the main workflow", html.includes('class="skip-link" href="#main-content"') && html.includes('<main id="main-content" tabindex="-1">'));
+  check("ux: mobile progress announces the current step", html.includes('id="mobile-step-count"') && html.includes('id="mobile-step-name"') && app.includes('d.setAttribute("aria-current", "step")') && app.includes('info.index * 25'));
+  check("ux: theme control uses scalable icons and a dynamic accessible name", html.includes('class="icon-moon"') && html.includes('class="icon-sun"') && app.includes('btn.setAttribute("aria-label", isLight ? "Switch to dark mode" : "Switch to light mode")'));
+  check("ux: core landing and upload controls avoid platform-dependent emoji icons", html.includes('class="ui-icon"') && html.includes('<div class="dz-icon"><svg') && !/[🔒⚖📄⛔❓ℹ⚠️]/u.test(html));
+  check("ux: mobile layout respects safe areas and accessible tap sizes", css.includes('env(safe-area-inset-top)') && css.includes('env(safe-area-inset-bottom)') && css.includes('.btn { min-height: 48px; }'));
+  check("ux: reduced motion and visible keyboard focus remain supported", css.includes('@media (prefers-reduced-motion: reduce)') && css.includes('outline: 3px solid var(--accent)'));
   var handlers = {}, details = [{open:false},{open:true}];
   vm.runInNewContext(app.slice(app.indexOf('    var printDetails = null;'), app.lastIndexOf('  });')), {
     $all: function () { return details; }, window: { addEventListener: function (event, fn) { handlers[event] = fn; } }

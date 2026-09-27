@@ -220,7 +220,7 @@
       return '<p class="muted">No violations or review items were found in this statement, so there is nothing locked here.</p>';
     }
     var rows = items.map(function (g) {
-      var icon = g.verdict === "violation" ? "⛔" : "❓";
+      var icon = g.verdict === "violation" ? "!" : "?";
       var cls = g.verdict === "violation" ? "v-violation" : "v-review";
       return '<li class="lock-row">' +
         '<span class="badge ' + cls + '">' + icon + "</span>" +
@@ -256,7 +256,7 @@
 
     return '<section class="paywall no-print" aria-labelledby="paywall-title">' +
       '<div class="paywall-head">' +
-        '<span class="eyebrow">🔒 Full report locked</span>' +
+        '<span class="eyebrow">Full report locked</span>' +
         '<h3 id="paywall-title">Unlock full report</h3>' +
         '<details class="info-disclosure"><summary>Why unlock?</summary>' +
         '<p>' + (proven > 0
@@ -282,7 +282,7 @@
           '<button class="btn btn-primary paywall-cta" id="btn-unlock-report" type="button"' + (paymentsLive() ? "" : " disabled") + '>Unlock full report — ' + esc(priceLine) + "</button>" +
           (paymentsLive() ? "" : '<p class="paywall-note" role="status">Payments are being activated. Please check back shortly; no payment will be taken.</p>') +
           '<details class="info-disclosure"><summary>Payment &amp; privacy</summary><p class="paywall-note">One payment unlocks this statement. Paid securely through Flutterwave — card, bank transfer or USSD.</p>' +
-          '<p class="paywall-note privacy-note">🔒 Your statement file is never uploaded. After payment, the audit findings are saved only in this browser so you can reopen them without rescanning; the original file and full transaction ledger are not saved. Checkam receives the holder type, date range and statement fingerprint; Flutterwave receives your email and payment details. Keep this browser’s site data to retain the report and receipt.</p></details>' +
+          '<p class="paywall-note privacy-note">Your statement file is never uploaded. After payment, the audit findings are saved only in this browser so you can reopen them without rescanning; the original file and full transaction ledger are not saved. Checkam receives the holder type, date range and statement fingerprint; Flutterwave receives your email and payment details. Keep this browser’s site data to retain the report and receipt.</p></details>' +
           '<p class="paywall-error" id="paywall-error" role="alert" hidden></p>' +
         "</div>" +
         '<details class="paywall-get info-disclosure"><summary>What’s included</summary>' +

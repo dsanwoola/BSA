@@ -19,10 +19,10 @@
   }
 
   var VERDICT_META = {
-    violation: { label: "VIOLATION", cls: "v-violation", icon: "⛔" },
+    violation: { label: "VIOLATION", cls: "v-violation", icon: "!" },
     compliant: { label: "COMPLIANT", cls: "v-compliant", icon: "✓" },
-    review: { label: "NEEDS REVIEW", cls: "v-review", icon: "❓" },
-    advisory: { label: "ADVISORY", cls: "v-advisory", icon: "ℹ" }
+    review: { label: "NEEDS REVIEW", cls: "v-review", icon: "?" },
+    advisory: { label: "ADVISORY", cls: "v-advisory", icon: "i" }
   };
 
   /* ---------------- summary cards ---------------- */

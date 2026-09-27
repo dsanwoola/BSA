@@ -88,7 +88,7 @@
       modal.setAttribute("aria-hidden", "true");
 
       // Show toast notification
-      showNotification("✓ Account type updated to " + detection.type.toUpperCase());
+      showNotification("Account type updated to " + detection.type.toUpperCase());
 
       // Track correction in analytics
       var analytics = window.BSA_ANALYTICS;

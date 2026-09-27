@@ -6,7 +6,7 @@
 (function () {
   "use strict";
 
-  var APP_BUILD = 85; // shown in the header so stale cached code is obvious
+  var APP_BUILD = 86; // shown in the header so stale cached code is obvious
   window.BSA_BUILD = APP_BUILD;
   var ANALYTICS = window.BSA_ANALYTICS || { track: function () {}, flush: function () {}, fileType: function () { return "unknown"; } };
 
@@ -105,6 +105,12 @@
     "step-mapping": "step-upload",
     "step-results": "step-mapping"
   };
+  var STEP_INFO = {
+    "step-context": { index: 1, name: "Your account" },
+    "step-upload": { index: 2, name: "Statement" },
+    "step-mapping": { index: 3, name: "Verify the read" },
+    "step-results": { index: 4, name: "Audit report" }
+  };
 
   function gotoStep(id) {
     state.currentStep = id;
@@ -112,8 +118,16 @@
     ANALYTICS.track("step_view", { step: id });
     $all(".step-section").forEach(function (s) { s.classList.toggle("active", s.id === id); });
     $all(".step-dot").forEach(function (d) {
-      d.classList.toggle("on", d.getAttribute("data-step") === id);
+      var current = d.getAttribute("data-step") === id;
+      d.classList.toggle("on", current);
+      if (current) d.setAttribute("aria-current", "step");
+      else d.removeAttribute("aria-current");
     });
+    var info = STEP_INFO[id] || STEP_INFO["step-context"];
+    var count = $("#mobile-step-count"), name = $("#mobile-step-name"), fill = $("#mobile-step-fill");
+    if (count) count.textContent = "Step " + info.index + " of 4";
+    if (name) name.textContent = info.name;
+    if (fill) fill.style.width = (info.index * 25) + "%";
     updateGlobalBackButton(id);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -157,10 +171,9 @@
     if (!btn) return;
     var isLight = theme === "light";
     btn.setAttribute("aria-pressed", isLight ? "true" : "false");
+    btn.setAttribute("aria-label", isLight ? "Switch to dark mode" : "Switch to light mode");
     btn.setAttribute("title", isLight ? "Switch to dark mode" : "Switch to light mode");
-    var icon = btn.querySelector(".theme-icon");
     var label = btn.querySelector(".theme-label");
-    if (icon) icon.textContent = isLight ? "☀️" : "🌙";
     if (label) label.textContent = isLight ? "Light" : "Dark";
   }
 
@@ -186,7 +199,7 @@
       var details = $("#workflow-details");
       if (details) details.setAttribute("aria-hidden", "false");
       var target = $(".context-title");
-      if (target && target.scrollIntoView) target.scrollIntoView({ behavior: "smooth", block: "start" });
+      window.scrollTo({ top: 0, behavior: "smooth" });
       if (target) target.focus({ preventScroll: true });
     });
     var heroDemo = $("#btn-hero-demo");
@@ -319,7 +332,7 @@
       $("#report-read-status").textContent = "Saved paid report restored";
       $("#report-read-status").className = "scan-status ok";
       $("#integrity-banner").className = "integrity ok";
-      $("#integrity-banner").innerHTML = "✓ <strong>Saved audit copy:</strong> the paid findings and cross-checks were restored from this browser. Re-scan the original statement only if you need the complete transaction ledger or want to change classifications.";
+      $("#integrity-banner").innerHTML = "<strong>Saved audit copy:</strong> the paid findings and cross-checks were restored from this browser. Re-scan the original statement only if you need the complete transaction ledger or want to change classifications.";
       $("#report-read-details").open = false;
       $all(".tab-btn").forEach(function (tab) { tab.classList.toggle("on", tab.getAttribute("data-tab") === "findings"); });
       $("#pane-findings").style.display = "";
@@ -878,9 +891,9 @@
     var recBox = $("#reconcile-box");
     if (rec) {
       recBox.style.display = "";
-      recBox.innerHTML = '<div class="meta-title">' + (rec.allOk ? "✅" : "⚠️") + " Checksum against the statement's own summary figures</div>" +
+      recBox.innerHTML = '<div class="meta-title">' + (rec.allOk ? "Verified: " : "Review: ") + "checksum against the statement's own summary figures</div>" +
         '<ul class="rec-list">' + rec.checks.map(function (ch) {
-          return '<li class="' + (ch.ok ? "ok" : "fail") + '">' + (ch.ok ? "✓" : "✗") + " <strong>" + REPORT.esc(ch.label) + ":</strong> " + REPORT.esc(ch.detail) + "</li>";
+          return '<li class="' + (ch.ok ? "ok" : "fail") + '"><strong>' + (ch.ok ? "Passed — " : "Review — ") + REPORT.esc(ch.label) + ":</strong> " + REPORT.esc(ch.detail) + "</li>";
         }).join("") + "</ul>";
       if (rec.anyFail) {
         if (rec.summaryBoundaryOnly && ic.hasBalance && ic.ratio >= 0.98) {
@@ -988,7 +1001,7 @@
     var banner = $("#integrity-banner");
     if (ic && ic.hasBalance && ic.checked >= 5 && ic.ratio >= 0.98) {
       banner.className = "integrity ok";
-      banner.innerHTML = "✓ <strong>Statement integrity verified:</strong> the running balance reconciles on " + ic.matched + " of " + ic.checked + " rows — these results are computed from a provably correct read of your statement.";
+      banner.innerHTML = "<strong>Statement integrity verified:</strong> the running balance reconciles on " + ic.matched + " of " + ic.checked + " rows — these results are computed from a provably correct read of your statement.";
     } else if (ic && ic.hasBalance && ic.checked >= 5) {
       banner.className = "integrity warn";
       banner.innerHTML = "⚠ <strong>Partial integrity:</strong> the running balance reconciled on " + Math.round(ic.ratio * 100) + "% of rows. Treat results as indicative and double-check flagged items against the original statement.";
@@ -1046,7 +1059,7 @@
     }
 
     var savedLocally = saveCurrentPaidReport();
-    $("#monetization-panel").innerHTML = '<div class="unlock-receipt no-print">✓ ' + (state.restoredReport ? "Saved paid report reopened" : "Full report unlocked") + '</div>' +
+    $("#monetization-panel").innerHTML = '<div class="unlock-receipt no-print">' + (state.restoredReport ? "Saved paid report reopened" : "Full report unlocked") + '</div>' +
       '<p class="saved-report-note no-print">' + (state.restoredReport
         ? "This copy is stored only in this browser."
         : savedLocally ? "Paid findings saved in this browser for your next visit." : "This browser could not save a return copy. Download or print the report before leaving.") + '</p>';
@@ -1145,7 +1158,7 @@
       var ta = $("#letter-text");
       ta.select();
       try { navigator.clipboard.writeText(ta.value); } catch (e) { document.execCommand("copy"); }
-      $("#btn-letter-copy").textContent = "Copied ✓";
+      $("#btn-letter-copy").textContent = "Copied";
       setTimeout(function () { $("#btn-letter-copy").textContent = "Copy to clipboard"; }, 1500);
     });
     $("#btn-letter-download").addEventListener("click", function () {

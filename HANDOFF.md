@@ -1,5 +1,20 @@
 # Bank Statement Auditor — Handoff
 
+## Mobile-first UI refinement — build 86
+
+The primary Checkam journey now uses a compact four-step mobile progress bar,
+clearer visual hierarchy, consistent SVG icons, smaller inline help links and
+stronger primary/secondary action styling. Controls provide stable press and
+focus feedback, preserve 48px mobile tap targets, respect device safe areas,
+and keep light, dark, reduced-motion and landscape layouts aligned. Keyboard
+users can skip directly to the main workflow, active steps expose
+`aria-current`, and the theme control announces the action it will perform.
+
+489 tests pass. Browser checks covered 320px and 375px phones, 812×375
+landscape, 768px tablet and 1024px desktop layouts in light and dark themes.
+The complete sample journey reached the audit/paywall at 320px with no page
+overflow, unnamed controls or touch targets below 44px.
+
 ## Document-only statement chooser — build 85
 
 The statement upload now requests one document file only: PDF, CSV, TXT, XLSX
