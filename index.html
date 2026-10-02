@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Checkam — Check Your Bank Statement Privately</title>
 <meta name="description" content="Check your Nigerian bank statement for charges worth reviewing. Checkam works privately in your browser—your statement is never uploaded or stored.">
-<link rel="stylesheet" href="css/app.css?v=86">
+<link rel="stylesheet" href="css/app.css?v=87">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Cpath fill='%232ee59d' d='M24 2 6 10v12c0 11 7.6 21.4 18 24 10.4-2.6 18-13 18-24V10L24 2z'/%3E%3Ctext x='24' y='32' font-size='22' font-weight='bold' text-anchor='middle' fill='%230b1210'%3E₦%3C/text%3E%3C/svg%3E">
 <script>
   (function () {
@@ -85,6 +85,41 @@
             <span><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8 12 2.5 2.5L16 9"/></svg>Clear findings</span>
           </div>
         </div>
+        <div class="hero-visual">
+        <figure class="statement-scanner" aria-labelledby="scanner-caption">
+          <div class="scanner-stage" aria-hidden="true">
+            <svg class="statement-art" width="320" height="400" viewBox="0 0 320 400" xmlns="http://www.w3.org/2000/svg">
+              <rect class="statement-shadow" x="32" y="22" width="256" height="360" rx="16"/>
+              <rect class="statement-paper" x="24" y="14" width="256" height="360" rx="16"/>
+              <circle class="statement-mark" cx="56" cy="50" r="16"/>
+              <path class="statement-mark-line" d="M48 50h16M56 42v16"/>
+              <text class="statement-bank" x="82" y="47">CHECKAM DEMO BANK</text>
+              <text class="statement-title" x="82" y="63">BANK STATEMENT</text>
+              <rect class="statement-rule" x="44" y="84" width="216" height="2" rx="1"/>
+              <text class="statement-label" x="44" y="108">ACCOUNT</text>
+              <text class="statement-value" x="44" y="125">•••• •••• 2048</text>
+              <text class="statement-label" x="176" y="108">PERIOD</text>
+              <text class="statement-value" x="176" y="125">01–30 JUN</text>
+              <rect class="statement-table-head" x="44" y="148" width="216" height="24" rx="5"/>
+              <text class="statement-head-text" x="53" y="164">DATE</text>
+              <text class="statement-head-text" x="99" y="164">DESCRIPTION</text>
+              <text class="statement-head-text" x="221" y="164">AMOUNT</text>
+              <g class="statement-rows">
+                <path d="M44 190h216M44 224h216M44 258h216M44 292h216M44 326h216"/>
+                <text x="48" y="190">03 JUN</text><text x="99" y="190">TRANSFER FEE</text><text x="226" y="190">₦53.75</text>
+                <text x="48" y="224">08 JUN</text><text x="99" y="224">SMS ALERT</text><text x="231" y="224">₦21.50</text>
+                <text x="48" y="258">14 JUN</text><text x="99" y="258">CARD FEE</text><text x="226" y="258">₦53.75</text>
+                <text x="48" y="292">21 JUN</text><text x="99" y="292">MAINTENANCE</text><text x="219" y="292">₦450.00</text>
+                <text x="48" y="326">28 JUN</text><text x="99" y="326">TRANSFER FEE</text><text x="226" y="326">₦53.75</text>
+              </g>
+              <rect class="statement-total" x="154" y="340" width="106" height="18" rx="5"/>
+            </svg>
+            <div class="statement-scan-beam"><span></span></div>
+            <i class="scanner-corner corner-tl"></i><i class="scanner-corner corner-tr"></i>
+            <i class="scanner-corner corner-bl"></i><i class="scanner-corner corner-br"></i>
+          </div>
+          <figcaption id="scanner-caption"><span class="scanner-status-dot" aria-hidden="true"></span><span><strong>Scanning locally</strong><small>Your statement never leaves this device.</small></span></figcaption>
+        </figure>
         <details class="info-disclosure" ><summary>How it works</summary><div class="disclosure-body"><div class="hero-card minimal-result" aria-label="How Checkam works">
           <span class="result-label">Simple. Private. Useful.</span>
           <ol class="minimal-steps">
@@ -94,6 +129,7 @@
           </ol>
           <p class="local-note">Your statement file is never uploaded or shared.</p>
         </div></div></details>
+        </div>
       </div>
 
       <div class="workflow-details" id="workflow-details" aria-hidden="true">
@@ -333,20 +369,20 @@
 <script src="vendor/xlsx.full.min.js"></script>
 <script src="vendor/pdf.min.js"></script>
 <script src="vendor/pdf.worker.min.js"></script>
-<script src="js/rules.js?v=86"></script>
-<script src="js/bank-profiles.js?v=86"></script>
-<script src="js/patterns.js?v=86"></script>
-<script src="js/engine.js?v=86"></script>
-<script src="js/parser.js?v=86"></script>
-<script src="js/report.js?v=86"></script>
-<script src="js/account-detector.js?v=86"></script>
-<script src="js/account-detector-integration.js?v=86"></script>
-<script src="js/analytics.js?v=86"></script>
-<script src="js/analytics-enhanced.js?v=86"></script>
-<script src="js/pricing.js?v=86"></script>
-<script src="js/paywall.js?v=86"></script>
-<script src="js/paid-reports.js?v=86"></script>
-<script src="js/word-export.js?v=86"></script>
-<script src="js/app.js?v=86"></script>
+<script src="js/rules.js?v=87"></script>
+<script src="js/bank-profiles.js?v=87"></script>
+<script src="js/patterns.js?v=87"></script>
+<script src="js/engine.js?v=87"></script>
+<script src="js/parser.js?v=87"></script>
+<script src="js/report.js?v=87"></script>
+<script src="js/account-detector.js?v=87"></script>
+<script src="js/account-detector-integration.js?v=87"></script>
+<script src="js/analytics.js?v=87"></script>
+<script src="js/analytics-enhanced.js?v=87"></script>
+<script src="js/pricing.js?v=87"></script>
+<script src="js/paywall.js?v=87"></script>
+<script src="js/paid-reports.js?v=87"></script>
+<script src="js/word-export.js?v=87"></script>
+<script src="js/app.js?v=87"></script>
 </body>
 </html>

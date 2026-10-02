@@ -1,5 +1,19 @@
 # Bank Statement Auditor — Handoff
 
+## Animated statement scanner — build 87
+
+The landing page now pairs its primary message with an anonymous, fictional
+bank statement illustration and a focused scan-beam animation. The visual is
+an inline SVG with fixed intrinsic dimensions, so it adds no image request,
+stays sharp on every screen and cannot expose customer data. A short caption
+reinforces that scanning happens locally in the browser.
+
+The animation uses transforms only, does not block any controls and becomes a
+static scanned state when the device requests reduced motion. Browser checks
+covered 320px and 375px phones, 812×375 landscape, 768px tablet and 1024px
+desktop layouts in light and dark themes with no horizontal overflow. All 492
+automated tests pass.
+
 ## Mobile-first UI refinement — build 86
 
 The primary Checkam journey now uses a compact four-step mobile progress bar,

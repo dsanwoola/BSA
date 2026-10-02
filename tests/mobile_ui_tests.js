@@ -50,6 +50,9 @@ module.exports = function (check) {
   check("ux: core landing and upload controls avoid platform-dependent emoji icons", html.includes('class="ui-icon"') && html.includes('<div class="dz-icon"><svg') && !/[🔒⚖📄⛔❓ℹ⚠️]/u.test(html));
   check("ux: mobile layout respects safe areas and accessible tap sizes", css.includes('env(safe-area-inset-top)') && css.includes('env(safe-area-inset-bottom)') && css.includes('.btn { min-height: 48px; }'));
   check("ux: reduced motion and visible keyboard focus remain supported", css.includes('@media (prefers-reduced-motion: reduce)') && css.includes('outline: 3px solid var(--accent)'));
+  check("landing scanner: anonymized statement artwork has intrinsic dimensions and an accessible caption", html.includes('class="statement-scanner" aria-labelledby="scanner-caption"') && html.includes('class="statement-art" width="320" height="400"') && html.includes('Your statement never leaves this device.'));
+  check("landing scanner: one isolated scan beam and one status pulse communicate local processing", html.includes('class="statement-scan-beam"') && html.includes('class="scanner-status-dot"') && css.includes('@keyframes statement-scan') && css.includes('@keyframes scanner-status'));
+  check("landing scanner: reduced-motion users receive a static scanner state", css.includes('.statement-scan-beam { animation: none !important;') && css.includes('.scanner-status-dot { animation: none !important;'));
   var handlers = {}, details = [{open:false},{open:true}];
   vm.runInNewContext(app.slice(app.indexOf('    var printDetails = null;'), app.lastIndexOf('  });')), {
     $all: function () { return details; }, window: { addEventListener: function (event, fn) { handlers[event] = fn; } }
