@@ -659,7 +659,9 @@
       var ok = Math.abs(expected - actual) <= 0.02;
       var f = isCount ? function (n) { return String(Math.round(n)); } : fmt;
       checks.push({
-        label: label, ok: ok,
+        label: label, ok: ok, expected: expected, actual: actual,
+        difference: Math.round((actual - expected) * 100) / 100,
+        isCount: !!isCount,
         detail: ok ? f(actual) + " — matches the statement's own figure" + (note || "")
           : "statement says " + f(expected) + " but the parsed rows " + (isCount ? "count " : "add up to ") + f(actual) + " (difference " + f(Math.abs(expected - actual)) + ")"
       });
@@ -721,6 +723,7 @@
     var headerLen = rows[headerRow] ? rows[headerRow].length : 0;
     for (var r = headerRow + 1; r < rows.length; r++) {
       var row = rows[r];
+      var sourcePage = row && row._sourcePage ? row._sourcePage : null;
       var joinedRow = row.join(" ").replace(/\s+/g, " ").trim();
       // OPay statements can concatenate a Wallet table and a separate Savings
       // Account/OWealth table in one PDF. The hero summary above the first
@@ -791,7 +794,7 @@
           continue;
         } else {
           if (rowHasMoney(row, map)) {
-            problems.push({ row: r + 1, issue: "Unreadable date '" + rawDate + "' on a row with amounts — row was NOT audited", data: row.join(" | ").slice(0, 140) });
+            problems.push({ row: r + 1, page: sourcePage, issue: "Unreadable date '" + rawDate + "' on a row with amounts — row was NOT audited", data: row.join(" | ").slice(0, 140) });
           }
           continue;
         }
@@ -802,7 +805,7 @@
         var dv = map.debit !== undefined ? parseMoneyColumn(row[map.debit]) : 0;
         var cv = map.credit !== undefined ? parseMoneyColumn(row[map.credit]) : 0;
         if (dv === null || cv === null) {
-          problems.push({ row: r + 1, issue: "Unreadable amount — row was NOT audited", data: row.join(" | ").slice(0, 140) });
+          problems.push({ row: r + 1, page: sourcePage, issue: "Unreadable amount — row was NOT audited", data: row.join(" | ").slice(0, 140) });
           continue;
         }
         debit = Math.abs(typeof dv === "object" ? dv.amount : dv);
@@ -810,7 +813,7 @@
       } else if (map.amount !== undefined) {
         var av = parseAmount(row[map.amount]);
         if (av === null) {
-          problems.push({ row: r + 1, issue: "Unreadable amount — row was NOT audited", data: row.join(" | ").slice(0, 140) });
+          problems.push({ row: r + 1, page: sourcePage, issue: "Unreadable amount — row was NOT audited", data: row.join(" | ").slice(0, 140) });
           continue;
         }
         var amt = typeof av === "object" ? av.amount : av;
@@ -839,7 +842,11 @@
         continue; // non-monetary row
       }
 
-      lastTxn = { index: txns.length, date: date, rawDateText: rawDateText, narration: narration, debit: debit, credit: credit, balance: balance };
+      lastTxn = {
+        index: txns.length, date: date, rawDateText: rawDateText, narration: narration,
+        debit: debit, credit: credit, balance: balance,
+        sourceRow: r + 1, sourcePage: sourcePage
+      };
       pendingDatePrefix = null;
       txns.push(lastTxn);
     }
@@ -1093,6 +1100,88 @@
       checked: checked, matched: matched, sections: sections,
       ratio: checked ? matched / checked : null,
       hasBalance: withBal.length > 0
+    };
+  }
+
+  /** Locate the evidence behind a failed read instead of presenting only a
+   *  statement-wide checksum. A running-balance break proves where the table
+   *  stops reconciling and how much net movement is needed, but one PDF cannot
+   *  prove whether the cause is a missing row, a misread amount/balance, or a
+   *  bank-summary error. The UI therefore reports candidates, not guesses. */
+  function locateDifferences(txns, problems, reconcile) {
+    txns = txns || [];
+    problems = problems || [];
+    function rr(n) { return Math.round(n * 100) / 100; }
+    function ref(t) {
+      return {
+        index: t.index,
+        row: t.sourceRow || t.index + 1,
+        page: t.sourcePage || null,
+        date: t.date || null,
+        balance: t.balance
+      };
+    }
+
+    var withBal = txns.filter(function (t) { return t.balance !== null; });
+    var balanceGaps = [];
+    for (var i = 1; i < withBal.length; i++) {
+      var previous = withBal[i - 1], current = withBal[i];
+      var expectedBalance = rr(previous.balance - current.debit + current.credit);
+      var difference = rr(current.balance - expectedBalance);
+      if (Math.abs(difference) <= 0.011) continue;
+      var next = withBal[i + 1];
+      var nextContinues = !!next && Math.abs(rr(current.balance - next.debit + next.credit) - next.balance) <= 0.011;
+      balanceGaps.push({
+        before: ref(previous),
+        after: ref(current),
+        expectedBalance: expectedBalance,
+        actualBalance: current.balance,
+        netAmount: Math.abs(difference),
+        neededSide: difference > 0 ? "credit" : "debit",
+        pageBoundary: !!(previous.sourcePage && current.sourcePage && previous.sourcePage !== current.sourcePage),
+        nextRowsContinue: nextContinues
+      });
+    }
+
+    var summaryDifferences = reconcile ? reconcile.checks.filter(function (check) {
+      return !check.ok;
+    }).map(function (check) {
+      return {
+        label: check.label,
+        expected: check.expected,
+        actual: check.actual,
+        difference: check.difference,
+        isCount: check.isCount,
+        higherSide: check.actual > check.expected ? "parsed" : "statement"
+      };
+    }) : [];
+
+    balanceGaps.forEach(function (gap) {
+      summaryDifferences.some(function (item) {
+        if (item.isCount || Math.abs(Math.abs(item.difference) - gap.netAmount) > 0.02) return false;
+        var interpretation = null;
+        if (item.label === "Total debits" && item.difference < 0 && gap.neededSide === "debit") {
+          interpretation = "The statement's debit total is higher by the same amount, pointing to a debit missing from the parsed result.";
+        } else if (item.label === "Total debits" && item.difference > 0 && gap.neededSide === "credit") {
+          interpretation = "The parsed debit total is higher by the same amount, pointing to an extra or misread debit in the parsed result.";
+        } else if (item.label === "Total credits" && item.difference < 0 && gap.neededSide === "credit") {
+          interpretation = "The statement's credit total is higher by the same amount, pointing to a credit missing from the parsed result.";
+        } else if (item.label === "Total credits" && item.difference > 0 && gap.neededSide === "debit") {
+          interpretation = "The parsed credit total is higher by the same amount, pointing to an extra or misread credit in the parsed result.";
+        }
+        if (!interpretation) return false;
+        gap.summaryMatch = { label: item.label, interpretation: interpretation };
+        return true;
+      });
+    });
+
+    return {
+      balanceGaps: balanceGaps,
+      excludedRows: problems.map(function (problem) {
+        return { row: problem.row, page: problem.page || null, issue: problem.issue, data: problem.data };
+      }),
+      summaryDifferences: summaryDifferences,
+      hasDifferences: !!(balanceGaps.length || problems.length || summaryDifferences.length)
     };
   }
 
@@ -1570,21 +1659,28 @@
 
   function assemblePdfRows(pages) {
     var rows = [], anchors = null, headerPushed = false, headerShape = 0, gtCorporateHeaderPushed = false;
-    pages.forEach(function (lines) {
+    function addPdfRow(row, pageNo) {
+      if (!row) return;
+      try { Object.defineProperty(row, "_sourcePage", { value: pageNo, enumerable: false, configurable: true }); }
+      catch (e) { row._sourcePage = pageNo; }
+      rows.push(row);
+    }
+    pages.forEach(function (lines, pageIndex) {
+      var pageNo = pageIndex + 1;
       var gtRows = gtCorporateTransposedRows(lines);
       if (gtRows !== null) {
         if (gtRows.length && !gtCorporateHeaderPushed) {
-          rows.push(["Trans. Date", "Value. Date", "Reference", "Debits", "Credits", "Balance", "Originating Branch", "Remarks"]);
+          addPdfRow(["Trans. Date", "Value. Date", "Reference", "Debits", "Credits", "Balance", "Originating Branch", "Remarks"], pageNo);
           gtCorporateHeaderPushed = true;
         }
-        gtRows.forEach(function (r) { rows.push(r); });
+        gtRows.forEach(function (r) { addPdfRow(r, pageNo); });
         return;
       }
       var dataBuf = [];
       function flushData() {
         var dateRows = pdfSegmentByDateAnchors(dataBuf, anchors);
         if (dateRows) {
-          dateRows.forEach(function (r) { rows.push(r); });
+          dateRows.forEach(function (r) { addPdfRow(r, pageNo); });
           dataBuf = [];
           return;
         }
@@ -1595,7 +1691,7 @@
             if (!merged) merged = cells;
             else pdfMergeInto(merged, cells);
           });
-          if (merged) rows.push(merged);
+          if (merged) addPdfRow(merged, pageNo);
         });
         dataBuf = [];
       }
@@ -1628,7 +1724,7 @@
           flushData();
           anchors = pdfBoundaries(pick.cells, pick.map.narration, pick.map);
           if (!headerPushed) {
-            rows.push(pick.cells.map(function (c) { return c.text; }));
+            addPdfRow(pick.cells.map(function (c) { return c.text; }), pageNo);
             headerPushed = true;
             headerShape = pick.cells.length;
           }
@@ -1637,7 +1733,7 @@
           continue;
         }
         if (!anchors) { // hero section: gap-based cells for metadata mining
-          rows.push(pdfClusterCells(lines[i].items, 18).map(function (c) { return c.text; }));
+          addPdfRow(pdfClusterCells(lines[i].items, 18).map(function (c) { return c.text; }), pageNo);
           continue;
         }
         dataBuf.push(lines[i]);
@@ -1664,7 +1760,14 @@
     var headerIdx = -1;
     for (var i = 0; i < rows.length; i++) if (isZenithHeader(rows[i])) { headerIdx = i; break; }
     if (headerIdx < 0) return rows;
-    var out = rows.map(function (r) { return r.slice(); });
+    var out = rows.map(function (r) {
+      var copy = r.slice();
+      if (r._sourcePage) {
+        try { Object.defineProperty(copy, "_sourcePage", { value: r._sourcePage, enumerable: false, configurable: true }); }
+        catch (e) { copy._sourcePage = r._sourcePage; }
+      }
+      return copy;
+    });
     for (i = headerIdx + 1; i < out.length; i++) {
       var row = out[i];
       if (!row || row.length !== 6) continue;
@@ -1764,7 +1867,8 @@
     parseCSVText: parseCSVText, parseDate: parseDate, parseAmount: parseAmount,
     detectColumns: detectColumns, detectColumnsAt: detectColumnsAt, buildTransactions: buildTransactions,
     extractStatementMeta: extractStatementMeta, reconcileWithMeta: reconcileWithMeta,
-    integrityCheck: integrityCheck, anonymizedLayoutDiagnostic: anonymizedLayoutDiagnostic,
+    integrityCheck: integrityCheck, locateDifferences: locateDifferences,
+    anonymizedLayoutDiagnostic: anonymizedLayoutDiagnostic,
     readFile: readFile, ROLE_SYNONYMS: ROLE_SYNONYMS,
     pdfInternals: {
       cluster: pdfClusterCells, tryHeader: pdfTryHeader, qualifies: pdfHeaderQualifies,

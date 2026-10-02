@@ -6,7 +6,7 @@
 (function () {
   "use strict";
 
-  var APP_BUILD = 87; // shown in the header so stale cached code is obvious
+  var APP_BUILD = 88; // shown in the header so stale cached code is obvious
   window.BSA_BUILD = APP_BUILD;
   var ANALYTICS = window.BSA_ANALYTICS || { track: function () {}, flush: function () {}, fileType: function () { return "unknown"; } };
 
@@ -17,7 +17,7 @@
   var state = {
     ctx: { accountType: "current", holderType: "individual", salaryAccount: false, bankId: "other", overrides: {} },
     rows: null, source: null, fileName: null,
-    txns: null, problems: null, integrity: null,
+    txns: null, problems: null, integrity: null, differences: null,
     audit: null, filter: "all",
     fingerprint: null, restoredReport: false,
     currentStep: "step-context"
@@ -805,6 +805,55 @@
     if (review) setScanDetails(true);
   }
 
+  function renderDifferenceLocator(result) {
+    if (!result || !result.hasDifferences) return "";
+    var total = result.balanceGaps.length + result.excludedRows.length + result.summaryDifferences.length;
+    function where(ref) {
+      var parts = [];
+      if (ref.page) parts.push("page " + ref.page);
+      if (ref.row) parts.push("parsed row " + ref.row);
+      if (ref.date) parts.push(REPORT.fmtDate(ref.date));
+      return parts.join(" · ") || "the parsed statement";
+    }
+    function fmtValue(item, value) {
+      return item.isCount ? String(Math.round(Math.abs(value))) : REPORT.fmtN(Math.abs(value));
+    }
+    var groups = [];
+    if (result.balanceGaps.length) {
+      groups.push('<section class="difference-group"><h5>Balance breaks</h5>' + result.balanceGaps.map(function (gap, index) {
+        var boundary = gap.pageBoundary ? " · page boundary" : "";
+        var summary = REPORT.fmtN(gap.netAmount) + " net " + gap.neededSide + " needed" + boundary;
+        var alternatives = gap.neededSide === "debit" ? "a missing debit, an overstated credit" : "a missing credit, an overstated debit";
+        var continuity = gap.nextRowsContinue ? " The rows after this point resume a consistent balance chain, so this is a focused candidate location; a separate balance section is also possible." : "";
+        var matchedEvidence = gap.summaryMatch ? '<p class="difference-match"><strong>Strong match:</strong> ' + REPORT.esc(gap.summaryMatch.interpretation) + "</p>" : "";
+        return '<details class="difference-item"' + (index === 0 ? " open" : "") + '><summary>' + REPORT.esc(summary) + '</summary><p>Between ' +
+          REPORT.esc(where(gap.before)) + " and " + REPORT.esc(where(gap.after)) + ", the calculated balance is " +
+          REPORT.esc(REPORT.fmtN(gap.expectedBalance)) + " but the PDF row shows " + REPORT.esc(REPORT.fmtN(gap.actualBalance)) +
+          ". This can mean " + REPORT.esc(alternatives) + ", or a misread running balance." + REPORT.esc(continuity) + "</p>" + matchedEvidence + "</details>";
+      }).join("") + "</section>");
+    }
+    if (result.excludedRows.length) {
+      groups.push('<details class="difference-group"><summary>Excluded PDF rows (' + result.excludedRows.length + ")</summary><ul>" +
+        result.excludedRows.slice(0, 50).map(function (problem) {
+          var location = (problem.page ? "Page " + problem.page + " · " : "") + "parsed row " + problem.row;
+          return "<li><strong>" + REPORT.esc(location) + ":</strong> " + REPORT.esc(problem.issue) + "</li>";
+        }).join("") + "</ul></details>");
+    }
+    if (result.summaryDifferences.length) {
+      groups.push('<details class="difference-group"><summary>PDF summary versus parsed result (' + result.summaryDifferences.length + ")</summary><ul>" +
+        result.summaryDifferences.map(function (item) {
+          var diff = fmtValue(item, item.difference);
+          var wording = item.isCount ? " by " + diff + " transaction(s)" : " by " + diff;
+          return "<li><strong>" + REPORT.esc(item.label) + ":</strong> " +
+            (item.higherSide === "parsed" ? "the parsed result is higher than the PDF summary" : "the PDF summary is higher than the parsed result") +
+            REPORT.esc(wording) + ".</li>";
+        }).join("") + "</ul></details>");
+    }
+    return '<details class="difference-locator" open><summary>Locate read differences (' + total + ')</summary><div class="difference-body">' +
+      '<p class="evidence-note"><strong>What this proves:</strong> balance breaks identify where the numbers stop reconciling. A single PDF cannot prove whether the PDF omitted a row, the parser misread it, or the bank summary is wrong.</p>' +
+      groups.join("") + "</div></details>";
+  }
+
   function refreshMappingStats() {
     var diagBox = $("#diagnostic-box");
     if (diagBox) diagBox.style.display = state.rows ? "" : "none";
@@ -814,7 +863,7 @@
     var problemsEl = $("#mapping-problems");
     problemsEl.innerHTML = "";
     state.txns = null;
-    state.integrity = null; state.reconcile = null; state.lastBuilt = null;
+    state.integrity = null; state.reconcile = null; state.differences = null; state.lastBuilt = null;
     $("#reconcile-box").style.display = "none";
     $("#reconcile-box").innerHTML = "";
 
@@ -856,7 +905,7 @@
 
     if (ic.hasBalance && ic.checked >= 5) {
       var pct = Math.round(ic.ratio * 100);
-      if (ic.ratio >= 0.98) msg += " Balance arithmetic verified on " + ic.matched + "/" + ic.checked + " rows (" + pct + "%) — the statement was parsed correctly.";
+      if (ic.ratio >= 0.98) msg += " Balance arithmetic verified on " + ic.matched + "/" + ic.checked + " rows (" + pct + "%) — the rows that were read are internally consistent.";
       else if (ic.ratio >= 0.9) { msg += " Balance check passed on only " + pct + "% of rows — a few rows may be misread; review the findings carefully."; cls = "warn"; }
       else { msg += " Balance check FAILED (" + pct + "% consistent). The column mapping is probably wrong — fix it before auditing. Auditing a misread statement produces wrong results."; cls = "bad"; }
     } else if (ic.hasBalance) {
@@ -888,13 +937,16 @@
     }
     var rec = PARSER.reconcileWithMeta(built.txns, state.meta);
     state.reconcile = rec;
+    var differences = PARSER.locateDifferences(built.txns, built.problems, rec);
+    state.differences = differences;
+    var locatorHtml = renderDifferenceLocator(differences);
     var recBox = $("#reconcile-box");
     if (rec) {
       recBox.style.display = "";
       recBox.innerHTML = '<div class="meta-title">' + (rec.allOk ? "Verified: " : "Review: ") + "checksum against the statement's own summary figures</div>" +
         '<ul class="rec-list">' + rec.checks.map(function (ch) {
           return '<li class="' + (ch.ok ? "ok" : "fail") + '"><strong>' + (ch.ok ? "Passed — " : "Review — ") + REPORT.esc(ch.label) + ":</strong> " + REPORT.esc(ch.detail) + "</li>";
-        }).join("") + "</ul>";
+        }).join("") + "</ul>" + locatorHtml;
       if (rec.anyFail) {
         if (rec.summaryBoundaryOnly && ic.hasBalance && ic.ratio >= 0.98) {
           msg += " The transaction rows, totals and closing balance reconcile; only the statement's opening/closing summary arithmetic differs, so this looks like a small inconsistency in the bank's own summary rather than a misread table.";
@@ -906,6 +958,9 @@
       } else {
         msg += " The parsed rows also add up exactly to the statement's own summary totals — the read is provably complete.";
       }
+    } else if (locatorHtml) {
+      recBox.style.display = "";
+      recBox.innerHTML = locatorHtml;
     } else { recBox.style.display = "none"; recBox.innerHTML = ""; }
 
     stat.className = "map-stat " + cls;
@@ -1001,7 +1056,7 @@
     var banner = $("#integrity-banner");
     if (ic && ic.hasBalance && ic.checked >= 5 && ic.ratio >= 0.98) {
       banner.className = "integrity ok";
-      banner.innerHTML = "<strong>Statement integrity verified:</strong> the running balance reconciles on " + ic.matched + " of " + ic.checked + " rows — these results are computed from a provably correct read of your statement.";
+      banner.innerHTML = "<strong>Balance integrity verified:</strong> the running balance reconciles on " + ic.matched + " of " + ic.checked + " rows — the rows that were read are internally consistent.";
     } else if (ic && ic.hasBalance && ic.checked >= 5) {
       banner.className = "integrity warn";
       banner.innerHTML = "⚠ <strong>Partial integrity:</strong> the running balance reconciled on " + Math.round(ic.ratio * 100) + "% of rows. Treat results as indicative and double-check flagged items against the original statement.";

@@ -577,6 +577,28 @@ h3.sec + p.sec-sub { color: var(--txt-dim); font-size: 13.5px; margin: 0 0 14px;
 .rec-list li { font-size: 13px; padding: 4px 0; }
 .rec-list li.ok { color: var(--status-green-text); }
 .rec-list li.fail { color: var(--status-red-text); }
+.difference-locator { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 8px; }
+.difference-locator > summary, .difference-group > summary, .difference-item > summary {
+  cursor: pointer; min-height: 48px; display: flex; align-items: center;
+  list-style: none; font-weight: 750; line-height: 1.4;
+}
+.difference-locator > summary::-webkit-details-marker,
+.difference-group > summary::-webkit-details-marker,
+.difference-item > summary::-webkit-details-marker { display: none; }
+.difference-locator > summary::after, .difference-group > summary::after, .difference-item > summary::after {
+  content: "+"; margin-left: auto; padding-left: 12px; color: var(--accent); font-size: 20px; font-weight: 500;
+}
+.difference-locator[open] > summary::after, .difference-group[open] > summary::after, .difference-item[open] > summary::after { content: "−"; }
+.difference-body { display: grid; gap: 10px; }
+.evidence-note { margin: 0; padding: 12px 14px; border-radius: 10px; background: var(--amber-soft); color: var(--status-amber-text); font-size: 12.5px; line-height: 1.55; }
+.difference-group { min-width: 0; border: 1px solid var(--line); border-radius: 10px; background: var(--card); padding: 0 12px; }
+.difference-group h5 { margin: 14px 0 6px; font-size: 12px; letter-spacing: .04em; text-transform: uppercase; color: var(--txt-dim); }
+.difference-group > ul { margin: 0 0 12px; padding-left: 20px; }
+.difference-group li { margin: 7px 0; font-size: 12.5px; line-height: 1.5; }
+.difference-item { border-top: 1px solid var(--line); }
+.difference-item > summary { color: var(--status-red-text); font-size: 13px; }
+.difference-item p { margin: 0 0 14px; color: var(--txt-dim); font-size: 12.5px; line-height: 1.55; }
+.difference-item .difference-match { margin-top: -6px; padding: 10px 12px; border-radius: 8px; background: var(--green-soft); color: var(--status-green-text); }
 .hint-box { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; background: var(--amber-soft); border: 1px solid var(--status-amber-border); color: var(--status-amber-text); border-radius: 12px; padding: 13px 16px; font-size: 13.5px; margin-bottom: 14px; }
 .btn-small { padding: 8px 16px; font-size: 13px; }
 

@@ -11,13 +11,21 @@ module.exports = function (check) {
   var data = { map: { date: 0, narration: 1, debit: 2 }, txns: [{ date: new Date() }], problems: [], ratio: 1, rec: null };
   var ctx = { $: function (id) { return nodes[id]; }, state: { rows: [["Date"], ["2026-01-01"]], meta: null },
     currentMap: function () { return { map: data.map, dup: data.dup }; }, refreshRoleTags: function () {},
-    REPORT: { fmtDate: function () { return "1 Jan 2026"; }, esc: String },
+    REPORT: { fmtDate: function () { return "1 Jan 2026"; }, fmtN: function (n) { return "₦" + n; }, esc: String },
     PARSER: { buildTransactions: function () { return { txns: data.txns, problems: data.problems, openingBalance: null }; },
       integrityCheck: function () { return { hasBalance: data.hasBalance !== false, checked: data.checked === undefined ? 6 : data.checked, matched: 6, ratio: data.ratio }; },
-      reconcileWithMeta: function () { return data.rec; } } };
+      reconcileWithMeta: function () { return data.rec; },
+      locateDifferences: function () { return { balanceGaps: [], excludedRows: [], summaryDifferences: [], hasDifferences: false }; } } };
   vm.runInNewContext(app.slice(app.indexOf("  function setScanDetails("), app.indexOf("  function wireMapping(")), ctx);
   ctx.setScanDetails(false); ctx.refreshMappingStats();
   check("mobile: clean scan is collapsed with audit enabled", nodes['#scan-details'].hidden && !nodes['#btn-run-audit'].disabled && nodes['#btn-scan-details']['aria-expanded'] === 'false');
+  var locatorHtml = ctx.renderDifferenceLocator({
+    hasDifferences: true,
+    balanceGaps: [{ before: { page: 3, row: 20, date: new Date() }, after: { page: 4, row: 21, date: new Date() }, netAmount: 100, neededSide: 'debit', pageBoundary: true, expectedBalance: 900, actualBalance: 800, nextRowsContinue: true, summaryMatch: { interpretation: 'The statement debit total points to the same amount.' } }],
+    excludedRows: [{ page: 4, row: 22, issue: 'Unreadable amount' }],
+    summaryDifferences: [{ label: 'Total debits', difference: 100, isCount: false, higherSide: 'parsed' }]
+  });
+  check("mobile: difference locator shows page, net movement, higher side and matching evidence", locatorHtml.includes('page 3') && locatorHtml.includes('page 4') && locatorHtml.includes('₦100 net debit needed') && locatorHtml.includes('parsed result is higher than the PDF summary') && locatorHtml.includes('Strong match:'));
   ctx.setScanDetails(true);
   check("mobile: disclosure toggle exposes details and accessible state", !nodes['#scan-details'].hidden && nodes['#btn-scan-details']['aria-expanded'] === 'true' && nodes['#btn-scan-details'].textContent === 'Hide scanned details');
   data.dup = true; ctx.setScanDetails(false); ctx.refreshMappingStats();
@@ -53,6 +61,8 @@ module.exports = function (check) {
   check("landing scanner: anonymized statement artwork has intrinsic dimensions and an accessible caption", html.includes('class="statement-scanner" aria-labelledby="scanner-caption"') && html.includes('class="statement-art" width="320" height="400"') && html.includes('Your statement never leaves this device.'));
   check("landing scanner: one isolated scan beam and one status pulse communicate local processing", html.includes('class="statement-scan-beam"') && html.includes('class="scanner-status-dot"') && css.includes('@keyframes statement-scan') && css.includes('@keyframes scanner-status'));
   check("landing scanner: reduced-motion users receive a static scanner state", css.includes('.statement-scan-beam { animation: none !important;') && css.includes('.scanner-status-dot { animation: none !important;'));
+  check("difference locator: critical evidence uses accessible disclosures and mobile tap targets", app.includes('function renderDifferenceLocator(result)') && app.includes('Locate read differences (') && css.includes('.difference-locator > summary') && css.includes('min-height: 48px;'));
+  check("difference locator: balance success no longer claims the whole statement parsed correctly", !app.includes('the statement was parsed correctly') && app.includes('the rows that were read are internally consistent'));
   var handlers = {}, details = [{open:false},{open:true}];
   vm.runInNewContext(app.slice(app.indexOf('    var printDetails = null;'), app.lastIndexOf('  });')), {
     $all: function () { return details; }, window: { addEventListener: function (event, fn) { handlers[event] = fn; } }

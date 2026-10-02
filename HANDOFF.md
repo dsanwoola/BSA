@@ -1,5 +1,27 @@
 # Bank Statement Auditor — Handoff
 
+## Statement difference locator — build 88
+
+Failed statement checks now open a mobile-friendly “Locate read differences”
+panel. PDF rows retain their source page through parsing, so every running-
+balance break can show the two surrounding pages, parsed rows and dates, plus
+the exact net debit or credit needed to reconcile the balances. Excluded rows
+also show their PDF page and reason, while failed statement totals say whether
+the PDF summary or parsed result is higher.
+
+When a balance break and a debit/credit summary difference are the same amount,
+the panel marks a Strong match and explains the more likely side (for example,
+an extra parsed debit versus a debit missing from the parsed result).
+
+The panel labels these as evidence and candidate causes rather than claiming a
+single PDF can prove whether the bank omitted a row, the parser misread it, or
+the bank's own summary is wrong. The previous “statement was parsed correctly”
+message now states only what balance arithmetic proves: the rows read are
+internally consistent. Clean statements do not show the panel.
+
+502 tests pass. Browser checks covered a 375px phone, desktop dark mode and the
+clean sample flow; disclosures have 48px tap targets and no horizontal overflow.
+
 ## Animated statement scanner — build 87
 
 The landing page now pairs its primary message with an anonymous, fictional

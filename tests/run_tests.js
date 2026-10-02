@@ -34,11 +34,11 @@ check("launch: browser-only privacy remains explicit", indexHtml.indexOf("withou
 check("launch: pricing and fake refund preview are removed", indexHtml.indexOf("Launch monetization plan") < 0 && indexHtml.indexOf("₦42,875.00") < 0);
 check("launch: workflow remains behind progressive disclosure", /id="workflow-details"[^>]*aria-hidden="true"/.test(indexHtml) && appJs.indexOf('classList.add("workflow-open")') >= 0);
 check("launch: company attribution is present", indexHtml.indexOf("A product of Neighbours NG Technologies Ltd.") >= 0);
-check("launch: build 87 markers stay aligned", /var APP_BUILD = 87/.test(appJs) && (indexHtml.match(/\?v=87/g) || []).length === 16 && indexHtml.indexOf("?v=86") < 0);
+check("launch: build 88 markers stay aligned", /var APP_BUILD = 88/.test(appJs) && (indexHtml.match(/\?v=88/g) || []).length === 16 && indexHtml.indexOf("?v=87") < 0);
 
 check("launch: live checkout is enabled", indexHtml.indexOf('data-payments-live="true"') !== -1);
 
-check("word: UI downloads DOCX from edited preview", indexHtml.includes("Download Word (.docx)") && indexHtml.includes("js/word-export.js?v=87") && appJs.includes('window.BSA_WORD_EXPORT.toBlob($("#letter-text").value)') && appJs.includes("refund_demand_letter.docx") && !appJs.includes("refund_demand_letter.txt") && appJs.includes("content instanceof Blob ? content"));
+check("word: UI downloads DOCX from edited preview", indexHtml.includes("Download Word (.docx)") && indexHtml.includes("js/word-export.js?v=88") && appJs.includes('window.BSA_WORD_EXPORT.toBlob($("#letter-text").value)') && appJs.includes("refund_demand_letter.docx") && !appJs.includes("refund_demand_letter.txt") && appJs.includes("content instanceof Blob ? content"));
 
 var CTX_SAVINGS = { accountType: "savings", holderType: "individual", salaryAccount: false };
 var CTX_CURRENT = { accountType: "current", holderType: "individual", salaryAccount: false };
@@ -123,6 +123,7 @@ var ecobankBuilt = ecobankDet ? PARSER.buildTransactions(ecobankRows, ecobankDet
 var ecobankIntegrity = PARSER.integrityCheck(ecobankBuilt.txns);
 check("parser: Ecobank-style uniform PDF spacing splits rows by date column", ecobankBuilt.txns.length === 2 && ecobankBuilt.problems.length === 0 && ecobankIntegrity.ratio === 1, JSON.stringify({ rows: ecobankRows, det: ecobankDet, built: ecobankBuilt, integrity: ecobankIntegrity }));
 check("parser: Ecobank-style PDF continuation lines merge into narration", ecobankBuilt.txns[0] && /wrapped narration/.test(ecobankBuilt.txns[0].narration), ecobankBuilt.txns[0] && ecobankBuilt.txns[0].narration);
+check("parser: PDF page provenance reaches parsed transactions", ecobankBuilt.txns[0] && ecobankBuilt.txns[0].sourcePage === 1 && ecobankRows[ecobankDet.headerRow]._sourcePage === 1);
 
 var pocketPdfLines = [[
   pdfLine(820, ["Total Deb ts: ₦ 1,500.00", "", "", "", "", ""]),
@@ -590,6 +591,30 @@ var bad = [
   T(2, D(2025, 5, 3), "NIP/TRF FROM A", 0, 500, 123)
 ];
 check("integrity: bad mapping detected", PARSER.integrityCheck(bad).ratio === 0);
+
+var gapTxns = [
+  T(0, D(2025, 5, 1), "FIRST", 0, 1000, 1000),
+  T(1, D(2025, 5, 2), "GAP AFTER THIS", 100, 0, 800),
+  T(2, D(2025, 5, 3), "CHAIN RESUMES", 50, 0, 750)
+];
+gapTxns[0].sourceRow = 20; gapTxns[0].sourcePage = 3;
+gapTxns[1].sourceRow = 21; gapTxns[1].sourcePage = 4;
+gapTxns[2].sourceRow = 22; gapTxns[2].sourcePage = 4;
+var gapRec = PARSER.reconcileWithMeta(gapTxns, { totalDebit: 50, totalCredit: 1000, debitCount: 1, creditCount: 1 });
+var located = PARSER.locateDifferences(gapTxns, [{ row: 23, page: 4, issue: "Unreadable amount", data: "" }], gapRec);
+check("difference locator: balance break identifies page boundary and missing net debit", located.balanceGaps.length === 1 && located.balanceGaps[0].pageBoundary && located.balanceGaps[0].neededSide === "debit" && located.balanceGaps[0].netAmount === 100 && located.balanceGaps[0].before.page === 3 && located.balanceGaps[0].after.page === 4, JSON.stringify(located));
+check("difference locator: resumed balance chain is marked as a focused candidate", located.balanceGaps[0].nextRowsContinue === true);
+check("difference locator: excluded row retains its PDF page", located.excludedRows[0].page === 4 && located.excludedRows[0].row === 23);
+check("difference locator: checksum says whether parsed or statement side is higher", located.summaryDifferences.some(function (item) { return item.label === "Total debits" && item.higherSide === "parsed" && item.difference === 100; }));
+var correlatedGapTxns = [
+  T(0, D(2025, 5, 1), "FIRST", 0, 1000, 1000),
+  T(1, D(2025, 5, 2), "OVERSTATED DEBIT", 100, 0, 1000),
+  T(2, D(2025, 5, 3), "CHAIN RESUMES", 50, 0, 950)
+];
+var correlatedRec = PARSER.reconcileWithMeta(correlatedGapTxns, { totalDebit: 50, totalCredit: 1000 });
+var correlated = PARSER.locateDifferences(correlatedGapTxns, [], correlatedRec);
+check("difference locator: matching balance gap and summary delta identifies the stronger side", correlated.balanceGaps[0].neededSide === "credit" && correlated.balanceGaps[0].summaryMatch && /extra or misread debit/.test(correlated.balanceGaps[0].summaryMatch.interpretation), JSON.stringify(correlated));
+check("difference locator: clean input reports no differences", PARSER.locateDifferences(good, [], null).hasDifferences === false);
 
 /* ---------------- summary totals ---------------- */
 res = ENGINE.audit([
@@ -1277,7 +1302,7 @@ var reportJs = readSrc("/../js/report.js");
 var betaGuide = readSrc("/../BETA_TESTING.md");
 check("static: minimalist Checkam launch appears in app", indexHtml.indexOf("Check your bank charges") !== -1 && indexHtml.indexOf("Check my statement") !== -1 && indexHtml.indexOf("Try a sample") !== -1 && indexHtml.indexOf("without uploading your file") !== -1 && indexHtml.indexOf("Launch monetization plan") === -1 && indexHtml.indexOf("₦42,875.00") === -1 && appCss.indexOf(".launch-hero") !== -1 && appCss.indexOf(".workflow-details") !== -1);
 check("static: BETA_TESTING documents privacy-safe diagnostics", betaGuide.indexOf("anonymized parser diagnostic") !== -1 && betaGuide.indexOf("must not contain names") !== -1);
-check("static: APP_BUILD and cache bust agree on 87", appJs.indexOf("APP_BUILD = 87") !== -1 && (indexHtml.match(/v=87/g) || []).length >= 8 && indexHtml.indexOf("v=86") === -1);
+check("static: APP_BUILD and cache bust agree on 88", appJs.indexOf("APP_BUILD = 88") !== -1 && (indexHtml.match(/v=88/g) || []).length >= 8 && indexHtml.indexOf("v=87") === -1);
 check("static: mobile uses compact progress and hides duplicate intro guidance", indexHtml.indexOf('id="mobile-step-count"') !== -1 && indexHtml.indexOf('id="mobile-step-fill"') !== -1 && appCss.indexOf(".mobile-step-summary { display: grid;") !== -1 && appCss.indexOf("#step-context .panel > h2") !== -1 && appCss.indexOf("#launch-guide {\n    display: none;") !== -1);
 check("static: mobile layout safeguards are present", appCss.indexOf("mobile-first polish") !== -1 && appCss.indexOf("Swipe sideways to see all columns") !== -1 && appCss.indexOf(".chips { display: grid; grid-template-columns: 1fr;") !== -1 && appCss.indexOf("input, select, textarea { font-size: 16px;") !== -1);
 check("static: old SME premium surfaces stay disabled", indexHtml.indexOf('id="sme-dashboard-root"') === -1 && appJs.indexOf("bsa-premium-sme") === -1 && appJs.indexOf("btn-premium-unlock") === -1);
@@ -1298,7 +1323,7 @@ var hostingIgnores = JSON.parse(firebaseJson).hosting.ignore;
 check("hosting: exclude hidden directory descendants", hostingIgnores.indexOf("**/.*/**") !== -1 && [".git/**", ".claude/**", ".agents/**", ".github/**", ".firebase/**"].every(function(pattern) { return hostingIgnores.indexOf(pattern) !== -1; }));
 check("hosting: exclude backend source and deployment logs", ["functions/**", "firestore.rules", "package.json", "package-lock.json", "*-debug.log"].every(function(pattern) { return hostingIgnores.indexOf(pattern) !== -1; }));
 var functionsIndex = readSrc("/../functions/index.js");
-check("analytics: client is loaded and cache-busted", indexHtml.indexOf('js/analytics.js?v=87') !== -1 && analyticsJs.indexOf('BSA_ANALYTICS') !== -1 && analyticsJs.indexOf('/api/analytics') !== -1);
+check("analytics: client is loaded and cache-busted", indexHtml.indexOf('js/analytics.js?v=88') !== -1 && analyticsJs.indexOf('BSA_ANALYTICS') !== -1 && analyticsJs.indexOf('/api/analytics') !== -1);
 check("analytics: backend route is configured", firebaseJson.indexOf('"source": "/api/analytics"') !== -1 && firebaseJson.indexOf('"function": "analytics"') !== -1 && firebaseJson.indexOf('"source": "functions"') !== -1);
 check("analytics: backend uses aggregate counters only", functionsIndex.indexOf('analytics_daily') !== -1 && functionsIndex.indexOf('FieldValue.increment') !== -1 && functionsIndex.indexOf('raw statement') === -1 && functionsIndex.indexOf('narration') === -1);
 check("analytics: key journey events are instrumented", appJs.indexOf('"app_load"') !== -1 && appJs.indexOf('"file_selected"') !== -1 && appJs.indexOf('"file_read_success"') !== -1 && appJs.indexOf('"audit_completed"') !== -1 && appJs.indexOf('"recovery_pack_request"') !== -1);
