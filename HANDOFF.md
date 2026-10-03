@@ -1,5 +1,22 @@
 # Bank Statement Auditor — Handoff
 
+## Installable PWA — build 89
+
+Checkam can now be installed from supported mobile and desktop browsers. It
+ships a standalone web app manifest, branded normal and maskable icons, an
+Android/browser install prompt, and iPhone/iPad Add to Home Screen guidance.
+
+A versioned service worker keeps the complete private statement-reading and
+report shell available when the network drops, including the PDF, spreadsheet
+and Word export libraries. Navigations prefer the network so releases remain
+fresh; payment and analytics API requests always bypass the cache. Firebase
+serves the manifest and service worker with revalidation headers while keeping
+versioned static assets long-lived.
+
+512 automated tests pass. A 375px browser check found no horizontal overflow or
+console errors. After the local server was stopped, the cached app reopened as
+build 89 and completed the sample scan to 23 transactions / Ready.
+
 ## Statement difference locator — build 88
 
 Failed statement checks now open a mobile-friendly “Locate read differences”

@@ -6,7 +6,7 @@
 (function () {
   "use strict";
 
-  var APP_BUILD = 88; // shown in the header so stale cached code is obvious
+  var APP_BUILD = 89; // shown in the header so stale cached code is obvious
   window.BSA_BUILD = APP_BUILD;
   var ANALYTICS = window.BSA_ANALYTICS || { track: function () {}, flush: function () {}, fileType: function () { return "unknown"; } };
 
@@ -185,6 +185,64 @@
       var next = getTheme() === "light" ? "dark" : "light";
       setTheme(next);
       ANALYTICS.track("theme_toggle", { theme: next });
+    });
+  }
+
+  /* ---------------- installable web app ---------------- */
+  var deferredInstallPrompt = null;
+
+  function wirePwa() {
+    var installButton = $("#btn-install-app");
+    var installHelp = $("#pwa-install-help");
+    var standalone = window.matchMedia && window.matchMedia("(display-mode: standalone)").matches;
+    var iosStandalone = typeof navigator.standalone === "boolean" && navigator.standalone;
+    var iosDevice = /iphone|ipad|ipod/i.test(navigator.userAgent || "") ||
+      (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
+    if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost" || location.hostname === "127.0.0.1")) {
+      navigator.serviceWorker.register("/service-worker.js", { scope: "/", updateViaCache: "none" }).then(function (registration) {
+        registration.update().catch(function () { /* the installed worker remains usable */ });
+      }).catch(function (error) {
+        console.warn("Checkam offline setup could not start:", error);
+      });
+    }
+
+    if (!installButton || standalone || iosStandalone) return;
+
+    window.addEventListener("beforeinstallprompt", function (event) {
+      event.preventDefault();
+      deferredInstallPrompt = event;
+      installButton.hidden = false;
+    });
+
+    if (iosDevice) installButton.hidden = false;
+
+    installButton.addEventListener("click", function () {
+      if (!deferredInstallPrompt) {
+        installHelp.textContent = "Open your browser's Share menu, then choose Add to Home Screen.";
+        installHelp.hidden = false;
+        return;
+      }
+      var promptEvent = deferredInstallPrompt;
+      deferredInstallPrompt = null;
+      installButton.disabled = true;
+      promptEvent.prompt();
+      promptEvent.userChoice.then(function (choice) {
+        installButton.disabled = false;
+        if (choice && choice.outcome === "accepted") {
+          installButton.hidden = true;
+          installHelp.textContent = "Checkam was added to your device.";
+          installHelp.hidden = false;
+          ANALYTICS.track("pwa_installed", {});
+        }
+      }).catch(function () { installButton.disabled = false; });
+    });
+
+    window.addEventListener("appinstalled", function () {
+      deferredInstallPrompt = null;
+      installButton.hidden = true;
+      installHelp.textContent = "Checkam was added to your device.";
+      installHelp.hidden = false;
     });
   }
 
@@ -1306,7 +1364,7 @@
     if (badge) badge.textContent = "build " + APP_BUILD;
     ANALYTICS.track("app_load", { build: APP_BUILD, theme: getTheme() });
     console.log("Bank Charge Auditor — build " + APP_BUILD);
-    wireNavigation(); wireTheme(); wireContext(); wireUpload(); wireMapping(); wireResults();
+    wireNavigation(); wireTheme(); wirePwa(); wireContext(); wireUpload(); wireMapping(); wireResults();
     refreshSavedReportsButton();
     gotoStep("step-context");
     // Print all available evidence, then restore the reader's disclosure choices.

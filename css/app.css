@@ -186,6 +186,12 @@ body.landing-mode .stepper { display: none; }
   margin-bottom: 20px;
 }
 .hero-actions { display: flex; gap: 12px; flex-wrap: wrap; margin: 18px 0 16px; }
+.pwa-install-help {
+  flex: 1 0 100%; margin: 0; padding: 10px 12px; border: 1px solid var(--line);
+  border-radius: 10px; background: var(--green-soft); color: var(--status-green-text);
+  font-size: 12.5px; line-height: 1.45;
+}
+.pwa-install-help[hidden] { display: none; }
 .trust-row { display: flex; gap: 9px; flex-wrap: wrap; }
 .trust-row span {
   border: 1px solid var(--line);
@@ -831,6 +837,7 @@ footer strong { color: var(--txt); }
   .launch-hero h2 { font-size: clamp(32px, 10.5vw, 41px); letter-spacing: -1.2px; line-height: 1.03; }
   .launch-hero .lead { font-size: 14.5px; }
   .hero-actions { display: grid; grid-template-columns: 1fr; }
+  .pwa-install-help { grid-column: 1 / -1; }
   .trust-row span { flex: 1 1 45%; text-align: center; }
   .hero-card { padding: 16px; }
   .launch-proof-grid, .pricing-grid { grid-template-columns: 1fr; gap: 9px; margin-bottom: 20px; }

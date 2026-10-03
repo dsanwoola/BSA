@@ -5,7 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Checkam — Check Your Bank Statement Privately</title>
 <meta name="description" content="Check your Nigerian bank statement for charges worth reviewing. Checkam works privately in your browser—your statement is never uploaded or stored.">
-<link rel="stylesheet" href="css/app.css?v=88">
+<meta name="theme-color" content="#0b1210">
+<meta name="application-name" content="Checkam">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Checkam">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<link rel="stylesheet" href="css/app.css?v=89">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Cpath fill='%232ee59d' d='M24 2 6 10v12c0 11 7.6 21.4 18 24 10.4-2.6 18-13 18-24V10L24 2z'/%3E%3Ctext x='24' y='32' font-size='22' font-weight='bold' text-anchor='middle' fill='%230b1210'%3E₦%3C/text%3E%3C/svg%3E">
 <script>
   (function () {
@@ -68,7 +75,9 @@
           <div class="hero-actions">
             <button class="btn btn-primary" id="btn-hero-start" type="button">Check my statement →</button>
             <button class="btn btn-ghost" id="btn-hero-demo" type="button">Try a sample</button>
+            <button class="btn btn-ghost" id="btn-install-app" type="button" hidden>Install Checkam</button>
             <button class="btn btn-ghost" id="btn-saved-reports" type="button" hidden>View paid reports</button>
+            <p class="pwa-install-help" id="pwa-install-help" role="status" hidden></p>
           </div>
           <section class="saved-reports-panel" id="saved-reports-panel" aria-labelledby="saved-reports-title" hidden>
             <div class="saved-reports-head">
@@ -369,20 +378,20 @@
 <script src="vendor/xlsx.full.min.js"></script>
 <script src="vendor/pdf.min.js"></script>
 <script src="vendor/pdf.worker.min.js"></script>
-<script src="js/rules.js?v=88"></script>
-<script src="js/bank-profiles.js?v=88"></script>
-<script src="js/patterns.js?v=88"></script>
-<script src="js/engine.js?v=88"></script>
-<script src="js/parser.js?v=88"></script>
-<script src="js/report.js?v=88"></script>
-<script src="js/account-detector.js?v=88"></script>
-<script src="js/account-detector-integration.js?v=88"></script>
-<script src="js/analytics.js?v=88"></script>
-<script src="js/analytics-enhanced.js?v=88"></script>
-<script src="js/pricing.js?v=88"></script>
-<script src="js/paywall.js?v=88"></script>
-<script src="js/paid-reports.js?v=88"></script>
-<script src="js/word-export.js?v=88"></script>
-<script src="js/app.js?v=88"></script>
+<script src="js/rules.js?v=89"></script>
+<script src="js/bank-profiles.js?v=89"></script>
+<script src="js/patterns.js?v=89"></script>
+<script src="js/engine.js?v=89"></script>
+<script src="js/parser.js?v=89"></script>
+<script src="js/report.js?v=89"></script>
+<script src="js/account-detector.js?v=89"></script>
+<script src="js/account-detector-integration.js?v=89"></script>
+<script src="js/analytics.js?v=89"></script>
+<script src="js/analytics-enhanced.js?v=89"></script>
+<script src="js/pricing.js?v=89"></script>
+<script src="js/paywall.js?v=89"></script>
+<script src="js/paid-reports.js?v=89"></script>
+<script src="js/word-export.js?v=89"></script>
+<script src="js/app.js?v=89"></script>
 </body>
 </html>
