@@ -51,6 +51,7 @@ module.exports = function (check) {
   nodes['#reconcile-box'].innerHTML = 'Old checksum'; data.dup = true; ctx.refreshMappingStats();
   check("mobile: invalid mapping clears stale checksum", nodes['#reconcile-box'].innerHTML === '' && nodes['#reconcile-box'].style.display === 'none');
   check("mobile: scan controls stay outside collapsed content", html.indexOf('id="btn-run-audit"') < html.indexOf('id="scan-details"') && html.includes('aria-controls="scan-details"'));
+  check("mobile: expanded scan details do not repeat the review heading", !html.includes("Review scanned statement") && html.includes(">View scanned details</button>"));
   check("mobile: paid analysis remains gated and letter focus includes summaries", app.includes('$("#paid-analysis").hidden = locked') && app.includes('textarea, button, summary,'));
   check("ux: keyboard users can skip directly to the main workflow", html.includes('class="skip-link" href="#main-content"') && html.includes('<main id="main-content" tabindex="-1">'));
   check("ux: mobile progress announces the current step", html.includes('id="mobile-step-count"') && html.includes('id="mobile-step-name"') && app.includes('d.setAttribute("aria-current", "step")') && app.includes('info.index * 25'));

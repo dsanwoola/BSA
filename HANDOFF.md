@@ -1,5 +1,13 @@
 # Bank Statement Auditor — Handoff
 
+## Scanned statement review cleanup — build 93
+
+The scan confirmation step keeps its collapsed "View scanned details" safeguard
+but no longer repeats a "Review scanned statement" heading inside the expanded
+content. Clean scans remain collapsed and can proceed directly to the CBN audit.
+Low-confidence reads, mapping problems, excluded rows and checksum mismatches
+still open the details automatically. 544 automated tests pass.
+
 ## Customer audience section — build 92
 
 The landing page now explains who Checkam is for across eight target groups:
