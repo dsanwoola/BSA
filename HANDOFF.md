@@ -1,5 +1,23 @@
 # Bank Statement Auditor — Handoff
 
+## Bank statement health score — build 90
+
+Every audit now includes a mobile-first "Your Bank Statement Health Score"
+card. The overall 0–100 score is the equal-weight average of charge clarity,
+duplicate risk, CBN compliance risk, unexplained deductions and refund
+potential. Higher scores mean fewer concerns. Each category is a collapsed
+native disclosure with its own score, status, progress bar and plain-language
+evidence. The card states that the result is a Checkam estimate rather than a
+credit score or bank rating.
+
+The score uses the audit verdicts, charge and refund totals, merged duplicate
+rows, excluded rows, balance confidence and statement-summary reconciliation.
+It is stored inside paid report copies so returning users see the same score.
+
+521 automated tests pass. Browser checks covered the sample audit at 375px and
+1024px in dark and light themes. The report showed five 52px disclosure rows,
+accessible progress values, no console errors and no horizontal overflow.
+
 ## Installable PWA — build 89
 
 Checkam can now be installed from supported mobile and desktop browsers. It

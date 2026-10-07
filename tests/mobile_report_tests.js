@@ -26,4 +26,25 @@ module.exports = function (check) {
   check("mobile report: empty filters stay concise", !REPORT.renderFindings(audit, "review").includes("findings-table-head") && REPORT.renderFindings(audit, "review").includes("No findings"));
   check("mobile report: phone layout uses aligned table columns and tap-sized rows", css.includes("grid-template-columns: 54px minmax(0, 1fr) 78px 18px") && css.includes("min-height: 64px") && css.includes(".findings-table-head"));
   check("mobile report: expanded information uses labeled two-column detail rows", css.includes(".f-detail-row { display: grid; grid-template-columns: 82px minmax(0, 1fr)") && css.includes('.finding[open] .f-toggle::before'));
+
+  var healthAudit = {
+    findings: audit.findings,
+    aggregates: [],
+    summary: { txnCount: 16, totalCharges: 54, refundDue: 40 }
+  };
+  var health = REPORT.statementHealth(healthAudit, {
+    duplicateRowsMerged: 1, excludedRowCount: 0, hasBalance: true,
+    balanceRatio: 1, reconciliationFailed: false
+  });
+  var healthHtml = REPORT.renderHealthScore(health);
+  check("health score: sample audit produces 72 out of 100", health.score === 72, JSON.stringify(health));
+  check("health score: breakdown contains the five requested categories", ["Charge clarity", "Duplicate risk", "CBN compliance risk", "Unexplained deductions", "Refund potential"].every(function (label) { return health.categories.some(function (item) { return item.label === label; }); }));
+  check("health score: mobile card uses native disclosures and visible numeric scores", healthHtml.includes("Your Bank Statement Health Score") && healthHtml.includes(">72</strong><span>/100</span>") && (healthHtml.match(/<details class="health-factor/g) || []).length === 5);
+  check("health score: progress values have accessible labels and do not rely on colour", (healthHtml.match(/role="progressbar"/g) || []).length === 5 && healthHtml.includes("Strong.") && healthHtml.includes("High concern."));
+  check("health score: explains that the result is not a credit score", healthHtml.includes("not a credit score or bank rating"));
+  var cleanHealth = REPORT.statementHealth({ findings: [], aggregates: [], summary: { txnCount: 20, totalCharges: 0, refundDue: 0 } }, { duplicateRowsMerged: 0, excludedRowCount: 0, hasBalance: true, balanceRatio: 1 });
+  check("health score: a clean statement scores higher than a risky statement", cleanHealth.score === 100 && cleanHealth.score > health.score);
+  var uncertainHealth = REPORT.statementHealth({ findings: [], aggregates: [], summary: { txnCount: 20, totalCharges: 0, refundDue: 0 } }, { excludedRowCount: 1, hasBalance: false, reconciliationFailed: true });
+  check("health score: read-quality failures reduce the score and explain why", uncertainHealth.score < cleanHealth.score && uncertainHealth.categories[0].detail.includes("running balance could not be checked") && uncertainHealth.categories[3].detail.includes("needs reconciliation"));
+  check("health score: phone styles keep the card compact with tap-sized rows", css.includes(".health-score-ring") && css.includes(".health-factor > summary") && css.includes("min-height: 52px"));
 };

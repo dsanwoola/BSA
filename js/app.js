@@ -6,7 +6,7 @@
 (function () {
   "use strict";
 
-  var APP_BUILD = 89; // shown in the header so stale cached code is obvious
+  var APP_BUILD = 90; // shown in the header so stale cached code is obvious
   window.BSA_BUILD = APP_BUILD;
   var ANALYTICS = window.BSA_ANALYTICS || { track: function () {}, flush: function () {}, fileType: function () { return "unknown"; } };
 
@@ -386,6 +386,7 @@
       state.restoredReport = true;
       state.filter = "all";
       $("#summary-cards").innerHTML = REPORT.renderSummary(state.audit);
+      $("#health-score").innerHTML = REPORT.renderHealthScore(state.audit.health || REPORT.statementHealth(state.audit));
       $("#report-meta").innerHTML = REPORT.reportMeta(state.audit, state.ctx, saved.source || {});
       $("#report-read-status").textContent = "Saved paid report restored";
       $("#report-read-status").className = "scan-status ok";
@@ -1070,11 +1071,20 @@
     state.ctx.statementFrom = state.meta ? state.meta.periodFrom : null;
     state.ctx.statementTo = state.meta ? state.meta.periodTo : null;
     var audit = ENGINE.audit(txns, state.ctx);
+    audit.health = REPORT.statementHealth(audit, {
+      transactionCount: txns.length,
+      duplicateRowsMerged: state.lastBuilt ? state.lastBuilt.duplicates : 0,
+      excludedRowCount: state.problems ? state.problems.length : 0,
+      hasBalance: state.integrity ? state.integrity.hasBalance : false,
+      balanceRatio: state.integrity ? state.integrity.ratio : null,
+      reconciliationFailed: !!(state.reconcile && state.reconcile.anyFail)
+    });
     state.audit = audit;
     state.auditTxns = txns;
 
     /* Free, always: the verdict and the headline numbers. */
     $("#summary-cards").innerHTML = REPORT.renderSummary(audit);
+    $("#health-score").innerHTML = REPORT.renderHealthScore(audit.health);
     $("#report-meta").innerHTML = REPORT.reportMeta(audit, state.ctx, {
       fileName: state.fileName, pageCount: state.pageCount, sheetCount: state.sheetCount
     });

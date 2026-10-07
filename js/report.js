@@ -41,6 +41,113 @@
     }
   }
 
+  /* ---------------- statement health score ---------------- */
+  function clampScore(value) {
+    return Math.max(0, Math.min(100, Math.round(Number(value) || 0)));
+  }
+
+  function healthBand(score) {
+    if (score >= 85) return { label: "Strong", cls: "health-strong" };
+    if (score >= 70) return { label: "Fair", cls: "health-fair" };
+    if (score >= 50) return { label: "Needs attention", cls: "health-watch" };
+    return { label: "High concern", cls: "health-risk" };
+  }
+
+  function counted(value, singular, plural) {
+    return value + " " + (value === 1 ? singular : (plural || singular + "s"));
+  }
+
+  function statementHealth(audit, quality) {
+    audit = audit || {};
+    quality = quality || {};
+    var findings = audit.findings || [];
+    var aggregates = audit.aggregates || [];
+    var summary = audit.summary || {};
+    var counts = { violation: 0, compliant: 0, review: 0, advisory: 0 };
+    var findingCounts = { violation: 0, compliant: 0, review: 0, advisory: 0 };
+    findings.forEach(function (item) {
+      if (Object.prototype.hasOwnProperty.call(findingCounts, item.verdict)) findingCounts[item.verdict]++;
+    });
+    findings.concat(aggregates).forEach(function (item) {
+      if (Object.prototype.hasOwnProperty.call(counts, item.verdict)) counts[item.verdict]++;
+    });
+
+    var findingTotal = Math.max(1, findings.length);
+    var checkTotal = Math.max(1, findings.length + aggregates.length);
+    var txnCount = Math.max(0, Number(summary.txnCount) || Number(quality.transactionCount) || 0);
+    var duplicateRows = Math.max(0, Number(quality.duplicateRowsMerged) || 0);
+    var excludedRows = Math.max(0, Number(quality.excludedRowCount) || 0);
+    var rawRows = Math.max(1, txnCount + duplicateRows + excludedRows);
+    var readPenalty = 0;
+    if (quality.hasBalance === false) readPenalty += 10;
+    if (typeof quality.balanceRatio === "number" && quality.balanceRatio < 0.9) readPenalty += 15;
+    if (quality.reconciliationFailed) readPenalty += 15;
+
+    var chargeClarity = clampScore(100 -
+      (findingCounts.review / findingTotal * 70) -
+      (findingCounts.advisory / findingTotal * 25) -
+      Math.min(20, excludedRows / rawRows * 400) - readPenalty);
+
+    var duplicateRisk = clampScore(100 - Math.min(80, duplicateRows / rawRows * 400));
+    var complianceRisk = clampScore(100 -
+      ((counts.violation * 100 + counts.review * 50 + counts.advisory * 15) / checkTotal));
+    var unexplainedDeductions = clampScore(100 -
+      Math.min(60, findingCounts.review / findingTotal * 60) -
+      Math.min(25, excludedRows / rawRows * 500) -
+      (quality.reconciliationFailed ? 15 : 0));
+
+    var totalCharges = Math.max(0, Number(summary.totalCharges) || 0);
+    var refundDue = Math.max(0, Number(summary.refundDue) || 0);
+    var refundShare = totalCharges ? Math.min(1, refundDue / totalCharges) : 0;
+    var refundPotential = clampScore(100 -
+      (refundShare * 70) - (counts.violation / checkTotal * 30));
+
+    var readNotes = [];
+    if (quality.hasBalance === false) readNotes.push("the running balance could not be checked");
+    if (typeof quality.balanceRatio === "number" && quality.balanceRatio < 0.9) readNotes.push("balance arithmetic matched fewer than 90% of checked rows");
+    if (quality.reconciliationFailed) readNotes.push("the parsed rows did not match the statement summary");
+    var readDetail = readNotes.length ? " Read checks also found that " + readNotes.join("; ") + "." : "";
+
+    var categories = [
+      { key: "clarity", label: "Charge clarity", score: chargeClarity,
+        detail: counted(findingCounts.review, "charge line") + (findingCounts.review === 1 ? " needs" : " need") + " review; " + counted(excludedRows, "unreadable row") + (excludedRows === 1 ? " was" : " were") + " excluded." + readDetail },
+      { key: "duplicates", label: "Duplicate risk", score: duplicateRisk,
+        detail: counted(duplicateRows, "duplicate statement row") + (duplicateRows === 1 ? " was" : " were") + " detected and merged before the audit." },
+      { key: "compliance", label: "CBN compliance risk", score: complianceRisk,
+        detail: counted(counts.violation, "violation") + ", " + counted(counts.review, "review item") + ", and " + counted(counts.compliant, "compliant check") + "." },
+      { key: "deductions", label: "Unexplained deductions", score: unexplainedDeductions,
+        detail: counted(findingCounts.review, "detected charge line") + " could not be decided from the statement evidence alone." + (quality.reconciliationFailed ? " The statement summary also needs reconciliation." : "") },
+      { key: "refund", label: "Refund potential", score: refundPotential,
+        detail: fmtN(refundDue) + " is supported as refundable out of " + fmtN(totalCharges) + " in detected bank charges." }
+    ];
+    var overall = clampScore(categories.reduce(function (sum, item) { return sum + item.score; }, 0) / categories.length);
+    return { score: overall, band: healthBand(overall).label, categories: categories };
+  }
+
+  function renderHealthScore(health) {
+    if (!health || !Array.isArray(health.categories) || health.categories.length !== 5) return "";
+    var score = clampScore(health.score);
+    var band = healthBand(score);
+    return '<section class="health-score-card ' + band.cls + '" aria-labelledby="health-score-title">' +
+      '<div class="health-score-head"><div><span class="eyebrow">Statement check</span>' +
+      '<h3 id="health-score-title">Your Bank Statement Health Score</h3>' +
+      '<span class="health-band">' + esc(band.label) + '</span></div>' +
+      '<div class="health-score-ring" style="--health-score:' + score + '" role="img" aria-label="Statement health score ' + score + ' out of 100">' +
+      '<strong>' + score + '</strong><span>/100</span></div></div>' +
+      '<details class="health-about"><summary>About this score</summary><p>Higher scores mean fewer concerns in this statement. Each of the five checks has equal weight. This Checkam estimate is not a credit score or bank rating.</p></details>' +
+      '<div class="health-factors">' + health.categories.map(function (item) {
+        var itemScore = clampScore(item.score);
+        var itemBand = healthBand(itemScore);
+        return '<details class="health-factor ' + itemBand.cls + '"><summary>' +
+          '<span class="health-factor-name">' + esc(item.label) + '</span>' +
+          '<span class="health-factor-result"><strong>' + itemScore + '</strong><span>/100</span></span>' +
+          '</summary><div class="health-factor-body">' +
+          '<div class="health-bar" role="progressbar" aria-label="' + esc(item.label) + ' score" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + itemScore + '"><span style="width:' + itemScore + '%"></span></div>' +
+          '<p><strong>' + esc(itemBand.label) + '.</strong> ' + esc(item.detail) + '</p>' +
+          '</div></details>';
+      }).join("") + '</div></section>';
+  }
+
   /* ---------------- SME finance dashboard ---------------- */
   function smeDashboard(txns, audit) {
     txns = txns || [];
@@ -687,6 +794,7 @@
 
   var API = {
     renderSummary: renderSummary, renderAggregates: renderAggregates,
+    statementHealth: statementHealth, renderHealthScore: renderHealthScore,
     smeDashboard: smeDashboard, renderSmeDashboard: renderSmeDashboard,
     monthlySmeReport: monthlySmeReport, whatsappSmeSummary: whatsappSmeSummary,
     smeReconciliation: smeReconciliation, renderSmeReconciliation: renderSmeReconciliation,

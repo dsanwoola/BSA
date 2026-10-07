@@ -17,6 +17,7 @@ module.exports = function (check) {
     findings: [{ txnIndex: 1, txn: charge, verdict: "violation", typeName: "Transfer fee", charged: 25, allowed: 10, excess: 15, reason: "Over cap", citation: "CBN guide" }],
     aggregates: [],
     summary: { counts: { violation: 1 }, refundDue: 15, underReview: 0, period: { from: new Date("2026-01-01T00:00:00Z"), to: new Date("2026-06-30T00:00:00Z") }, txnCount: 300, chargeCount: 1 },
+    health: { score: 72, band: "Fair", categories: [] },
     bankProfile: { id: "gtbank", name: "Guaranty Trust Bank Ltd (GTBank)" }
   };
 
@@ -28,6 +29,7 @@ module.exports = function (check) {
   check("paid reports: redundant transaction links and arbitrary context are not persisted", !raw.includes("duplicate link") && !raw.includes("drop me"));
   var loaded = reports.load(fp);
   check("paid reports: dates revive for report rendering and exports", loaded.audit.findings[0].txn.date instanceof Date && loaded.audit.summary.period.from instanceof Date && loaded.audit.summary.period.to instanceof Date);
+  check("paid reports: the statement health score survives local save and restore", loaded.audit.health.score === 72 && loaded.audit.health.band === "Fair");
   check("paid reports: saved context and source restore", loaded.ctx.holderType === "business" && loaded.source.fileName === "statement.pdf" && loaded.source.pageCount === 10);
 
   reports.save(fp, Object.assign({}, audit, { summary: Object.assign({}, audit.summary, { refundDue: 20 }) }), {}, {});
