@@ -309,6 +309,7 @@ body.landing-mode .stepper { display: none; }
 }
 .workflow-details { display: none; margin-top: 34px; padding-top: 30px; border-top: 1px solid var(--line); }
 body.workflow-open .workflow-details { display: block; }
+body.workflow-open .audience-section { display: none; }
 body.landing-mode #step-context .panel { padding: 0; background: transparent; border: 0; box-shadow: none; }
 body.landing-mode footer { max-width: 760px; margin-left: auto; margin-right: auto; text-align: center; }
 body.landing-mode .build-badge { display: none; }
@@ -318,6 +319,37 @@ body.landing-mode .build-badge { display: none; }
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
   margin: 0 0 26px;
+}
+
+/* ---------- landing audiences ---------- */
+.audience-section {
+  margin: 26px 0 0; padding: clamp(22px, 4vw, 36px);
+  border: 1px solid var(--line); border-radius: 22px; background: var(--bg-soft);
+}
+.audience-head { max-width: 680px; margin-bottom: 20px; }
+.audience-head h2 { margin: 5px 0 7px; font-size: clamp(25px, 4vw, 36px); line-height: 1.12; }
+.audience-head p { margin: 0; color: var(--txt-dim); }
+.audience-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.audience-card {
+  min-width: 0; min-height: 112px; padding: 15px;
+  border: 1px solid var(--line); border-radius: 13px; background: var(--card);
+}
+.audience-card h3 { margin: 0 0 7px; color: var(--accent); font-size: 14px; line-height: 1.35; }
+.audience-card p { margin: 0; color: var(--txt-dim); font-size: 13px; line-height: 1.45; }
+.audience-cta { margin-top: 18px; }
+
+@media (max-width: 900px) {
+  .audience-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 760px) {
+  .audience-section { margin-top: 16px; padding: 20px 14px; border-radius: 18px; }
+  .audience-head { margin-bottom: 14px; }
+  .audience-grid { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .audience-card { min-height: 0; padding: 13px 14px; }
+  .audience-card h3 { margin-bottom: 3px; }
+  .audience-card p { font-size: 13.5px; }
+  .audience-cta { width: 100%; min-height: 52px; justify-content: center; }
 }
 .launch-proof-grid div {
   border: 1px solid var(--line);

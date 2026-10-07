@@ -1,5 +1,18 @@
 # Bank Statement Auditor — Handoff
 
+## Customer audience section — build 92
+
+The landing page now explains who Checkam is for across eight target groups:
+SME owners, accountants, churches and mosques, schools, cooperatives, NGOs,
+political campaign accounts and POS operators. Each compact card pairs the role
+with a specific benefit, followed by a direct "Check my statement" action that
+opens the existing account setup flow.
+
+The desktop layout uses four columns, tablets use two, and phones use one
+readable column with a full-width 52px action. The section disappears once the
+workflow starts. 543 automated tests pass, and the mobile browser check covered
+the full card list, heading, action, focus handoff and workflow transition.
+
 ## Complaint journey — build 91
 
 Paid reports with a refundable amount now include a six-step complaint tracker.

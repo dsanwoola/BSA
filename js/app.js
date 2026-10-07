@@ -6,7 +6,7 @@
 (function () {
   "use strict";
 
-  var APP_BUILD = 91; // shown in the header so stale cached code is obvious
+  var APP_BUILD = 92; // shown in the header so stale cached code is obvious
   window.BSA_BUILD = APP_BUILD;
   var ANALYTICS = window.BSA_ANALYTICS || { track: function () {}, flush: function () {}, fileType: function () { return "unknown"; } };
 
@@ -252,8 +252,9 @@
   function wireContext() {
     populateBankProfiles();
     var heroStart = $("#btn-hero-start");
-    if (heroStart) heroStart.addEventListener("click", function () {
-      ANALYTICS.track("context_continue", { source: "hero_start" });
+    var audienceStart = $("#btn-audience-start");
+    function startWorkflow(source) {
+      ANALYTICS.track("context_continue", { source: source });
       document.body.classList.add("workflow-open");
       document.body.classList.remove("landing-mode");
       var details = $("#workflow-details");
@@ -261,7 +262,9 @@
       var target = $(".context-title");
       window.scrollTo({ top: 0, behavior: "smooth" });
       if (target) target.focus({ preventScroll: true });
-    });
+    }
+    if (heroStart) heroStart.addEventListener("click", function () { startWorkflow("hero_start"); });
+    if (audienceStart) audienceStart.addEventListener("click", function () { startWorkflow("audience_section"); });
     var heroDemo = $("#btn-hero-demo");
     if (heroDemo) heroDemo.addEventListener("click", loadDemo);
     var savedBtn = $("#btn-saved-reports");
