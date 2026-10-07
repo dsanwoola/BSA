@@ -6,13 +6,14 @@
 (function () {
   "use strict";
 
-  var APP_BUILD = 90; // shown in the header so stale cached code is obvious
+  var APP_BUILD = 91; // shown in the header so stale cached code is obvious
   window.BSA_BUILD = APP_BUILD;
   var ANALYTICS = window.BSA_ANALYTICS || { track: function () {}, flush: function () {}, fileType: function () { return "unknown"; } };
 
   var PARSER = window.CBN_PARSER, ENGINE = window.CBN_ENGINE,
       REPORT = window.CBN_REPORT, RULES = window.CBN_RULES, BANKS = window.CBN_BANK_PROFILES,
-      PAYWALL = window.CBN_PAYWALL, PAID_REPORTS = window.CBN_PAID_REPORTS;
+      PAYWALL = window.CBN_PAYWALL, PAID_REPORTS = window.CBN_PAID_REPORTS,
+      COMPLAINTS = window.CHECKAM_COMPLAINTS;
 
   var state = {
     ctx: { accountType: "current", holderType: "individual", salaryAccount: false, bankId: "other", overrides: {} },
@@ -20,6 +21,7 @@
     txns: null, problems: null, integrity: null, differences: null,
     audit: null, filter: "all",
     fingerprint: null, restoredReport: false,
+    letterFileName: "refund_demand_letter.docx", letterReturnId: "btn-letter",
     currentStep: "step-context"
   };
 
@@ -275,6 +277,10 @@
       var button = e.target.closest("[data-paid-report]");
       if (button) openSavedReport(button.getAttribute("data-paid-report"), button);
     });
+    var complaintButton = $("#btn-open-complaint");
+    if (complaintButton) complaintButton.addEventListener("click", function () {
+      openSavedReport(complaintButton.getAttribute("data-complaint-report"), complaintButton);
+    });
 
     $all('input[name="acctType"], input[name="holderType"]').forEach(function (r) {
       r.addEventListener("change", function () {
@@ -413,6 +419,100 @@
     });
     refreshSavedReportsButton();
     return saved;
+  }
+
+  /* ---------------- complaint journey ---------------- */
+  function complaintBankName() {
+    var name = (state.audit && state.audit.bankProfile && state.audit.bankProfile.name) || "Your bank";
+    return /other|not sure/i.test(name) ? "Your bank" : name;
+  }
+
+  function complaintJourney() {
+    if (!COMPLAINTS || !state.fingerprint) return null;
+    return COMPLAINTS.load(state.fingerprint) || {
+      fingerprint: state.fingerprint,
+      bankName: complaintBankName(),
+      refundDue: state.audit && state.audit.summary ? state.audit.summary.refundDue : 0,
+      response: {}
+    };
+  }
+
+  function saveComplaint(patch) {
+    if (!COMPLAINTS || !state.fingerprint) return false;
+    patch = Object.assign({
+      bankName: complaintBankName(),
+      refundDue: state.audit && state.audit.summary ? state.audit.summary.refundDue : 0
+    }, patch || {});
+    var saved = COMPLAINTS.save(state.fingerprint, patch);
+    renderComplaintTracker();
+    refreshComplaintReminder();
+    return saved;
+  }
+
+  function complaintStepSummary(number, title, done, current) {
+    return '<span class="journey-number" aria-hidden="true">' + number + '</span>' +
+      '<span><strong>' + REPORT.esc(title) + '</strong><small>' + (done ? "Complete" : current ? "Current step" : "Not complete") + '</small></span>';
+  }
+
+  function renderComplaintTracker() {
+    var host = $("#complaint-tracker");
+    if (!host || !state.audit || !state.audit.summary || !state.fingerprint || !COMPLAINTS) return;
+    if (!(Number(state.audit.summary.refundDue) > 0)) { host.hidden = true; host.innerHTML = ""; return; }
+    var journey = complaintJourney();
+    var progress = COMPLAINTS.status(journey);
+    var response = journey.response || {};
+    var letterDone = !!journey.letterGeneratedAt;
+    var submitted = !!journey.complaintDate;
+    var reminderReady = submitted;
+    var escalationDone = !!journey.escalationGeneratedAt || progress.resolved;
+    var responseDone = !!(response.status || response.date || response.reference || response.notes);
+    var current = !letterDone ? 1 : !submitted ? 2 : (!progress.due && !progress.resolved) ? 4 : (!escalationDone ? 5 : 6);
+    var deadlineCopy = !submitted ? "Add the bank complaint date first."
+      : progress.resolved ? "The bank response is marked resolved."
+      : progress.due ? "The two-week period has passed. You can prepare the CBN escalation letter."
+      : progress.daysRemaining + " day" + (progress.daysRemaining === 1 ? "" : "s") + " until " + COMPLAINTS.formatDate(progress.deadline) + ".";
+    var escalationDisabled = !progress.due || progress.resolved;
+    var statusOptions = [
+      ["", "Choose status"], ["resolved", "Resolved"], ["partly_resolved", "Partly resolved"], ["not_resolved", "Not resolved"]
+    ].map(function (option) {
+      return '<option value="' + option[0] + '"' + (response.status === option[0] ? " selected" : "") + '>' + option[1] + '</option>';
+    }).join("");
+
+    host.hidden = false;
+    host.innerHTML = '<div class="journey-head"><div><span class="eyebrow">Complaint tracker</span><h3 id="complaint-tracker-title">Your complaint journey</h3></div>' +
+      '<span class="journey-progress">' + progress.completed + ' of 6 complete</span></div>' +
+      '<p class="journey-intro">Track the bank complaint, the two-week follow-up date and any response.</p>' +
+      '<div class="journey-steps">' +
+      '<details class="journey-step"' + (current === 1 ? " open" : "") + '><summary>' + complaintStepSummary(1, "Generate bank complaint", letterDone, current === 1) + '</summary><div class="journey-body">' +
+        '<button class="btn btn-primary" id="btn-complaint-letter" type="button">' + (letterDone ? "Open complaint letter" : "Generate complaint letter") + '</button></div></details>' +
+      '<details class="journey-step"' + (current === 2 ? " open" : "") + '><summary>' + complaintStepSummary(2, "Submit to your bank", submitted, current === 2) + '</summary><div class="journey-body">' +
+        '<label for="complaint-date">Date the bank received it</label><input id="complaint-date" type="date" max="' + COMPLAINTS.todayIso() + '" value="' + REPORT.esc(journey.complaintDate || "") + '">' +
+        '<button class="btn btn-primary" id="btn-save-complaint-date" type="button">Save submission date</button><p class="field-status" id="complaint-date-status" role="status"></p></div></details>' +
+      '<details class="journey-step"><summary>' + complaintStepSummary(3, "Complaint date recorded", submitted, current === 3) + '</summary><div class="journey-body"><p>' +
+        (submitted ? "Submitted " + REPORT.esc(COMPLAINTS.formatDate(journey.complaintDate)) + ". Follow-up date: " + REPORT.esc(COMPLAINTS.formatDate(progress.deadline)) + "." : "Save the date after the bank receives your complaint.") + '</p></div></details>' +
+      '<details class="journey-step"' + (current === 4 ? " open" : "") + '><summary>' + complaintStepSummary(4, "Set the 14-day reminder", reminderReady, current === 4) + '</summary><div class="journey-body"><p>' + REPORT.esc(deadlineCopy) + '</p>' +
+        '<button class="btn btn-ghost" id="btn-complaint-calendar" type="button"' + (!submitted ? " disabled" : "") + '>Add reminder to calendar</button><small>Checkam also shows a reminder here when you return after the due date.</small></div></details>' +
+      '<details class="journey-step"' + (current === 5 ? " open" : "") + '><summary>' + complaintStepSummary(5, "Escalate to CBN", escalationDone, current === 5) + '</summary><div class="journey-body"><p>' + REPORT.esc(deadlineCopy) + '</p>' +
+        '<button class="btn btn-primary" id="btn-cbn-letter" type="button"' + (escalationDisabled ? " disabled" : "") + '>Generate CBN escalation letter</button>' +
+        '<details class="help-link"><summary>CBN submission guidance</summary><div class="disclosure-body"><p>Include proof that you complained to the bank, the disputed transaction history, the amount claimed and supporting documents. Never include a PIN or password.</p><a href="https://www.cbn.gov.ng/supervision/cpdcomgt.html" target="_blank" rel="noopener noreferrer">Read CBN complaints guidance</a></div></details></div></details>' +
+      '<details class="journey-step"' + (current === 6 ? " open" : "") + '><summary>' + complaintStepSummary(6, "Save the bank response", responseDone, current === 6) + '</summary><div class="journey-body journey-response">' +
+        '<label for="bank-response-date">Response date</label><input id="bank-response-date" type="date" max="' + COMPLAINTS.todayIso() + '" value="' + REPORT.esc(response.date || "") + '">' +
+        '<label for="bank-response-status">Outcome</label><select id="bank-response-status">' + statusOptions + '</select>' +
+        '<label for="bank-response-reference">Bank reference</label><input id="bank-response-reference" type="text" maxlength="120" value="' + REPORT.esc(response.reference || "") + '" autocomplete="off">' +
+        '<label for="bank-response-notes">Response notes</label><textarea id="bank-response-notes" maxlength="3000" rows="4">' + REPORT.esc(response.notes || "") + '</textarea>' +
+        '<button class="btn btn-primary" id="btn-save-bank-response" type="button">Save bank response</button><p class="field-status" id="bank-response-save-status" role="status"></p></div></details>' +
+      '</div><details class="help-link"><summary>Privacy and storage</summary><div class="disclosure-body"><p>Checkam stores this tracker in this browser. It does not upload the complaint record or the bank response. Save only a short response summary, not passwords, a PIN or full card details.</p></div></details>';
+  }
+
+  function refreshComplaintReminder() {
+    var panel = $("#complaint-reminder");
+    if (!panel || !COMPLAINTS) return;
+    var due = COMPLAINTS.dueItems();
+    panel.hidden = due.length === 0;
+    if (!due.length) return;
+    var first = due[0], status = COMPLAINTS.status(first);
+    $("#complaint-reminder-text").textContent = "The two-week follow-up date for " + first.bankName + " was " + COMPLAINTS.formatDate(status.deadline) + ". Open the paid report to continue.";
+    $("#btn-open-complaint").setAttribute("data-complaint-report", first.fingerprint);
   }
 
   function renderBankOptions(query) {
@@ -1167,6 +1267,8 @@
       $("#aggregates").innerHTML = "";
       $("#findings-list").innerHTML = "";
       $("#all-txns").innerHTML = "";
+      $("#complaint-tracker").hidden = true;
+      $("#complaint-tracker").innerHTML = "";
       if (tabs) tabs.style.display = "none";
       if (chips) chips.style.display = "none";
       if (paneAll) paneAll.style.display = "none";
@@ -1197,6 +1299,7 @@
     if (letterBtn) letterBtn.style.display = audit.summary.refundDue > 0 ? "" : "none";
     if (csvBtn) csvBtn.style.display = "";
     if (printBtn) printBtn.style.display = "";
+    renderComplaintTracker();
   }
 
   /* Fingerprint this statement, then ask the server whether a receipt we
@@ -1218,6 +1321,33 @@
       var n = v === "all" ? state.audit.findings.length : (state.audit.summary.counts[v] || 0);
       ch.querySelector(".chip-count").textContent = n;
     });
+  }
+
+  function showDemandLetter(returnId) {
+    var letter = REPORT.demandLetter(state.audit, state.ctx);
+    if (!letter) return;
+    saveComplaint({ letterGeneratedAt: new Date().toISOString() });
+    state.letterFileName = "refund_demand_letter.docx";
+    state.letterReturnId = returnId || "btn-letter";
+    $("#letter-modal-title").textContent = "Refund demand letter";
+    $("#letter-help-text").textContent = "Fill in the bracketed details, then send the letter to your bank. Keep proof that the bank received it.";
+    $("#letter-text").value = letter;
+    openLetterModal();
+  }
+
+  function showCbnLetter() {
+    var journey = complaintJourney();
+    var progress = COMPLAINTS.status(journey);
+    if (!progress.due || progress.resolved) return;
+    var letter = COMPLAINTS.escalationLetter(state.audit, state.ctx, journey);
+    if (!letter) return;
+    saveComplaint({ escalationGeneratedAt: new Date().toISOString() });
+    state.letterFileName = "cbn_escalation_letter.docx";
+    state.letterReturnId = "btn-cbn-letter";
+    $("#letter-modal-title").textContent = "CBN escalation letter";
+    $("#letter-help-text").textContent = "Fill in the bracketed details. Attach proof of the bank complaint, the bank response if any, the statement and the audit schedule.";
+    $("#letter-text").value = letter;
+    openLetterModal();
   }
 
   function wireResults() {
@@ -1269,10 +1399,7 @@
 
     $("#btn-letter").addEventListener("click", function () {
       ANALYTICS.track("copy_demand_letter", { source: state.source || "unknown" });
-      var letter = REPORT.demandLetter(state.audit, state.ctx);
-      if (!letter) return;
-      $("#letter-text").value = letter;
-      openLetterModal();
+      showDemandLetter("btn-letter");
     });
     $("#btn-letter-close").addEventListener("click", closeLetterModal);
     $("#letter-modal").addEventListener("keydown", trapLetterModalFocus);
@@ -1289,8 +1416,8 @@
       btn.disabled = true;
       btn.textContent = "Preparing Word document…";
       errorEl.hidden = true;
-      window.BSA_WORD_EXPORT.toBlob($("#letter-text").value).then(function (blob) {
-        download("refund_demand_letter.docx", blob);
+      window.BSA_WORD_EXPORT.toBlob($("#letter-text").value, $("#letter-modal-title").textContent).then(function (blob) {
+        download(state.letterFileName, blob);
       }).catch(function () {
         errorEl.textContent = "Could not create the Word document. Please try again, or copy the letter into Word.";
         errorEl.hidden = false;
@@ -1298,6 +1425,50 @@
         btn.disabled = false;
         btn.textContent = "Download Word (.docx)";
       });
+    });
+
+    $("#complaint-tracker").addEventListener("click", function (event) {
+      var target = event.target;
+      if (target.id === "btn-complaint-letter") {
+        ANALYTICS.track("complaint_letter_generated", {});
+        showDemandLetter("btn-complaint-letter");
+      }
+      if (target.id === "btn-save-complaint-date") {
+        var input = $("#complaint-date"), status = $("#complaint-date-status");
+        if (!input.value) { status.textContent = "Choose the date the bank received the complaint."; input.focus(); return; }
+        if (input.value > COMPLAINTS.todayIso()) { status.textContent = "The complaint date cannot be in the future."; input.focus(); return; }
+        saveComplaint({ complaintDate: input.value, submittedAt: new Date().toISOString() });
+        $("#complaint-date-status").textContent = "Submission date saved.";
+        ANALYTICS.track("complaint_submitted_recorded", {});
+      }
+      if (target.id === "btn-complaint-calendar") {
+        var journey = complaintJourney(), calendar = COMPLAINTS.calendarEvent(journey);
+        if (!calendar) return;
+        download("checkam_bank_complaint_reminder.ics", calendar, "text/calendar");
+        saveComplaint({ reminderDownloadedAt: new Date().toISOString() });
+        ANALYTICS.track("complaint_reminder_downloaded", {});
+      }
+      if (target.id === "btn-cbn-letter") {
+        ANALYTICS.track("cbn_escalation_letter_generated", {});
+        showCbnLetter();
+      }
+      if (target.id === "btn-save-bank-response") {
+        var date = $("#bank-response-date").value;
+        var responseStatus = $("#bank-response-status").value;
+        var responseMessage = $("#bank-response-save-status");
+        if (date && date > COMPLAINTS.todayIso()) { responseMessage.textContent = "The response date cannot be in the future."; return; }
+        if (!date && !responseStatus && !$("#bank-response-reference").value.trim() && !$("#bank-response-notes").value.trim()) {
+          responseMessage.textContent = "Add at least one response detail before saving."; return;
+        }
+        saveComplaint({ response: {
+          date: date,
+          status: responseStatus,
+          reference: $("#bank-response-reference").value,
+          notes: $("#bank-response-notes").value
+        } });
+        $("#bank-response-save-status").textContent = "Bank response saved in this browser.";
+        ANALYTICS.track("bank_response_saved", { status: responseStatus || "not_set" });
+      }
     });
 
     $("#btn-restart").addEventListener("click", function () {
@@ -1336,7 +1507,7 @@
     var modal = $("#letter-modal");
     modal.classList.remove("open");
     modal.setAttribute("aria-hidden", "true");
-    var btn = $("#btn-letter");
+    var btn = $("#" + state.letterReturnId) || $("#btn-letter");
     if (btn && btn.style.display !== "none") btn.focus();
   }
 
@@ -1376,6 +1547,7 @@
     console.log("Bank Charge Auditor — build " + APP_BUILD);
     wireNavigation(); wireTheme(); wirePwa(); wireContext(); wireUpload(); wireMapping(); wireResults();
     refreshSavedReportsButton();
+    refreshComplaintReminder();
     gotoStep("step-context");
     // Print all available evidence, then restore the reader's disclosure choices.
     var printDetails = null;

@@ -1,5 +1,24 @@
 # Bank Statement Auditor — Handoff
 
+## Complaint journey — build 91
+
+Paid reports with a refundable amount now include a six-step complaint tracker.
+Users can generate the bank complaint letter, record when the bank received it,
+download a calendar reminder for the two-week deadline, generate a CBN
+escalation letter once that date arrives, and save the bank response status,
+reference and notes.
+
+The journey is keyed to the paid report fingerprint and stays in local browser
+storage. Checkam does not upload it. An unresolved journey shows a landing-page
+reminder when the user returns after the deadline. The CBN letter follows the
+official complaints guidance and asks the user to attach proof of the bank
+complaint and supporting records. Both letters download as editable Word files.
+
+540 automated tests pass. A mobile browser run covered the sample audit, bank
+letter generation, submission-date entry, deadline calculation, the enabled CBN
+escalation step, and the response form. That run also caught and fixed a
+timezone date shift in the generated escalation letter.
+
 ## Bank statement health score — build 90
 
 Every audit now includes a mobile-first "Your Bank Statement Health Score"

@@ -34,11 +34,11 @@ check("launch: browser-only privacy remains explicit", indexHtml.indexOf("withou
 check("launch: pricing and fake refund preview are removed", indexHtml.indexOf("Launch monetization plan") < 0 && indexHtml.indexOf("₦42,875.00") < 0);
 check("launch: workflow remains behind progressive disclosure", /id="workflow-details"[^>]*aria-hidden="true"/.test(indexHtml) && appJs.indexOf('classList.add("workflow-open")') >= 0);
 check("launch: company attribution is present", indexHtml.indexOf("A product of Neighbours NG Technologies Ltd.") >= 0);
-check("launch: build 90 markers stay aligned", /var APP_BUILD = 90/.test(appJs) && (indexHtml.match(/\?v=90/g) || []).length === 16 && indexHtml.indexOf("?v=89") < 0);
+check("launch: build 91 markers stay aligned", /var APP_BUILD = 91/.test(appJs) && (indexHtml.match(/\?v=91/g) || []).length === 17 && indexHtml.indexOf("?v=90") < 0);
 
 check("launch: live checkout is enabled", indexHtml.indexOf('data-payments-live="true"') !== -1);
 
-check("word: UI downloads DOCX from edited preview", indexHtml.includes("Download Word (.docx)") && indexHtml.includes("js/word-export.js?v=90") && appJs.includes('window.BSA_WORD_EXPORT.toBlob($("#letter-text").value)') && appJs.includes("refund_demand_letter.docx") && !appJs.includes("refund_demand_letter.txt") && appJs.includes("content instanceof Blob ? content"));
+check("word: UI downloads DOCX from edited preview", indexHtml.includes("Download Word (.docx)") && indexHtml.includes("js/word-export.js?v=91") && appJs.includes('window.BSA_WORD_EXPORT.toBlob($("#letter-text").value') && appJs.includes("refund_demand_letter.docx") && appJs.includes("cbn_escalation_letter.docx") && !appJs.includes("refund_demand_letter.txt") && appJs.includes("content instanceof Blob ? content"));
 
 var manifest = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "manifest.webmanifest"), "utf8"));
 var serviceWorker = fs.readFileSync(path.join(__dirname, "..", "service-worker.js"), "utf8");
@@ -46,7 +46,7 @@ check("pwa: document links the manifest, theme colour and Apple icon", indexHtml
 check("pwa: manifest has a stable standalone identity and root scope", manifest.id === "/" && manifest.start_url === "/" && manifest.scope === "/" && manifest.display === "standalone" && manifest.name.indexOf("Checkam") === 0);
 check("pwa: manifest supplies 192 and 512 any-purpose and maskable icons", ["any", "maskable"].every(function (purpose) { return ["192x192", "512x512"].every(function (size) { return manifest.icons.some(function (icon) { return icon.purpose === purpose && icon.sizes === size && icon.type === "image/png"; }); }); }));
 check("pwa: install control and iOS home-screen help are wired", indexHtml.includes('id="btn-install-app"') && indexHtml.includes('id="pwa-install-help"') && appJs.includes('beforeinstallprompt') && appJs.includes('Add to Home Screen') && appJs.includes('appinstalled'));
-check("pwa: service worker precaches private analysis and export dependencies", serviceWorker.includes('checkam-static-v90') && serviceWorker.includes('/vendor/pdf.worker.min.js') && serviceWorker.includes('/vendor/xlsx.full.min.js') && serviceWorker.includes('/vendor/docx-9.6.1.js') && serviceWorker.includes('/js/parser.js?v=90') && serviceWorker.includes('/js/app.js?v=90'));
+check("pwa: service worker precaches private analysis and export dependencies", serviceWorker.includes('checkam-static-v91') && serviceWorker.includes('/vendor/pdf.worker.min.js') && serviceWorker.includes('/vendor/xlsx.full.min.js') && serviceWorker.includes('/vendor/docx-9.6.1.js') && serviceWorker.includes('/js/parser.js?v=91') && serviceWorker.includes('/js/complaint-tracker.js?v=91') && serviceWorker.includes('/js/app.js?v=91'));
 check("pwa: service worker leaves payment and analytics APIs on the network", serviceWorker.includes('url.pathname.indexOf("/api/") === 0') && serviceWorker.indexOf('url.pathname.indexOf("/api/") === 0') < serviceWorker.indexOf('request.mode === "navigate"'));
 check("pwa: navigation uses the network first with an offline app-shell fallback", serviceWorker.includes('request.mode === "navigate"') && serviceWorker.includes('return caches.match("/index.html")') && serviceWorker.includes('self.clients.claim()'));
 check("pwa: service worker registration bypasses the HTTP cache", appJs.includes('updateViaCache: "none"') && appJs.includes('navigator.serviceWorker.register("/service-worker.js"'));
@@ -1318,7 +1318,7 @@ var reportJs = readSrc("/../js/report.js");
 var betaGuide = readSrc("/../BETA_TESTING.md");
 check("static: minimalist Checkam launch appears in app", indexHtml.indexOf("Check your bank charges") !== -1 && indexHtml.indexOf("Check my statement") !== -1 && indexHtml.indexOf("Try a sample") !== -1 && indexHtml.indexOf("without uploading your file") !== -1 && indexHtml.indexOf("Launch monetization plan") === -1 && indexHtml.indexOf("₦42,875.00") === -1 && appCss.indexOf(".launch-hero") !== -1 && appCss.indexOf(".workflow-details") !== -1);
 check("static: BETA_TESTING documents privacy-safe diagnostics", betaGuide.indexOf("anonymized parser diagnostic") !== -1 && betaGuide.indexOf("must not contain names") !== -1);
-check("static: APP_BUILD and cache bust agree on 90", appJs.indexOf("APP_BUILD = 90") !== -1 && (indexHtml.match(/v=90/g) || []).length >= 8 && indexHtml.indexOf("v=89") === -1);
+check("static: APP_BUILD and cache bust agree on 91", appJs.indexOf("APP_BUILD = 91") !== -1 && (indexHtml.match(/v=91/g) || []).length >= 8 && indexHtml.indexOf("v=89") === -1);
 check("static: mobile uses compact progress and hides duplicate intro guidance", indexHtml.indexOf('id="mobile-step-count"') !== -1 && indexHtml.indexOf('id="mobile-step-fill"') !== -1 && appCss.indexOf(".mobile-step-summary { display: grid;") !== -1 && appCss.indexOf("#step-context .panel > h2") !== -1 && appCss.indexOf("#launch-guide {\n    display: none;") !== -1);
 check("static: mobile layout safeguards are present", appCss.indexOf("mobile-first polish") !== -1 && appCss.indexOf("Swipe sideways to see all columns") !== -1 && appCss.indexOf(".chips { display: grid; grid-template-columns: 1fr;") !== -1 && appCss.indexOf("input, select, textarea { font-size: 16px;") !== -1);
 check("static: old SME premium surfaces stay disabled", indexHtml.indexOf('id="sme-dashboard-root"') === -1 && appJs.indexOf("bsa-premium-sme") === -1 && appJs.indexOf("btn-premium-unlock") === -1);
@@ -1341,7 +1341,7 @@ check("hosting: exclude hidden directory descendants", hostingIgnores.indexOf("*
 check("hosting: exclude backend source and deployment logs", ["functions/**", "firestore.rules", "package.json", "package-lock.json", "*-debug.log"].every(function(pattern) { return hostingIgnores.indexOf(pattern) !== -1; }));
 check("hosting: app shell, service worker and manifest are revalidated instead of cached as immutable", hostingHeaders.some(function (rule) { return rule.source === "/" && /no-cache/.test(rule.headers[0].value) && /no-store/.test(rule.headers[0].value); }) && hostingHeaders.some(function (rule) { return rule.source === "/service-worker.js" && /no-cache/.test(rule.headers[0].value); }) && hostingHeaders.some(function (rule) { return rule.source === "/manifest.webmanifest" && /no-cache/.test(rule.headers[0].value); }) && !hostingHeaders.some(function (rule) { return rule.source === "**/*.@(js|css)"; }));
 var functionsIndex = readSrc("/../functions/index.js");
-check("analytics: client is loaded and cache-busted", indexHtml.indexOf('js/analytics.js?v=90') !== -1 && analyticsJs.indexOf('BSA_ANALYTICS') !== -1 && analyticsJs.indexOf('/api/analytics') !== -1);
+check("analytics: client is loaded and cache-busted", indexHtml.indexOf('js/analytics.js?v=91') !== -1 && analyticsJs.indexOf('BSA_ANALYTICS') !== -1 && analyticsJs.indexOf('/api/analytics') !== -1);
 check("analytics: backend route is configured", firebaseJson.indexOf('"source": "/api/analytics"') !== -1 && firebaseJson.indexOf('"function": "analytics"') !== -1 && firebaseJson.indexOf('"source": "functions"') !== -1);
 check("analytics: backend uses aggregate counters only", functionsIndex.indexOf('analytics_daily') !== -1 && functionsIndex.indexOf('FieldValue.increment') !== -1 && functionsIndex.indexOf('raw statement') === -1 && functionsIndex.indexOf('narration') === -1);
 check("analytics: key journey events are instrumented", appJs.indexOf('"app_load"') !== -1 && appJs.indexOf('"file_selected"') !== -1 && appJs.indexOf('"file_read_success"') !== -1 && appJs.indexOf('"audit_completed"') !== -1 && appJs.indexOf('"recovery_pack_request"') !== -1);
@@ -1737,6 +1737,7 @@ paymentFlowTests().then(function () {
   require("./mobile_report_tests.js")(check);
   require("./bank_picker_tests.js")(check);
   require("./paid_reports_tests.js")(check);
+  require("./complaint_tracker_tests.js")(check);
   return require("./file_chooser_tests.js")(check);
 }).then(function () {
   return require("./restore_access_tests.js")(check);

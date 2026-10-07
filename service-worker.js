@@ -1,11 +1,11 @@
 "use strict";
 
-var CACHE_NAME = "checkam-static-v90";
+var CACHE_NAME = "checkam-static-v91";
 var CORE_ASSETS = [
   "/",
   "/index.html",
   "/manifest.webmanifest",
-  "/css/app.css?v=90",
+  "/css/app.css?v=91",
   "/icons/icon-192.png",
   "/icons/icon-512.png",
   "/icons/icon-maskable-192.png",
@@ -15,21 +15,22 @@ var CORE_ASSETS = [
   "/vendor/pdf.min.js",
   "/vendor/pdf.worker.min.js",
   "/vendor/docx-9.6.1.js",
-  "/js/rules.js?v=90",
-  "/js/bank-profiles.js?v=90",
-  "/js/patterns.js?v=90",
-  "/js/engine.js?v=90",
-  "/js/parser.js?v=90",
-  "/js/report.js?v=90",
-  "/js/account-detector.js?v=90",
-  "/js/account-detector-integration.js?v=90",
-  "/js/analytics.js?v=90",
-  "/js/analytics-enhanced.js?v=90",
-  "/js/pricing.js?v=90",
-  "/js/paywall.js?v=90",
-  "/js/paid-reports.js?v=90",
-  "/js/word-export.js?v=90",
-  "/js/app.js?v=90"
+  "/js/rules.js?v=91",
+  "/js/bank-profiles.js?v=91",
+  "/js/patterns.js?v=91",
+  "/js/engine.js?v=91",
+  "/js/parser.js?v=91",
+  "/js/report.js?v=91",
+  "/js/account-detector.js?v=91",
+  "/js/account-detector-integration.js?v=91",
+  "/js/analytics.js?v=91",
+  "/js/analytics-enhanced.js?v=91",
+  "/js/pricing.js?v=91",
+  "/js/paywall.js?v=91",
+  "/js/paid-reports.js?v=91",
+  "/js/complaint-tracker.js?v=91",
+  "/js/word-export.js?v=91",
+  "/js/app.js?v=91"
 ];
 
 self.addEventListener("install", function (event) {

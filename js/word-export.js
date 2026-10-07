@@ -25,7 +25,7 @@
     return loading;
   }
 
-  function buildDocument(d, text) {
+  function buildDocument(d, text, title) {
     // Preserve editable preview text, including blank lines. Strip only XML 1.0
     // control characters that cannot legally appear in a Word document.
     var lines = String(text == null ? "" : text).replace(/\r\n?/g, "\n")
@@ -68,7 +68,7 @@
     // Standard business typography. Named letter-specific overrides retain the
     // source's blank-line spacing and use black, modestly sized subject lines.
     return new d.Document({
-      creator: "Checkam", title: "Refund demand letter", description: "",
+      creator: "Checkam", title: title || "Refund demand letter", description: "",
       styles: { default: { document: {
         run: { font: "Calibri", size: 22, color: "000000" },
         paragraph: { spacing: { before: 0, after: 120, line: 264 }, widowControl: true }
@@ -95,8 +95,8 @@
   }
 
   var api = {
-    toBlob: function (text) {
-      return loadLibrary().then(function (d) { return d.Packer.toBlob(buildDocument(d, text)); });
+    toBlob: function (text, title) {
+      return loadLibrary().then(function (d) { return d.Packer.toBlob(buildDocument(d, text, title)); });
     }
   };
   if (isNode) module.exports = api;
