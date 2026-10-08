@@ -554,3 +554,14 @@ Deploy rules with:
 firebase deploy --only firestore:rules
 ```
 
+## Build 94 — supplied CheckAm logo
+
+- Replaced the old shield/naira header mark and text lockup with the supplied
+  transparent CheckAm wordmark.
+- Added a responsive mobile header treatment that preserves the logo's 3:1
+  aspect ratio beside the theme control without horizontal overflow.
+- Replaced the favicon, Apple touch icon, and PWA icons with the matching
+  statement-and-check symbol.
+- Added the wordmark to the offline app-shell cache.
+- Verified at 390 px and 1280 px viewport widths; 545 tests pass.
+

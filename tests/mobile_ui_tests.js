@@ -54,6 +54,7 @@ module.exports = function (check) {
   check("mobile: expanded scan details do not repeat the review heading", !html.includes("Review scanned statement") && html.includes(">View scanned details</button>"));
   check("mobile: paid analysis remains gated and letter focus includes summaries", app.includes('$("#paid-analysis").hidden = locked') && app.includes('textarea, button, summary,'));
   check("ux: keyboard users can skip directly to the main workflow", html.includes('class="skip-link" href="#main-content"') && html.includes('<main id="main-content" tabindex="-1">'));
+  check("ux: supplied wordmark scales without distortion on mobile", html.includes('class="brand-logo"') && html.includes('width="2172" height="724"') && css.includes('width: min(228px, 70vw);') && css.includes('height: auto;'));
   check("ux: mobile progress announces the current step", html.includes('id="mobile-step-count"') && html.includes('id="mobile-step-name"') && app.includes('d.setAttribute("aria-current", "step")') && app.includes('info.index * 25'));
   check("ux: theme control uses scalable icons and a dynamic accessible name", html.includes('class="icon-moon"') && html.includes('class="icon-sun"') && app.includes('btn.setAttribute("aria-label", isLight ? "Switch to dark mode" : "Switch to light mode")'));
   check("ux: core landing and upload controls avoid platform-dependent emoji icons", html.includes('class="ui-icon"') && html.includes('<div class="dz-icon"><svg') && !/[🔒⚖📄⛔❓ℹ⚠️]/u.test(html));
